@@ -232,9 +232,8 @@ Ingest a new signal into the graph. A signal represents a grounded observation i
 
 #### Response
 
-**Status:** `200 OK` (success or validation error)
+**Status:** `200 OK` (success)
 
-Success:
 ```json
 {
   "success": true,
@@ -243,7 +242,8 @@ Success:
 }
 ```
 
-Validation error:
+**Status:** `400 Bad Request` (validation error)
+
 ```json
 {
   "success": false,

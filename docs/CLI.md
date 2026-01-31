@@ -117,11 +117,9 @@ kremis query -t <TYPE> [OPTIONS]
 | Type | Required Options | Description |
 |------|-----------------|-------------|
 | `lookup` | `--entity` | Find node by entity ID |
-| `traverse` | `--start`, `--depth` | BFS traversal from node |
-| `traverse_filtered` | `--start`, `--depth`, `--min-weight` | Traverse with weight filter |
+| `traverse` | `--start`, `--depth` | BFS traversal from node (add `--min-weight` for filtered) |
 | `path` | `--start`, `--end` | Find strongest path |
 | `intersect` | `--nodes` | Find common connections |
-| `related` | `--start`, `--depth` | Extract related subgraph |
 
 **Examples:**
 
@@ -130,7 +128,7 @@ kremis query -t lookup --entity 1
 kremis query -t traverse -s 0 -d 3
 kremis query -t path -s 0 -e 5
 kremis query -t intersect --nodes "0,1,2"
-kremis query -t traverse_filtered -s 0 -d 3 --min-weight 5
+kremis query -t traverse -s 0 -d 3 --min-weight 5
 ```
 
 ### export

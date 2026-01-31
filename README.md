@@ -12,6 +12,18 @@ It functions solely as a mechanism to **record**, **associate**, and **retrieve*
 
 ---
 
+## Why Kremis
+
+Current AI systems suffer from three fundamental problems:
+
+| Problem | How Kremis addresses it |
+|---------|------------------------|
+| **Hallucination** | Output is always honest: Facts, Inferences, or explicit "I don't know". No silent gap-filling. |
+| **Opacity** | Fully inspectable state. No hidden layers, no black box. Every result traces back to a graph path. |
+| **Lack of grounding** | Zero pre-loaded knowledge. All structure emerges from real signals, not assumptions. |
+
+---
+
 ## Features
 
 | Feature | Description |
@@ -179,6 +191,10 @@ cargo fmt --all -- --check
 ## License
 
 [Apache License 2.0](LICENSE)
+
+## Acknowledgments
+
+This project was developed with the assistance of AI (Claude by Anthropic).
 
 ---
 
