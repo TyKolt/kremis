@@ -3,6 +3,9 @@
 [![CI](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+![Status](https://img.shields.io/badge/status-experimental-orange)
+> 🚧 **Work in Progress**  
+> Features incomplete. Breaking changes expected.
 
 **Kremis** is a minimal, deterministic, graph-based cognitive substrate implemented in Rust.
 
