@@ -26,7 +26,6 @@
 // MODULES
 // =============================================================================
 
-pub mod cache;
 pub mod compositor;
 pub mod confidence;
 pub mod export;
@@ -56,7 +55,6 @@ pub use types::{
 // RE-EXPORTS: Graph Engine
 // =============================================================================
 
-pub use cache::{CacheStats, LruCache, NodeCache, TraversalCache, TraversalCacheKey};
 pub use compositor::Compositor;
 pub use confidence::ConfidenceScore;
 pub use export::{
