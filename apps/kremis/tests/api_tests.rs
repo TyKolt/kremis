@@ -263,8 +263,14 @@ async fn test_query_traverse() {
     let lookup_response = server.post("/query").json(&lookup).await;
     let lookup_result: QueryResponse = lookup_response.json();
 
-    assert!(lookup_result.found, "Entity 1 should exist in populated graph");
-    assert!(!lookup_result.path.is_empty(), "Lookup should return node ID");
+    assert!(
+        lookup_result.found,
+        "Entity 1 should exist in populated graph"
+    );
+    assert!(
+        !lookup_result.path.is_empty(),
+        "Lookup should return node ID"
+    );
 
     let node_id = lookup_result.path[0];
 
@@ -274,7 +280,10 @@ async fn test_query_traverse() {
     response.assert_status_ok();
     let result: QueryResponse = response.json();
     assert!(result.success);
-    assert!(result.found, "Traverse from existing node should find results");
+    assert!(
+        result.found,
+        "Traverse from existing node should find results"
+    );
     assert!(
         !result.path.is_empty(),
         "Traverse should return at least the starting node"
@@ -419,8 +428,14 @@ async fn test_query_intersect_nonexistent_nodes() {
     response.assert_status_ok();
     let result: QueryResponse = response.json();
     assert!(result.success);
-    assert!(!result.found, "Intersect of nonexistent nodes should not find results");
-    assert!(result.path.is_empty(), "Path should be empty for nonexistent nodes");
+    assert!(
+        !result.found,
+        "Intersect of nonexistent nodes should not find results"
+    );
+    assert!(
+        result.path.is_empty(),
+        "Path should be empty for nonexistent nodes"
+    );
 }
 
 #[tokio::test]
@@ -444,10 +459,7 @@ async fn test_query_related() {
         result.found,
         "Related query from existing node should find results"
     );
-    assert!(
-        !result.path.is_empty(),
-        "Related query should return nodes"
-    );
+    assert!(!result.path.is_empty(), "Related query should return nodes");
     // The query node should be in the result
     assert!(
         result.path.contains(&node_id),
@@ -468,8 +480,14 @@ async fn test_query_related_nonexistent_node() {
     response.assert_status_ok();
     let result: QueryResponse = response.json();
     assert!(result.success);
-    assert!(!result.found, "Related query for nonexistent node should not find results");
-    assert!(result.path.is_empty(), "Path should be empty for nonexistent node");
+    assert!(
+        !result.found,
+        "Related query for nonexistent node should not find results"
+    );
+    assert!(
+        result.path.is_empty(),
+        "Path should be empty for nonexistent node"
+    );
 }
 
 // =============================================================================
