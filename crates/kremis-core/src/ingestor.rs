@@ -8,11 +8,10 @@
 //! - Deduplicate identical signals
 //! - No semantic inference or enrichment
 
-use crate::graph::{Graph, GraphStore};
+use crate::graph::GraphStore;
 use crate::primitives::{
     ASSOCIATION_WINDOW, MAX_ATTRIBUTE_LENGTH, MAX_SEQUENCE_LENGTH, MAX_VALUE_LENGTH,
 };
-use crate::storage::RedbGraph;
 use crate::{KremisError, NodeId, Signal};
 
 /// The Ingestor handles signal validation and graph ingestion.
@@ -59,20 +58,25 @@ impl Ingestor {
         Ok(())
     }
 
-    /// Ingest a single signal into the graph.
+    /// Ingest a single signal into any graph store.
     ///
+    /// Works with both in-memory Graph and persistent RedbGraph.
     /// Returns the NodeId of the entity node.
-    pub fn ingest_signal(graph: &mut Graph, signal: &Signal) -> Result<NodeId, KremisError> {
+    pub fn ingest_signal<G: GraphStore>(
+        graph: &mut G,
+        signal: &Signal,
+    ) -> Result<NodeId, KremisError> {
         Self::validate(signal)?;
 
         // Get or create node for the entity
-        let node_id = graph.insert_node(signal.entity);
+        let node_id = graph.insert_node(signal.entity)?;
 
         Ok(node_id)
     }
 
     /// Ingest a sequence of signals with automatic edge creation.
     ///
+    /// Works with both in-memory Graph and persistent RedbGraph.
     /// Per ROADMAP.md, edges are formed between adjacent signals
     /// within the ASSOCIATION_WINDOW (= 1).
     ///
@@ -82,8 +86,8 @@ impl Ingestor {
     /// Returns `KremisError::InvalidSignal` if:
     /// - The sequence exceeds `MAX_SEQUENCE_LENGTH`
     /// - Any signal in the sequence is invalid
-    pub fn ingest_sequence(
-        graph: &mut Graph,
+    pub fn ingest_sequence<G: GraphStore>(
+        graph: &mut G,
         signals: &[Signal],
     ) -> Result<Vec<NodeId>, KremisError> {
         if signals.is_empty() {
@@ -110,7 +114,7 @@ impl Ingestor {
             // Create edges from all previous signals in window to current
             for prev_signal in window.iter().take(window.len() - 1) {
                 if let Some(prev_node) = graph.get_node_by_entity(prev_signal.entity) {
-                    graph.increment_edge(prev_node, current_node);
+                    graph.increment_edge(prev_node, current_node)?;
                 }
             }
         }
@@ -124,80 +128,8 @@ impl Ingestor {
     /// - The entity already exists as a node
     /// - (Optional: same attribute/value combination exists)
     #[must_use]
-    pub fn is_duplicate(graph: &Graph, signal: &Signal) -> bool {
+    pub fn is_duplicate<G: GraphStore>(graph: &G, signal: &Signal) -> bool {
         graph.get_node_by_entity(signal.entity).is_some()
-    }
-
-    // =========================================================================
-    // REDB STORAGE METHODS
-    // =========================================================================
-
-    /// Ingest a single signal into a RedbGraph (persistent storage).
-    ///
-    /// Returns the NodeId of the entity node.
-    pub fn ingest_signal_redb(
-        redb: &mut RedbGraph,
-        signal: &Signal,
-    ) -> Result<NodeId, KremisError> {
-        Self::validate(signal)?;
-
-        // Get or create node for the entity
-        let node_id = redb.insert_node(signal.entity)?;
-
-        Ok(node_id)
-    }
-
-    /// Ingest a sequence of signals into a RedbGraph with automatic edge creation.
-    ///
-    /// Per ROADMAP.md, edges are formed between adjacent signals
-    /// within the ASSOCIATION_WINDOW (= 1).
-    ///
-    /// Returns the list of NodeIds created/updated.
-    ///
-    /// # Errors
-    /// Returns `KremisError::InvalidSignal` if:
-    /// - The sequence exceeds `MAX_SEQUENCE_LENGTH`
-    /// - Any signal in the sequence is invalid
-    pub fn ingest_sequence_redb(
-        redb: &mut RedbGraph,
-        signals: &[Signal],
-    ) -> Result<Vec<NodeId>, KremisError> {
-        if signals.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Sequence length check
-        if signals.len() > MAX_SEQUENCE_LENGTH {
-            return Err(KremisError::InvalidSignal);
-        }
-
-        let mut node_ids = Vec::with_capacity(signals.len());
-
-        // Ingest first signal
-        let first_node = Self::ingest_signal_redb(redb, &signals[0])?;
-        node_ids.push(first_node);
-
-        // Ingest remaining signals with edge creation
-        for window in signals.windows(ASSOCIATION_WINDOW + 1) {
-            let current_signal = &window[window.len() - 1];
-            let current_node = Self::ingest_signal_redb(redb, current_signal)?;
-            node_ids.push(current_node);
-
-            // Create edges from all previous signals in window to current
-            for prev_signal in window.iter().take(window.len() - 1) {
-                if let Some(prev_node) = redb.get_node_by_entity(prev_signal.entity) {
-                    redb.increment_edge(prev_node, current_node)?;
-                }
-            }
-        }
-
-        Ok(node_ids)
-    }
-
-    /// Check if a signal would be a duplicate in RedbGraph.
-    #[must_use]
-    pub fn is_duplicate_redb(redb: &RedbGraph, signal: &Signal) -> bool {
-        redb.get_node_by_entity(signal.entity).is_some()
     }
 }
 
@@ -208,6 +140,7 @@ impl Ingestor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graph::Graph;
     use crate::{Attribute, EntityId, Value};
 
     fn make_signal(entity_id: u64, attr: &str, val: &str) -> Signal {
@@ -239,8 +172,8 @@ mod tests {
 
         let node_id = Ingestor::ingest_signal(&mut graph, &signal).expect("ingest");
 
-        assert!(graph.lookup(node_id).is_some());
-        assert_eq!(graph.node_count(), 1);
+        assert!(graph.lookup(node_id).expect("lookup").is_some());
+        assert_eq!(graph.node_count().expect("count"), 1);
     }
 
     #[test]
@@ -256,9 +189,9 @@ mod tests {
 
         assert_eq!(nodes.len(), 3);
         // Edge from node 0 to node 1
-        assert!(graph.get_edge(nodes[0], nodes[1]).is_some());
+        assert!(graph.get_edge(nodes[0], nodes[1]).expect("get").is_some());
         // Edge from node 1 to node 2
-        assert!(graph.get_edge(nodes[1], nodes[2]).is_some());
+        assert!(graph.get_edge(nodes[1], nodes[2]).expect("get").is_some());
     }
 
     #[test]

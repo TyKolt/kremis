@@ -73,57 +73,51 @@ pub fn verify_hypothesis(graph: &Graph, query: Query) -> GroundedResult {
             }
         }
 
-        QueryType::Traverse { start, depth } => {
-            if let Some(artifact) = graph.traverse(start, depth) {
+        QueryType::Traverse { start, depth } => match graph.traverse(start, depth) {
+            Ok(Some(artifact)) => {
                 let confidence = compute_confidence(&artifact, graph);
                 GroundedResult::with_artifact(artifact, confidence)
-            } else {
-                GroundedResult::unverified()
             }
-        }
+            _ => GroundedResult::unverified(),
+        },
 
         QueryType::TraverseFiltered {
             start,
             depth,
             min_weight,
-        } => {
-            if let Some(artifact) = graph.traverse_filtered(start, depth, min_weight) {
+        } => match graph.traverse_filtered(start, depth, min_weight) {
+            Ok(Some(artifact)) => {
                 let confidence = compute_confidence(&artifact, graph);
                 GroundedResult::with_artifact(artifact, confidence)
-            } else {
-                GroundedResult::unverified()
             }
-        }
+            _ => GroundedResult::unverified(),
+        },
 
-        QueryType::StrongestPath { start, end } => {
-            if let Some(path) = graph.strongest_path(start, end) {
+        QueryType::StrongestPath { start, end } => match graph.strongest_path(start, end) {
+            Ok(Some(path)) => {
                 let confidence = compute_path_confidence(&path, graph);
                 let artifact = Artifact::with_path(path);
                 GroundedResult::with_artifact(artifact, confidence)
-            } else {
-                GroundedResult::unverified()
             }
-        }
+            _ => GroundedResult::unverified(),
+        },
 
-        QueryType::Intersect(ref nodes) => {
-            let common = graph.intersect(nodes);
-            if common.is_empty() {
-                GroundedResult::unverified()
-            } else {
+        QueryType::Intersect(ref nodes) => match graph.intersect(nodes) {
+            Ok(common) if !common.is_empty() => {
                 let artifact = Artifact::with_path(common);
                 let confidence = compute_confidence(&artifact, graph);
                 GroundedResult::with_artifact(artifact, confidence)
             }
-        }
+            _ => GroundedResult::unverified(),
+        },
 
-        QueryType::RelatedSubgraph { start, depth } => {
-            if let Some(artifact) = graph.related_subgraph(start, depth) {
+        QueryType::RelatedSubgraph { start, depth } => match graph.related_subgraph(start, depth) {
+            Ok(Some(artifact)) => {
                 let confidence = compute_confidence(&artifact, graph);
                 GroundedResult::with_artifact(artifact, confidence)
-            } else {
-                GroundedResult::unverified()
             }
-        }
+            _ => GroundedResult::unverified(),
+        },
 
         QueryType::TraverseDfs { start, depth } => {
             if let Some(artifact) = graph.traverse_dfs(start, depth) {
@@ -149,7 +143,7 @@ mod tests {
     fn verify_lookup_existing() {
         let mut graph = Graph::new();
         let entity = EntityId(42);
-        graph.insert_node(entity);
+        graph.insert_node(entity).expect("insert");
 
         let query = Query::lookup(entity);
         let result = verify_hypothesis(&graph, query);
@@ -173,9 +167,9 @@ mod tests {
     #[test]
     fn verify_traverse() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        graph.insert_edge(a, b, EdgeWeight::new(5));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        graph.insert_edge(a, b, EdgeWeight::new(5)).expect("insert");
 
         let query = Query::traverse(a, 2);
         let result = verify_hypothesis(&graph, query);
@@ -187,11 +181,15 @@ mod tests {
     #[test]
     fn verify_strongest_path() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
-        graph.insert_edge(a, b, EdgeWeight::new(10));
-        graph.insert_edge(b, c, EdgeWeight::new(10));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
+        graph
+            .insert_edge(a, b, EdgeWeight::new(10))
+            .expect("insert");
+        graph
+            .insert_edge(b, c, EdgeWeight::new(10))
+            .expect("insert");
 
         let query = Query::strongest_path(a, c);
         let result = verify_hypothesis(&graph, query);
@@ -204,11 +202,15 @@ mod tests {
     #[test]
     fn verify_intersect() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let common = graph.insert_node(EntityId(100));
-        graph.insert_edge(a, common, EdgeWeight::new(1));
-        graph.insert_edge(b, common, EdgeWeight::new(1));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let common = graph.insert_node(EntityId(100)).expect("insert");
+        graph
+            .insert_edge(a, common, EdgeWeight::new(1))
+            .expect("insert");
+        graph
+            .insert_edge(b, common, EdgeWeight::new(1))
+            .expect("insert");
 
         let query = Query::intersect(vec![a, b]);
         let result = verify_hypothesis(&graph, query);

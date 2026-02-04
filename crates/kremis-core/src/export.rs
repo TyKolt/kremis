@@ -361,12 +361,12 @@ pub fn verify_canonical(graph: &Graph, canonical_data: &[u8]) -> Result<bool, Kr
     let imported = import_canonical(canonical_data)?;
 
     // Compare node counts
-    if graph.node_count() != imported.node_count() {
+    if graph.node_count()? != imported.node_count()? {
         return Ok(false);
     }
 
     // Compare edge counts
-    if graph.edge_count() != imported.edge_count() {
+    if graph.edge_count()? != imported.edge_count()? {
         return Ok(false);
     }
 
@@ -456,13 +456,17 @@ mod tests {
 
     fn create_test_graph() -> Graph {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
 
-        graph.insert_edge(a, b, EdgeWeight::new(10));
-        graph.insert_edge(b, c, EdgeWeight::new(20));
-        graph.insert_edge(a, c, EdgeWeight::new(5));
+        graph
+            .insert_edge(a, b, EdgeWeight::new(10))
+            .expect("insert");
+        graph
+            .insert_edge(b, c, EdgeWeight::new(20))
+            .expect("insert");
+        graph.insert_edge(a, c, EdgeWeight::new(5)).expect("insert");
 
         graph
     }
@@ -474,8 +478,14 @@ mod tests {
         let exported = export_canonical(&graph).expect("export should succeed");
         let imported = import_canonical(&exported).expect("import should succeed");
 
-        assert_eq!(graph.node_count(), imported.node_count());
-        assert_eq!(graph.edge_count(), imported.edge_count());
+        assert_eq!(
+            graph.node_count().expect("count"),
+            imported.node_count().expect("count")
+        );
+        assert_eq!(
+            graph.edge_count().expect("count"),
+            imported.edge_count().expect("count")
+        );
     }
 
     #[test]
@@ -526,9 +536,9 @@ mod tests {
     fn canonical_nodes_sorted() {
         let mut graph = Graph::new();
         // Insert in non-sorted order
-        graph.insert_node(EntityId(100));
-        graph.insert_node(EntityId(1));
-        graph.insert_node(EntityId(50));
+        graph.insert_node(EntityId(100)).expect("insert");
+        graph.insert_node(EntityId(1)).expect("insert");
+        graph.insert_node(EntityId(50)).expect("insert");
 
         let canonical = CanonicalGraph::from_graph(&graph);
 
@@ -541,14 +551,14 @@ mod tests {
     #[test]
     fn canonical_edges_sorted() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
 
         // Insert edges in non-sorted order
-        graph.insert_edge(c, a, EdgeWeight::new(1));
-        graph.insert_edge(a, b, EdgeWeight::new(2));
-        graph.insert_edge(b, c, EdgeWeight::new(3));
+        graph.insert_edge(c, a, EdgeWeight::new(1)).expect("insert");
+        graph.insert_edge(a, b, EdgeWeight::new(2)).expect("insert");
+        graph.insert_edge(b, c, EdgeWeight::new(3)).expect("insert");
 
         let canonical = CanonicalGraph::from_graph(&graph);
 
@@ -594,8 +604,8 @@ mod tests {
         let exported = export_canonical(&graph).expect("export empty");
         let imported = import_canonical(&exported).expect("import empty");
 
-        assert_eq!(imported.node_count(), 0);
-        assert_eq!(imported.edge_count(), 0);
+        assert_eq!(imported.node_count().expect("count"), 0);
+        assert_eq!(imported.edge_count().expect("count"), 0);
     }
 
     // =========================================================================
@@ -913,9 +923,11 @@ mod tests {
         let graph1 = create_test_graph();
 
         let mut graph2 = Graph::new();
-        let a = graph2.insert_node(EntityId(100));
-        let b = graph2.insert_node(EntityId(200));
-        graph2.insert_edge(a, b, EdgeWeight::new(999));
+        let a = graph2.insert_node(EntityId(100)).expect("insert");
+        let b = graph2.insert_node(EntityId(200)).expect("insert");
+        graph2
+            .insert_edge(a, b, EdgeWeight::new(999))
+            .expect("insert");
 
         let exported1 = export_canonical(&graph1).expect("export");
 
@@ -927,14 +939,18 @@ mod tests {
     #[test]
     fn canonical_graph_checksum_changes_with_data() {
         let mut graph1 = Graph::new();
-        let a = graph1.insert_node(EntityId(1));
-        let b = graph1.insert_node(EntityId(2));
-        graph1.insert_edge(a, b, EdgeWeight::new(10));
+        let a = graph1.insert_node(EntityId(1)).expect("insert");
+        let b = graph1.insert_node(EntityId(2)).expect("insert");
+        graph1
+            .insert_edge(a, b, EdgeWeight::new(10))
+            .expect("insert");
 
         let mut graph2 = Graph::new();
-        let c = graph2.insert_node(EntityId(1));
-        let d = graph2.insert_node(EntityId(2));
-        graph2.insert_edge(c, d, EdgeWeight::new(20)); // Different weight
+        let c = graph2.insert_node(EntityId(1)).expect("insert");
+        let d = graph2.insert_node(EntityId(2)).expect("insert");
+        graph2
+            .insert_edge(c, d, EdgeWeight::new(20))
+            .expect("insert"); // Different weight
 
         let checksum1 = canonical_checksum(&graph1);
         let checksum2 = canonical_checksum(&graph2);

@@ -149,8 +149,8 @@ impl GraphMetrics {
     /// Compute metrics from a graph.
     #[must_use]
     pub fn from_graph(graph: &Graph) -> Self {
-        let node_count = graph.node_count();
-        let edge_count = graph.edge_count();
+        let node_count = graph.node_count().unwrap_or(0);
+        let edge_count = graph.edge_count().unwrap_or(0);
 
         // Count stable edges (weight >= STABLE_THRESHOLD)
         let stable_edge_count = graph
@@ -218,7 +218,7 @@ fn compute_max_depth(graph: &Graph) -> usize {
     use std::collections::{BTreeSet, VecDeque};
 
     let mut max_depth = 0;
-    let sample_size = 10.min(graph.node_count());
+    let sample_size = 10.min(graph.node_count().unwrap_or(0));
 
     for (i, node) in graph.nodes().enumerate() {
         if i >= sample_size {
@@ -239,7 +239,7 @@ fn compute_max_depth(graph: &Graph) -> usize {
                 continue;
             }
 
-            for (neighbor, _) in graph.neighbors(current) {
+            for (neighbor, _) in graph.neighbors_internal(current) {
                 if !visited.contains(&neighbor) {
                     visited.insert(neighbor);
                     queue.push_back((neighbor, depth.saturating_add(1)));
@@ -452,9 +452,13 @@ mod tests {
         let mut graph = Graph::new();
 
         for i in 0..count {
-            let from = graph.insert_node(EntityId(i as u64 * 2));
-            let to = graph.insert_node(EntityId(i as u64 * 2 + 1));
-            graph.insert_edge(from, to, EdgeWeight::new(STABLE_THRESHOLD));
+            let from = graph.insert_node(EntityId(i as u64 * 2)).expect("insert");
+            let to = graph
+                .insert_node(EntityId(i as u64 * 2 + 1))
+                .expect("insert");
+            graph
+                .insert_edge(from, to, EdgeWeight::new(STABLE_THRESHOLD))
+                .expect("insert");
         }
 
         graph

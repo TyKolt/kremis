@@ -15,6 +15,7 @@
 //! storage backend for Kremis sessions. Unlike the in-memory `Graph`,
 //! `RedbGraph` persists data to disk automatically.
 
+use crate::graph::GraphStore;
 use crate::{Artifact, EdgeWeight, EntityId, KremisError, Node, NodeId};
 use redb::{Database, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -123,8 +124,93 @@ impl RedbGraph {
         })
     }
 
-    /// Insert a node into the graph.
-    pub fn insert_node(&mut self, entity: EntityId) -> Result<NodeId, KremisError> {
+    /// Compact the database (optional optimization).
+    pub fn compact(&mut self) -> Result<(), KremisError> {
+        self.db
+            .compact()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Get all edges in deterministic order.
+    pub fn edges(&self) -> Result<Vec<(NodeId, NodeId, EdgeWeight)>, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let edges_table = read_txn
+            .open_table(EDGES)
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        let mut edges = Vec::new();
+        for entry in edges_table
+            .iter()
+            .map_err(|e| KremisError::IoError(e.to_string()))?
+        {
+            let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
+            let (from_id, to_id) = key.value();
+            edges.push((
+                NodeId(from_id),
+                NodeId(to_id),
+                EdgeWeight::new(value.value()),
+            ));
+        }
+        Ok(edges)
+    }
+
+    /// Get all nodes in deterministic order.
+    pub fn nodes(&self) -> Result<Vec<Node>, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let nodes_table = read_txn
+            .open_table(NODES)
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        let mut nodes = Vec::new();
+        for entry in nodes_table
+            .iter()
+            .map_err(|e| KremisError::IoError(e.to_string()))?
+        {
+            let (_, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
+            let node: Node = postcard::from_bytes(value.value())
+                .map_err(|e| KremisError::SerializationError(e.to_string()))?;
+            nodes.push(node);
+        }
+        Ok(nodes)
+    }
+
+    /// Get stable edge count (edges with weight >= threshold).
+    pub fn stable_edge_count(&self, threshold: i64) -> Result<usize, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let edges_table = read_txn
+            .open_table(EDGES)
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        let mut count = 0;
+        for entry in edges_table
+            .iter()
+            .map_err(|e| KremisError::IoError(e.to_string()))?
+        {
+            let (_, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
+            if value.value() >= threshold {
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+}
+
+// =============================================================================
+// GRAPHSTORE TRAIT IMPLEMENTATION
+// =============================================================================
+
+impl GraphStore for RedbGraph {
+    fn insert_node(&mut self, entity: EntityId) -> Result<NodeId, KremisError> {
         // Check if entity already exists
         if let Some(&node_id) = self.entity_cache.get(&entity) {
             return Ok(node_id);
@@ -179,8 +265,7 @@ impl RedbGraph {
         Ok(node_id)
     }
 
-    /// Insert or update an edge.
-    pub fn insert_edge(
+    fn insert_edge(
         &mut self,
         from: NodeId,
         to: NodeId,
@@ -204,8 +289,7 @@ impl RedbGraph {
         Ok(())
     }
 
-    /// Increment an edge weight by 1.
-    pub fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+    fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
         let write_txn = self
             .db
             .begin_write()
@@ -229,89 +313,7 @@ impl RedbGraph {
         Ok(())
     }
 
-    /// Get a node by entity ID.
-    pub fn get_node_by_entity(&self, entity: EntityId) -> Option<NodeId> {
-        self.entity_cache.get(&entity).copied()
-    }
-
-    /// Get the edge weight between two nodes.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Result<Option<EdgeWeight>, KremisError> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let edges_table = read_txn
-            .open_table(EDGES)
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let result = edges_table
-            .get((from.0, to.0))
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-            .map(|v| EdgeWeight::new(v.value()));
-        Ok(result)
-    }
-
-    /// Get all neighbors of a node.
-    pub fn neighbors(&self, from: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let edges_table = read_txn
-            .open_table(EDGES)
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-
-        let mut neighbors = Vec::new();
-        for entry in edges_table
-            .range((from.0, 0u64)..=(from.0, u64::MAX))
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-        {
-            let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
-            let (_from_id, to_id) = key.value();
-            neighbors.push((NodeId(to_id), EdgeWeight::new(value.value())));
-        }
-        Ok(neighbors)
-    }
-
-    /// Get the number of nodes.
-    pub fn node_count(&self) -> Result<usize, KremisError> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let nodes_table = read_txn
-            .open_table(NODES)
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let count = nodes_table
-            .len()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        Ok(count as usize)
-    }
-
-    /// Get the number of edges.
-    pub fn edge_count(&self) -> Result<usize, KremisError> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let edges_table = read_txn
-            .open_table(EDGES)
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let count = edges_table
-            .len()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        Ok(count as usize)
-    }
-
-    /// Compact the database (optional optimization).
-    pub fn compact(&mut self) -> Result<(), KremisError> {
-        self.db
-            .compact()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        Ok(())
-    }
-
-    /// Lookup a node by its NodeId.
-    pub fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError> {
+    fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError> {
         let read_txn = self
             .db
             .begin_read()
@@ -333,8 +335,47 @@ impl RedbGraph {
         }
     }
 
-    /// Check if a node exists.
-    pub fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
+    fn get_node_by_entity(&self, entity: EntityId) -> Option<NodeId> {
+        self.entity_cache.get(&entity).copied()
+    }
+
+    fn get_edge(&self, from: NodeId, to: NodeId) -> Result<Option<EdgeWeight>, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let edges_table = read_txn
+            .open_table(EDGES)
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let result = edges_table
+            .get((from.0, to.0))
+            .map_err(|e| KremisError::IoError(e.to_string()))?
+            .map(|v| EdgeWeight::new(v.value()));
+        Ok(result)
+    }
+
+    fn neighbors(&self, from: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        let edges_table = read_txn
+            .open_table(EDGES)
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        let mut neighbors = Vec::new();
+        for entry in edges_table
+            .range((from.0, 0u64)..=(from.0, u64::MAX))
+            .map_err(|e| KremisError::IoError(e.to_string()))?
+        {
+            let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
+            let (_from_id, to_id) = key.value();
+            neighbors.push((NodeId(to_id), EdgeWeight::new(value.value())));
+        }
+        Ok(neighbors)
+    }
+
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
         let read_txn = self
             .db
             .begin_read()
@@ -349,9 +390,7 @@ impl RedbGraph {
             .is_some())
     }
 
-    /// Traverse the graph from a starting node up to a depth limit.
-    /// Uses BFS for deterministic ordering.
-    pub fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
+    fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
         let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
         if !self.contains_node(start)? {
             return Ok(None);
@@ -385,8 +424,7 @@ impl RedbGraph {
         Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
     }
 
-    /// Traverse with minimum weight filter.
-    pub fn traverse_filtered(
+    fn traverse_filtered(
         &self,
         start: NodeId,
         depth: usize,
@@ -428,8 +466,7 @@ impl RedbGraph {
         Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
     }
 
-    /// Find nodes connected to ALL input nodes (intersection of neighbors).
-    pub fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
+    fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
         if nodes.is_empty() {
             return Ok(Vec::new());
         }
@@ -456,9 +493,7 @@ impl RedbGraph {
         Ok(result.into_iter().collect())
     }
 
-    /// Find the strongest path between two nodes.
-    /// Uses Dijkstra with cost = i64::MAX - weight (higher weight = preferred).
-    pub fn strongest_path(
+    fn strongest_path(
         &self,
         start: NodeId,
         end: NodeId,
@@ -535,8 +570,7 @@ impl RedbGraph {
         Ok(Some(path))
     }
 
-    /// Extract a related subgraph from a starting node.
-    pub fn related_subgraph(
+    fn related_subgraph(
         &self,
         start: NodeId,
         depth: usize,
@@ -544,34 +578,7 @@ impl RedbGraph {
         self.traverse(start, depth)
     }
 
-    /// Get all edges in deterministic order.
-    pub fn edges(&self) -> Result<Vec<(NodeId, NodeId, EdgeWeight)>, KremisError> {
-        let read_txn = self
-            .db
-            .begin_read()
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-        let edges_table = read_txn
-            .open_table(EDGES)
-            .map_err(|e| KremisError::IoError(e.to_string()))?;
-
-        let mut edges = Vec::new();
-        for entry in edges_table
-            .iter()
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-        {
-            let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
-            let (from_id, to_id) = key.value();
-            edges.push((
-                NodeId(from_id),
-                NodeId(to_id),
-                EdgeWeight::new(value.value()),
-            ));
-        }
-        Ok(edges)
-    }
-
-    /// Get all nodes in deterministic order.
-    pub fn nodes(&self) -> Result<Vec<Node>, KremisError> {
+    fn node_count(&self) -> Result<usize, KremisError> {
         let read_txn = self
             .db
             .begin_read()
@@ -579,22 +586,13 @@ impl RedbGraph {
         let nodes_table = read_txn
             .open_table(NODES)
             .map_err(|e| KremisError::IoError(e.to_string()))?;
-
-        let mut nodes = Vec::new();
-        for entry in nodes_table
-            .iter()
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-        {
-            let (_, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
-            let node: Node = postcard::from_bytes(value.value())
-                .map_err(|e| KremisError::SerializationError(e.to_string()))?;
-            nodes.push(node);
-        }
-        Ok(nodes)
+        let count = nodes_table
+            .len()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        Ok(count as usize)
     }
 
-    /// Get stable edge count (edges with weight >= threshold).
-    pub fn stable_edge_count(&self, threshold: i64) -> Result<usize, KremisError> {
+    fn edge_count(&self) -> Result<usize, KremisError> {
         let read_txn = self
             .db
             .begin_read()
@@ -602,18 +600,10 @@ impl RedbGraph {
         let edges_table = read_txn
             .open_table(EDGES)
             .map_err(|e| KremisError::IoError(e.to_string()))?;
-
-        let mut count = 0;
-        for entry in edges_table
-            .iter()
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-        {
-            let (_, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
-            if value.value() >= threshold {
-                count += 1;
-            }
-        }
-        Ok(count)
+        let count = edges_table
+            .len()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        Ok(count as usize)
     }
 }
 

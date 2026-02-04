@@ -189,9 +189,11 @@ mod tests {
     #[test]
     fn bytes_roundtrip_bit_exact() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        graph.insert_edge(a, b, EdgeWeight::new(10));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        graph
+            .insert_edge(a, b, EdgeWeight::new(10))
+            .expect("insert");
 
         // First serialization
         let bytes1 = graph_to_bytes(&graph).expect("first serialize");

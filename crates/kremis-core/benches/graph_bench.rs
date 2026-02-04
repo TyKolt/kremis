@@ -15,9 +15,11 @@ fn create_linear_graph(size: usize) -> Graph {
     let mut prev_node = None;
 
     for i in 0..size {
-        let node = graph.insert_node(EntityId(i as u64));
+        let node = graph.insert_node(EntityId(i as u64)).expect("insert");
         if let Some(prev) = prev_node {
-            graph.insert_edge(prev, node, EdgeWeight::new(10));
+            graph
+                .insert_edge(prev, node, EdgeWeight::new(10))
+                .expect("edge");
         }
         prev_node = Some(node);
     }
@@ -28,11 +30,13 @@ fn create_linear_graph(size: usize) -> Graph {
 /// Create a graph with N nodes and edges in a star pattern (hub-and-spoke).
 fn create_star_graph(size: usize) -> Graph {
     let mut graph = Graph::new();
-    let hub = graph.insert_node(EntityId(0));
+    let hub = graph.insert_node(EntityId(0)).expect("insert");
 
     for i in 1..size {
-        let spoke = graph.insert_node(EntityId(i as u64));
-        graph.insert_edge(hub, spoke, EdgeWeight::new(10));
+        let spoke = graph.insert_node(EntityId(i as u64)).expect("insert");
+        graph
+            .insert_edge(hub, spoke, EdgeWeight::new(10))
+            .expect("edge");
     }
 
     graph
@@ -50,7 +54,7 @@ fn bench_node_insertion(c: &mut Criterion) {
             b.iter(|| {
                 let mut graph = Graph::new();
                 for i in 0..size {
-                    graph.insert_node(EntityId(i as u64));
+                    let _ = graph.insert_node(EntityId(i as u64));
                 }
                 black_box(graph)
             });

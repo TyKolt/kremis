@@ -61,7 +61,7 @@ pub use export::{
     canonical_checksum, export_canonical, import_canonical, verify_canonical, CanonicalGraph,
     CanonicalHeader,
 };
-pub use graph::{Graph, GraphReadGuard, GraphStore, SerializableGraph};
+pub use graph::{Graph, GraphStore, SerializableGraph};
 pub use grounding::{verify_hypothesis, GroundedResult};
 pub use ingestor::Ingestor;
 pub use mutation::MutationEngine;

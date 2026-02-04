@@ -106,8 +106,6 @@ pub fn compute_confidence(artifact: &Artifact, _graph: &Graph) -> ConfidenceScor
 /// Higher weight paths = higher confidence.
 #[must_use]
 pub fn compute_path_confidence(path: &[crate::NodeId], graph: &Graph) -> ConfidenceScore {
-    use crate::graph::GraphStore;
-
     if path.len() < 2 {
         return if path.is_empty() {
             ConfidenceScore::zero()
@@ -120,7 +118,7 @@ pub fn compute_path_confidence(path: &[crate::NodeId], graph: &Graph) -> Confide
     let mut edge_count: usize = 0;
 
     for window in path.windows(2) {
-        if let Some(weight) = graph.get_edge(window[0], window[1]) {
+        if let Some(weight) = graph.get_edge_internal(window[0], window[1]) {
             total_weight = total_weight.saturating_add(weight.value());
             edge_count = edge_count.saturating_add(1);
         }
@@ -227,8 +225,8 @@ mod tests {
         use crate::graph::GraphStore;
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(crate::EntityId(1));
-        let n2 = graph.insert_node(crate::EntityId(2));
+        let n1 = graph.insert_node(crate::EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(crate::EntityId(2)).expect("insert");
         // No edge between n1 and n2
 
         let path = vec![n1, n2];
@@ -245,9 +243,11 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        graph.insert_edge(n1, n2, EdgeWeight::new(5));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(5))
+            .expect("insert");
 
         let path = vec![n1, n2];
         let score = compute_path_confidence(&path, &graph);
@@ -264,11 +264,15 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let nodes: Vec<NodeId> = (0..10).map(|i| graph.insert_node(EntityId(i))).collect();
+        let nodes: Vec<NodeId> = (0..10)
+            .map(|i| graph.insert_node(EntityId(i)).expect("insert"))
+            .collect();
 
         // Create edges between consecutive nodes with weight 5
         for i in 0..9 {
-            graph.insert_edge(nodes[i], nodes[i + 1], EdgeWeight::new(5));
+            graph
+                .insert_edge(nodes[i], nodes[i + 1], EdgeWeight::new(5))
+                .expect("insert");
         }
 
         let score = compute_path_confidence(&nodes, &graph);
@@ -284,13 +288,17 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        let n3 = graph.insert_node(EntityId(3));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
 
         // High weight edges (10 is max for scoring)
-        graph.insert_edge(n1, n2, EdgeWeight::new(10));
-        graph.insert_edge(n2, n3, EdgeWeight::new(10));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(10))
+            .expect("insert");
+        graph
+            .insert_edge(n2, n3, EdgeWeight::new(10))
+            .expect("insert");
 
         let path = vec![n1, n2, n3];
         let score = compute_path_confidence(&path, &graph);
@@ -306,13 +314,17 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        let n3 = graph.insert_node(EntityId(3));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
 
         // Low weight edges
-        graph.insert_edge(n1, n2, EdgeWeight::new(1));
-        graph.insert_edge(n2, n3, EdgeWeight::new(1));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(1))
+            .expect("insert");
+        graph
+            .insert_edge(n2, n3, EdgeWeight::new(1))
+            .expect("insert");
 
         let path = vec![n1, n2, n3];
         let score = compute_path_confidence(&path, &graph);
@@ -328,15 +340,21 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        let n3 = graph.insert_node(EntityId(3));
-        let n4 = graph.insert_node(EntityId(4));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
+        let n4 = graph.insert_node(EntityId(4)).expect("insert");
 
         // Mixed weights: 2, 8, 5 -> average = 5
-        graph.insert_edge(n1, n2, EdgeWeight::new(2));
-        graph.insert_edge(n2, n3, EdgeWeight::new(8));
-        graph.insert_edge(n3, n4, EdgeWeight::new(5));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(2))
+            .expect("insert");
+        graph
+            .insert_edge(n2, n3, EdgeWeight::new(8))
+            .expect("insert");
+        graph
+            .insert_edge(n3, n4, EdgeWeight::new(5))
+            .expect("insert");
 
         let path = vec![n1, n2, n3, n4];
         let score = compute_path_confidence(&path, &graph);
@@ -354,11 +372,13 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
 
         // Very high weight (above 10, should be capped)
-        graph.insert_edge(n1, n2, EdgeWeight::new(1000));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(1000))
+            .expect("insert");
 
         let path = vec![n1, n2];
         let score = compute_path_confidence(&path, &graph);
@@ -373,11 +393,13 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
 
         // Negative weight
-        graph.insert_edge(n1, n2, EdgeWeight::new(-5));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(-5))
+            .expect("insert");
 
         let path = vec![n1, n2];
         let score = compute_path_confidence(&path, &graph);
@@ -392,11 +414,13 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
 
         // Zero weight
-        graph.insert_edge(n1, n2, EdgeWeight::new(0));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(0))
+            .expect("insert");
 
         let path = vec![n1, n2];
         let score = compute_path_confidence(&path, &graph);
@@ -411,14 +435,18 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        let n3 = graph.insert_node(EntityId(3));
-        let n4 = graph.insert_node(EntityId(4));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
+        let n4 = graph.insert_node(EntityId(4)).expect("insert");
 
         // Only some edges exist: n1->n2 and n3->n4, but NOT n2->n3
-        graph.insert_edge(n1, n2, EdgeWeight::new(10));
-        graph.insert_edge(n3, n4, EdgeWeight::new(10));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(10))
+            .expect("insert");
+        graph
+            .insert_edge(n3, n4, EdgeWeight::new(10))
+            .expect("insert");
 
         let path = vec![n1, n2, n3, n4];
         let score = compute_path_confidence(&path, &graph);
@@ -434,12 +462,16 @@ mod tests {
         use crate::{EdgeWeight, EntityId};
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(EntityId(1));
-        let n2 = graph.insert_node(EntityId(2));
-        let n3 = graph.insert_node(EntityId(3));
+        let n1 = graph.insert_node(EntityId(1)).expect("insert");
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
 
-        graph.insert_edge(n1, n2, EdgeWeight::new(7));
-        graph.insert_edge(n2, n3, EdgeWeight::new(3));
+        graph
+            .insert_edge(n1, n2, EdgeWeight::new(7))
+            .expect("insert");
+        graph
+            .insert_edge(n2, n3, EdgeWeight::new(3))
+            .expect("insert");
 
         let path = vec![n1, n2, n3];
 

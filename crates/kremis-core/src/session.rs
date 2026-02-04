@@ -14,7 +14,6 @@
 //! - `InMemory`: Uses in-memory `Graph` (fast, volatile unless explicitly saved)
 //! - `Persistent`: Uses `RedbGraph` for disk-backed ACID storage
 
-use crate::compositor::Compositor;
 use crate::graph::{Graph, GraphStore};
 use crate::ingestor::Ingestor;
 use crate::storage::RedbGraph;
@@ -272,7 +271,7 @@ impl Session {
     pub fn ingest(&mut self, signal: &Signal) -> Result<NodeId, KremisError> {
         let node_id = match &mut self.backend {
             StorageBackend::InMemory(graph) => Ingestor::ingest_signal(graph, signal)?,
-            StorageBackend::Persistent(redb) => Ingestor::ingest_signal_redb(redb, signal)?,
+            StorageBackend::Persistent(redb) => Ingestor::ingest_signal(redb, signal)?,
         };
         self.buffer.activate(node_id);
         Ok(node_id)
@@ -285,7 +284,7 @@ impl Session {
     pub fn ingest_sequence(&mut self, signals: &[Signal]) -> Result<Vec<NodeId>, KremisError> {
         let nodes = match &mut self.backend {
             StorageBackend::InMemory(graph) => Ingestor::ingest_sequence(graph, signals)?,
-            StorageBackend::Persistent(redb) => Ingestor::ingest_sequence_redb(redb, signals)?,
+            StorageBackend::Persistent(redb) => Ingestor::ingest_sequence(redb, signals)?,
         };
         for &node in &nodes {
             self.buffer.activate(node);
@@ -299,12 +298,11 @@ impl Session {
 
     /// Compose an artifact from a starting node.
     pub fn compose(&self, start: NodeId, depth: usize) -> Option<Artifact> {
-        match &self.backend {
-            StorageBackend::InMemory(graph) => Compositor::compose(graph, start, depth),
-            StorageBackend::Persistent(redb) => {
-                log_and_convert(redb.traverse(start, depth), "compose").flatten()
-            }
-        }
+        let result = match &self.backend {
+            StorageBackend::InMemory(graph) => graph.traverse(start, depth),
+            StorageBackend::Persistent(redb) => redb.traverse(start, depth),
+        };
+        log_and_convert(result, "compose").flatten()
     }
 
     /// Compose from an active context node.
@@ -317,26 +315,33 @@ impl Session {
 
     /// Extract path between two nodes.
     pub fn extract_path(&self, start: NodeId, end: NodeId) -> Option<Artifact> {
-        match &self.backend {
-            StorageBackend::InMemory(graph) => Compositor::extract_path(graph, start, end),
-            StorageBackend::Persistent(redb) => {
-                let path =
-                    log_and_convert(redb.strongest_path(start, end), "extract_path").flatten()?;
-                Some(Artifact::with_path(path))
+        let path_result = match &self.backend {
+            StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
+            StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
+        };
+        let path = log_and_convert(path_result, "extract_path").flatten()?;
+
+        // Collect edges along the path for the artifact
+        let mut subgraph = Vec::new();
+        for window in path.windows(2) {
+            let from = window[0];
+            let to = window[1];
+            if let Some(weight) = self.get_edge(from, to) {
+                subgraph.push((from, to, weight));
             }
         }
+
+        Some(Artifact::with_subgraph(path, subgraph))
     }
 
     /// Find intersection of active context nodes.
     pub fn intersect_active(&self) -> Artifact {
         let nodes: Vec<_> = self.buffer.active_nodes.iter().copied().collect();
-        match &self.backend {
-            StorageBackend::InMemory(graph) => Compositor::find_intersection(graph, &nodes),
-            StorageBackend::Persistent(redb) => {
-                let result = log_and_default(redb.intersect(&nodes), "intersect_active");
-                Artifact::with_path(result)
-            }
-        }
+        let result = match &self.backend {
+            StorageBackend::InMemory(graph) => graph.intersect(&nodes),
+            StorageBackend::Persistent(redb) => redb.intersect(&nodes),
+        };
+        Artifact::with_path(log_and_default(result, "intersect_active"))
     }
 
     // =========================================================================
@@ -389,12 +394,11 @@ impl Session {
 
     /// Get edge weight between two nodes.
     pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<EdgeWeight> {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.get_edge(from, to),
-            StorageBackend::Persistent(redb) => {
-                log_and_convert(redb.get_edge(from, to), "get_edge").flatten()
-            }
-        }
+            StorageBackend::Persistent(redb) => redb.get_edge(from, to),
+        };
+        log_and_convert(result, "get_edge").flatten()
     }
 
     // =========================================================================
@@ -404,29 +408,30 @@ impl Session {
     /// Get the node count.
     #[must_use]
     pub fn node_count(&self) -> usize {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.node_count(),
-            StorageBackend::Persistent(redb) => log_and_default(redb.node_count(), "node_count"),
-        }
+            StorageBackend::Persistent(redb) => redb.node_count(),
+        };
+        log_and_default(result, "node_count")
     }
 
     /// Get the edge count.
     #[must_use]
     pub fn edge_count(&self) -> usize {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.edge_count(),
-            StorageBackend::Persistent(redb) => log_and_default(redb.edge_count(), "edge_count"),
-        }
+            StorageBackend::Persistent(redb) => redb.edge_count(),
+        };
+        log_and_default(result, "edge_count")
     }
 
     /// Traverse from a starting node.
     pub fn traverse(&self, start: NodeId, depth: usize) -> Option<Artifact> {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.traverse(start, depth),
-            StorageBackend::Persistent(redb) => {
-                log_and_convert(redb.traverse(start, depth), "traverse").flatten()
-            }
-        }
+            StorageBackend::Persistent(redb) => redb.traverse(start, depth),
+        };
+        log_and_convert(result, "traverse").flatten()
     }
 
     /// Traverse with minimum weight filter.
@@ -436,32 +441,29 @@ impl Session {
         depth: usize,
         min_weight: EdgeWeight,
     ) -> Option<Artifact> {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.traverse_filtered(start, depth, min_weight),
-            StorageBackend::Persistent(redb) => log_and_convert(
-                redb.traverse_filtered(start, depth, min_weight),
-                "traverse_filtered",
-            )
-            .flatten(),
-        }
+            StorageBackend::Persistent(redb) => redb.traverse_filtered(start, depth, min_weight),
+        };
+        log_and_convert(result, "traverse_filtered").flatten()
     }
 
     /// Find strongest path between two nodes.
     pub fn strongest_path(&self, start: NodeId, end: NodeId) -> Option<Vec<NodeId>> {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
-            StorageBackend::Persistent(redb) => {
-                log_and_convert(redb.strongest_path(start, end), "strongest_path").flatten()
-            }
-        }
+            StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
+        };
+        log_and_convert(result, "strongest_path").flatten()
     }
 
     /// Find intersection of nodes.
     pub fn intersect(&self, nodes: &[NodeId]) -> Vec<NodeId> {
-        match &self.backend {
+        let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.intersect(nodes),
-            StorageBackend::Persistent(redb) => log_and_default(redb.intersect(nodes), "intersect"),
-        }
+            StorageBackend::Persistent(redb) => redb.intersect(nodes),
+        };
+        log_and_default(result, "intersect")
     }
 
     // =========================================================================
@@ -498,7 +500,7 @@ impl Session {
 
                 // Import all edges
                 for (from, to, weight) in redb.edges()? {
-                    graph.insert_edge(from, to, weight);
+                    let _ = graph.insert_edge(from, to, weight);
                 }
 
                 Ok(graph)
@@ -555,7 +557,7 @@ mod tests {
         let graph = session
             .graph_opt()
             .expect("in-memory session should have graph");
-        assert!(graph.lookup(node).is_some());
+        assert!(graph.lookup(node).expect("lookup").is_some());
         // But it's not in active context
         assert!(!session.is_active(&node));
     }

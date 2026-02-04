@@ -69,8 +69,8 @@ impl MutationEngine {
     /// Apply co-occurrence linking between two signals.
     ///
     /// This increments the edge weight between the two nodes by 1.
-    pub fn link_signals(graph: &mut Graph, from: NodeId, to: NodeId) {
-        graph.increment_edge(from, to);
+    pub fn link_signals(graph: &mut Graph, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        graph.increment_edge(from, to)
     }
 }
 
@@ -94,7 +94,7 @@ mod tests {
 
         let node = MutationEngine::process_signal(&mut graph, &signal).expect("process");
 
-        assert!(graph.lookup(node).is_some());
+        assert!(graph.lookup(node).expect("lookup").is_some());
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod tests {
         let nodes = MutationEngine::process_sequence(&mut graph, &signals).expect("process");
 
         assert_eq!(nodes.len(), 2);
-        assert!(graph.get_edge(nodes[0], nodes[1]).is_some());
+        assert!(graph.get_edge(nodes[0], nodes[1]).expect("get").is_some());
     }
 
     #[test]
@@ -121,14 +121,14 @@ mod tests {
     #[test]
     fn link_signals_increments_weight() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
 
-        MutationEngine::link_signals(&mut graph, a, b);
-        assert_eq!(graph.get_edge(a, b), Some(EdgeWeight::new(1)));
+        MutationEngine::link_signals(&mut graph, a, b).expect("link");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(1)));
 
-        MutationEngine::link_signals(&mut graph, a, b);
-        assert_eq!(graph.get_edge(a, b), Some(EdgeWeight::new(2)));
+        MutationEngine::link_signals(&mut graph, a, b).expect("link");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(2)));
     }
 
     #[test]

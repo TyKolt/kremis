@@ -25,11 +25,11 @@ proptest! {
         let mut graph2 = Graph::new();
 
         for entity in &entities {
-            graph1.insert_node(*entity);
-            graph2.insert_node(*entity);
+            graph1.insert_node(*entity).expect("insert");
+            graph2.insert_node(*entity).expect("insert");
         }
 
-        prop_assert_eq!(graph1.node_count(), graph2.node_count());
+        prop_assert_eq!(graph1.node_count().expect("count"), graph2.node_count().expect("count"));
 
         // Same entities should produce same NodeIds
         for entity in &entities {
@@ -45,11 +45,11 @@ proptest! {
         let entity = EntityId(id);
         let mut graph = Graph::new();
 
-        let node1 = graph.insert_node(entity);
-        let node2 = graph.insert_node(entity);
+        let node1 = graph.insert_node(entity).expect("insert");
+        let node2 = graph.insert_node(entity).expect("insert");
 
         prop_assert_eq!(node1, node2);
-        prop_assert_eq!(graph.node_count(), 1);
+        prop_assert_eq!(graph.node_count().expect("count"), 1);
     }
 
     /// Edge weights increment correctly with saturating arithmetic.
@@ -74,16 +74,16 @@ proptest! {
         let mut previous_node = None;
 
         for entity in &entities {
-            let node = graph.insert_node(*entity);
+            let node = graph.insert_node(*entity).expect("insert");
             if let Some(prev) = previous_node {
-                graph.increment_edge(prev, node);
+                graph.increment_edge(prev, node).expect("inc");
             }
             previous_node = Some(node);
         }
 
-        let start = graph.insert_node(entities[0]);
-        let result1 = graph.traverse(start, depth);
-        let result2 = graph.traverse(start, depth);
+        let start = graph.insert_node(entities[0]).expect("insert");
+        let result1 = graph.traverse(start, depth).expect("traverse");
+        let result2 = graph.traverse(start, depth).expect("traverse");
 
         // Same traversal twice should produce identical results
         prop_assert_eq!(result1.is_some(), result2.is_some());
@@ -98,12 +98,12 @@ proptest! {
         let mut graph = Graph::new();
 
         for id in &entity_ids {
-            graph.insert_node(EntityId(*id));
+            graph.insert_node(EntityId(*id)).expect("insert");
         }
 
         // Unique entities
         let unique_count = entity_ids.iter().collect::<BTreeSet<_>>().len();
-        prop_assert_eq!(graph.node_count(), unique_count);
+        prop_assert_eq!(graph.node_count().expect("count"), unique_count);
     }
 
     /// Edge insertion creates valid edges.
@@ -118,12 +118,12 @@ proptest! {
         let weight = EdgeWeight::new(weight_val);
 
         let mut graph = Graph::new();
-        let n1 = graph.insert_node(e1);
-        let n2 = graph.insert_node(e2);
+        let n1 = graph.insert_node(e1).expect("insert");
+        let n2 = graph.insert_node(e2).expect("insert");
 
-        graph.insert_edge(n1, n2, weight);
+        graph.insert_edge(n1, n2, weight).expect("edge");
 
         prop_assert!(graph.contains_edge(n1, n2));
-        prop_assert_eq!(graph.get_edge(n1, n2), Some(weight));
+        prop_assert_eq!(graph.get_edge(n1, n2).expect("get"), Some(weight));
     }
 }

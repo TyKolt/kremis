@@ -5,7 +5,7 @@
 //! This module implements `GraphStore` trait from AGENTS.md Section 5.6.
 //! All data structures use `BTreeMap` for deterministic ordering.
 
-use crate::{Artifact, EdgeWeight, EntityId, Node, NodeId};
+use crate::{Artifact, EdgeWeight, EntityId, KremisError, Node, NodeId};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 // =============================================================================
@@ -15,33 +15,44 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 /// The GraphStore trait defines the core graph operations.
 ///
 /// Per AGENTS.md Section 5.6, all queries must be computationally bounded.
+///
+/// All fallible operations return `Result<T, KremisError>` to support both
+/// in-memory and persistent storage backends uniformly.
 pub trait GraphStore {
     /// Insert a node for the given entity. Returns the NodeId.
     /// If the entity already exists, returns the existing NodeId.
-    fn insert_node(&mut self, entity: EntityId) -> NodeId;
+    fn insert_node(&mut self, entity: EntityId) -> Result<NodeId, KremisError>;
 
     /// Insert or update an edge with the given weight.
     /// If the edge exists, the weight is updated (not added).
-    fn insert_edge(&mut self, from: NodeId, to: NodeId, weight: EdgeWeight);
+    fn insert_edge(
+        &mut self,
+        from: NodeId,
+        to: NodeId,
+        weight: EdgeWeight,
+    ) -> Result<(), KremisError>;
 
     /// Increment the weight of an edge by 1 using saturating arithmetic.
     /// Creates the edge with weight 1 if it doesn't exist.
-    fn increment_edge(&mut self, from: NodeId, to: NodeId);
+    fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError>;
 
-    /// Lookup a node by its NodeId.
-    fn lookup(&self, id: NodeId) -> Option<&Node>;
+    /// Lookup a node by its NodeId. Returns owned Node for storage compatibility.
+    fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError>;
 
-    /// Get a node by its EntityId.
+    /// Get a node by its EntityId. This is infallible (uses in-memory cache).
     fn get_node_by_entity(&self, entity: EntityId) -> Option<NodeId>;
 
     /// Get the weight of an edge.
-    fn get_edge(&self, from: NodeId, to: NodeId) -> Option<EdgeWeight>;
+    fn get_edge(&self, from: NodeId, to: NodeId) -> Result<Option<EdgeWeight>, KremisError>;
 
     /// Get all neighbors of a node (outgoing edges).
-    fn neighbors(&self, node: NodeId) -> impl Iterator<Item = (NodeId, EdgeWeight)>;
+    fn neighbors(&self, node: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError>;
+
+    /// Check if a node exists in the graph.
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError>;
 
     /// Traverse the graph from a starting node up to a depth limit.
-    fn traverse(&self, start: NodeId, depth: usize) -> Option<Artifact>;
+    fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError>;
 
     /// Traverse with minimum weight filter.
     fn traverse_filtered(
@@ -49,71 +60,31 @@ pub trait GraphStore {
         start: NodeId,
         depth: usize,
         min_weight: EdgeWeight,
-    ) -> Option<Artifact>;
+    ) -> Result<Option<Artifact>, KremisError>;
 
     /// Find nodes connected to ALL input nodes (intersection).
-    fn intersect(&self, nodes: &[NodeId]) -> Vec<NodeId>;
+    fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError>;
 
     /// Find the strongest path between two nodes.
     /// Cost = i64::MAX - weight, so higher weights = lower cost = preferred.
-    fn strongest_path(&self, start: NodeId, end: NodeId) -> Option<Vec<NodeId>>;
+    fn strongest_path(
+        &self,
+        start: NodeId,
+        end: NodeId,
+    ) -> Result<Option<Vec<NodeId>>, KremisError>;
 
     /// Extract a related subgraph from a starting node.
-    fn related_subgraph(&self, start: NodeId, depth: usize) -> Option<Artifact>;
+    fn related_subgraph(
+        &self,
+        start: NodeId,
+        depth: usize,
+    ) -> Result<Option<Artifact>, KremisError>;
 
     /// Get the total number of nodes.
-    fn node_count(&self) -> usize;
+    fn node_count(&self) -> Result<usize, KremisError>;
 
     /// Get the total number of edges.
-    fn edge_count(&self) -> usize;
-
-    /// Acquire a read lock for atomic snapshots.
-    ///
-    /// Per ROADMAP.md L145 (GAP 1 Resolution):
-    /// This provides an atomic view of the graph for serialization.
-    /// The returned guard holds an immutable reference to the graph.
-    fn acquire_read_lock(&self) -> GraphReadGuard<'_>;
-}
-
-// =============================================================================
-// READ GUARD FOR ATOMIC SNAPSHOTS
-// =============================================================================
-
-/// Guard that holds an immutable reference to the graph for atomic snapshots.
-///
-/// Per ROADMAP.md GAP 1 Resolution:
-/// - CORE provides locking mechanisms
-/// - FACETS use this for atomic serialization
-///
-/// This is a simple borrow-based pattern since Kremis CORE is single-threaded.
-pub struct GraphReadGuard<'a> {
-    /// Reference to the graph data.
-    graph: &'a Graph,
-}
-
-impl<'a> GraphReadGuard<'a> {
-    /// Create a new read guard.
-    fn new(graph: &'a Graph) -> Self {
-        Self { graph }
-    }
-
-    /// Get the underlying graph reference.
-    #[must_use]
-    pub fn graph(&self) -> &Graph {
-        self.graph
-    }
-
-    /// Get the number of nodes (delegated to graph).
-    #[must_use]
-    pub fn node_count(&self) -> usize {
-        self.graph.node_count()
-    }
-
-    /// Get the number of edges (delegated to graph).
-    #[must_use]
-    pub fn edge_count(&self) -> usize {
-        self.graph.edge_count()
-    }
+    fn edge_count(&self) -> Result<usize, KremisError>;
 }
 
 // =============================================================================
@@ -197,9 +168,9 @@ impl Graph {
         self.next_node_id
     }
 
-    /// Check if the graph contains a node.
+    /// Check if the graph contains a node (internal, non-Result version).
     #[must_use]
-    pub fn contains_node(&self, id: NodeId) -> bool {
+    pub fn contains_node_internal(&self, id: NodeId) -> bool {
         self.nodes.contains_key(&id)
     }
 
@@ -209,6 +180,23 @@ impl Graph {
         self.edges
             .get(&from)
             .is_some_and(|targets| targets.contains_key(&to))
+    }
+
+    /// Get neighbors (internal, iterator version for efficiency in algorithms).
+    pub fn neighbors_internal(
+        &self,
+        node: NodeId,
+    ) -> impl Iterator<Item = (NodeId, EdgeWeight)> + '_ {
+        self.edges
+            .get(&node)
+            .into_iter()
+            .flat_map(|targets| targets.iter().map(|(k, v)| (*k, *v)))
+    }
+
+    /// Get edge weight (internal, non-Result version).
+    #[must_use]
+    pub fn get_edge_internal(&self, from: NodeId, to: NodeId) -> Option<EdgeWeight> {
+        self.edges.get(&from)?.get(&to).copied()
     }
 
     /// Import a node with its original NodeId (for export/import operations).
@@ -229,10 +217,10 @@ impl Graph {
 }
 
 impl GraphStore for Graph {
-    fn insert_node(&mut self, entity: EntityId) -> NodeId {
+    fn insert_node(&mut self, entity: EntityId) -> Result<NodeId, KremisError> {
         // Return existing node if entity already mapped
         if let Some(&node_id) = self.entity_index.get(&entity) {
-            return node_id;
+            return Ok(node_id);
         }
 
         // Create new node
@@ -243,45 +231,61 @@ impl GraphStore for Graph {
         self.nodes.insert(node_id, node);
         self.entity_index.insert(entity, node_id);
 
-        node_id
+        Ok(node_id)
     }
 
-    fn insert_edge(&mut self, from: NodeId, to: NodeId, weight: EdgeWeight) {
+    fn insert_edge(
+        &mut self,
+        from: NodeId,
+        to: NodeId,
+        weight: EdgeWeight,
+    ) -> Result<(), KremisError> {
         if !self.nodes.contains_key(&from) || !self.nodes.contains_key(&to) {
-            return;
+            return Ok(());
         }
         self.edges.entry(from).or_default().insert(to, weight);
+        Ok(())
     }
 
-    fn increment_edge(&mut self, from: NodeId, to: NodeId) {
+    fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
         let targets = self.edges.entry(from).or_default();
         let current = targets.get(&to).copied().unwrap_or(EdgeWeight::new(0));
         targets.insert(to, current.increment());
+        Ok(())
     }
 
-    fn lookup(&self, id: NodeId) -> Option<&Node> {
-        self.nodes.get(&id)
+    fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError> {
+        Ok(self.nodes.get(&id).cloned())
     }
 
     fn get_node_by_entity(&self, entity: EntityId) -> Option<NodeId> {
         self.entity_index.get(&entity).copied()
     }
 
-    fn get_edge(&self, from: NodeId, to: NodeId) -> Option<EdgeWeight> {
-        self.edges.get(&from)?.get(&to).copied()
+    fn get_edge(&self, from: NodeId, to: NodeId) -> Result<Option<EdgeWeight>, KremisError> {
+        Ok(self
+            .edges
+            .get(&from)
+            .and_then(|targets| targets.get(&to).copied()))
     }
 
-    fn neighbors(&self, node: NodeId) -> impl Iterator<Item = (NodeId, EdgeWeight)> {
-        self.edges
+    fn neighbors(&self, node: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
+        Ok(self
+            .edges
             .get(&node)
             .into_iter()
             .flat_map(|targets| targets.iter().map(|(k, v)| (*k, *v)))
+            .collect())
     }
 
-    fn traverse(&self, start: NodeId, depth: usize) -> Option<Artifact> {
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
+        Ok(self.nodes.contains_key(&id))
+    }
+
+    fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
         let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start) {
-            return None;
+        if !self.contains_node_internal(start) {
+            return Ok(None);
         }
 
         let mut visited = BTreeSet::new();
@@ -299,7 +303,7 @@ impl GraphStore for Graph {
                 continue;
             }
 
-            for (neighbor, weight) in self.neighbors(current) {
+            for (neighbor, weight) in self.neighbors_internal(current) {
                 subgraph_edges.push((current, neighbor, weight));
 
                 if !visited.contains(&neighbor) {
@@ -309,7 +313,7 @@ impl GraphStore for Graph {
             }
         }
 
-        Some(Artifact::with_subgraph(path, subgraph_edges))
+        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
     }
 
     fn traverse_filtered(
@@ -317,10 +321,10 @@ impl GraphStore for Graph {
         start: NodeId,
         depth: usize,
         min_weight: EdgeWeight,
-    ) -> Option<Artifact> {
+    ) -> Result<Option<Artifact>, KremisError> {
         let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start) {
-            return None;
+        if !self.contains_node_internal(start) {
+            return Ok(None);
         }
 
         let mut visited = BTreeSet::new();
@@ -338,7 +342,7 @@ impl GraphStore for Graph {
                 continue;
             }
 
-            for (neighbor, weight) in self.neighbors(current) {
+            for (neighbor, weight) in self.neighbors_internal(current) {
                 // Filter by minimum weight
                 if weight.value() >= min_weight.value() {
                     subgraph_edges.push((current, neighbor, weight));
@@ -351,38 +355,43 @@ impl GraphStore for Graph {
             }
         }
 
-        Some(Artifact::with_subgraph(path, subgraph_edges))
+        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
     }
 
-    fn intersect(&self, nodes: &[NodeId]) -> Vec<NodeId> {
+    fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
         if nodes.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
 
         // Get neighbors of first node
-        let first_neighbors: BTreeSet<_> = self.neighbors(nodes[0]).map(|(n, _)| n).collect();
+        let first_neighbors: BTreeSet<_> =
+            self.neighbors_internal(nodes[0]).map(|(n, _)| n).collect();
 
         if first_neighbors.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
 
         // Intersect with neighbors of remaining nodes
         let mut result = first_neighbors;
         for &node in &nodes[1..] {
-            let neighbors: BTreeSet<_> = self.neighbors(node).map(|(n, _)| n).collect();
+            let neighbors: BTreeSet<_> = self.neighbors_internal(node).map(|(n, _)| n).collect();
             result = result.intersection(&neighbors).copied().collect();
         }
 
-        result.into_iter().collect()
+        Ok(result.into_iter().collect())
     }
 
-    fn strongest_path(&self, start: NodeId, end: NodeId) -> Option<Vec<NodeId>> {
-        if !self.contains_node(start) || !self.contains_node(end) {
-            return None;
+    fn strongest_path(
+        &self,
+        start: NodeId,
+        end: NodeId,
+    ) -> Result<Option<Vec<NodeId>>, KremisError> {
+        if !self.contains_node_internal(start) || !self.contains_node_internal(end) {
+            return Ok(None);
         }
 
         if start == end {
-            return Some(vec![start]);
+            return Ok(Some(vec![start]));
         }
 
         // Dijkstra with cost = i64::MAX - weight (to find maximum weight path)
@@ -412,7 +421,7 @@ impl GraphStore for Graph {
             visited.insert(current);
             let current_dist = dist[&current];
 
-            for (neighbor, weight) in self.neighbors(current) {
+            for (neighbor, weight) in self.neighbors_internal(current) {
                 if visited.contains(&neighbor) {
                     continue;
                 }
@@ -432,36 +441,39 @@ impl GraphStore for Graph {
 
         // Reconstruct path
         if !prev.contains_key(&end) && start != end {
-            return None;
+            return Ok(None);
         }
 
         let mut path = Vec::new();
         let mut current = end;
         while current != start {
             path.push(current);
-            current = *prev.get(&current)?;
+            current = match prev.get(&current) {
+                Some(&p) => p,
+                None => return Ok(None),
+            };
         }
         path.push(start);
         path.reverse();
 
-        Some(path)
+        Ok(Some(path))
     }
 
-    fn related_subgraph(&self, start: NodeId, depth: usize) -> Option<Artifact> {
+    fn related_subgraph(
+        &self,
+        start: NodeId,
+        depth: usize,
+    ) -> Result<Option<Artifact>, KremisError> {
         // Same as traverse, included for API completeness
         self.traverse(start, depth)
     }
 
-    fn node_count(&self) -> usize {
-        self.nodes.len()
+    fn node_count(&self) -> Result<usize, KremisError> {
+        Ok(self.nodes.len())
     }
 
-    fn edge_count(&self) -> usize {
-        self.edges.values().map(BTreeMap::len).sum()
-    }
-
-    fn acquire_read_lock(&self) -> GraphReadGuard<'_> {
-        GraphReadGuard::new(self)
+    fn edge_count(&self) -> Result<usize, KremisError> {
+        Ok(self.edges.values().map(BTreeMap::len).sum())
     }
 }
 
@@ -477,7 +489,7 @@ impl Graph {
     pub fn traverse_dfs(&self, start: NodeId, depth: usize) -> Option<Artifact> {
         use crate::primitives::MAX_TRAVERSAL_DEPTH;
 
-        if !self.contains_node(start) {
+        if !self.contains_node_internal(start) {
             return None;
         }
 
@@ -518,7 +530,7 @@ impl Graph {
         path.push(current);
 
         if current_depth < max_depth {
-            for (neighbor, weight) in self.neighbors(current) {
+            for (neighbor, weight) in self.neighbors_internal(current) {
                 subgraph_edges.push((current, neighbor, weight));
 
                 if !visited.contains(&neighbor) {
@@ -536,7 +548,11 @@ impl Graph {
     }
 
     /// Bounded traverse that enforces MAX_TRAVERSAL_DEPTH.
-    pub fn traverse_bounded(&self, start: NodeId, depth: usize) -> Option<Artifact> {
+    pub fn traverse_bounded(
+        &self,
+        start: NodeId,
+        depth: usize,
+    ) -> Result<Option<Artifact>, KremisError> {
         use crate::primitives::MAX_TRAVERSAL_DEPTH;
         self.traverse(start, depth.min(MAX_TRAVERSAL_DEPTH))
     }
@@ -577,7 +593,7 @@ impl From<SerializableGraph> for Graph {
         }
 
         for (from, to, weight) in sg.edges {
-            graph.insert_edge(from, to, weight);
+            let _ = graph.insert_edge(from, to, weight);
         }
 
         graph
@@ -597,8 +613,8 @@ mod tests {
         let mut graph = Graph::new();
         let entity = EntityId(42);
 
-        let node_id = graph.insert_node(entity);
-        let node = graph.lookup(node_id);
+        let node_id = graph.insert_node(entity).expect("insert");
+        let node = graph.lookup(node_id).expect("lookup");
 
         assert!(node.is_some());
         assert_eq!(node.map(|n| n.entity), Some(entity));
@@ -609,40 +625,45 @@ mod tests {
         let mut graph = Graph::new();
         let entity = EntityId(42);
 
-        let first = graph.insert_node(entity);
-        let second = graph.insert_node(entity);
+        let first = graph.insert_node(entity).expect("insert");
+        let second = graph.insert_node(entity).expect("insert");
 
         assert_eq!(first, second);
-        assert_eq!(graph.node_count(), 1);
+        assert_eq!(graph.node_count().expect("count"), 1);
     }
 
     #[test]
     fn increment_edge_creates_and_increments() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
 
         // First increment creates edge with weight 1
-        graph.increment_edge(a, b);
-        assert_eq!(graph.get_edge(a, b), Some(EdgeWeight::new(1)));
+        graph.increment_edge(a, b).expect("increment");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(1)));
 
         // Second increment increases to 2
-        graph.increment_edge(a, b);
-        assert_eq!(graph.get_edge(a, b), Some(EdgeWeight::new(2)));
+        graph.increment_edge(a, b).expect("increment");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(2)));
     }
 
     #[test]
     fn neighbors_in_deterministic_order() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
 
         // Insert edges in non-sorted order
-        graph.insert_edge(a, c, EdgeWeight::new(1));
-        graph.insert_edge(a, b, EdgeWeight::new(2));
+        graph.insert_edge(a, c, EdgeWeight::new(1)).expect("insert");
+        graph.insert_edge(a, b, EdgeWeight::new(2)).expect("insert");
 
-        let neighbors: Vec<_> = graph.neighbors(a).map(|(n, _)| n).collect();
+        let neighbors: Vec<_> = graph
+            .neighbors(a)
+            .expect("neighbors")
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect();
 
         // Should be sorted by NodeId
         assert_eq!(neighbors, vec![b, c]);
@@ -651,15 +672,15 @@ mod tests {
     #[test]
     fn traverse_respects_depth() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
 
-        graph.insert_edge(a, b, EdgeWeight::new(1));
-        graph.insert_edge(b, c, EdgeWeight::new(1));
+        graph.insert_edge(a, b, EdgeWeight::new(1)).expect("insert");
+        graph.insert_edge(b, c, EdgeWeight::new(1)).expect("insert");
 
         // Depth 1: should reach a and b
-        let artifact = graph.traverse(a, 1);
+        let artifact = graph.traverse(a, 1).expect("traverse");
         assert!(artifact.is_some());
 
         let path = artifact.as_ref().map(|a| &a.path);
@@ -671,50 +692,67 @@ mod tests {
     #[test]
     fn traverse_missing_node_returns_none() {
         let graph = Graph::new();
-        let result = graph.traverse(NodeId(999), 5);
+        let result = graph.traverse(NodeId(999), 5).expect("traverse");
         assert!(result.is_none());
     }
 
     #[test]
     fn strongest_path_finds_route() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let c = graph.insert_node(EntityId(3));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let c = graph.insert_node(EntityId(3)).expect("insert");
 
-        graph.insert_edge(a, b, EdgeWeight::new(10));
-        graph.insert_edge(b, c, EdgeWeight::new(10));
+        graph
+            .insert_edge(a, b, EdgeWeight::new(10))
+            .expect("insert");
+        graph
+            .insert_edge(b, c, EdgeWeight::new(10))
+            .expect("insert");
 
-        let path = graph.strongest_path(a, c);
+        let path = graph.strongest_path(a, c).expect("path");
         assert_eq!(path, Some(vec![a, b, c]));
     }
 
     #[test]
     fn intersect_finds_common_neighbors() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        let common = graph.insert_node(EntityId(100));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        let common = graph.insert_node(EntityId(100)).expect("insert");
 
-        graph.insert_edge(a, common, EdgeWeight::new(1));
-        graph.insert_edge(b, common, EdgeWeight::new(1));
+        graph
+            .insert_edge(a, common, EdgeWeight::new(1))
+            .expect("insert");
+        graph
+            .insert_edge(b, common, EdgeWeight::new(1))
+            .expect("insert");
 
-        let result = graph.intersect(&[a, b]);
+        let result = graph.intersect(&[a, b]).expect("intersect");
         assert_eq!(result, vec![common]);
     }
 
     #[test]
     fn serialization_roundtrip() {
         let mut graph = Graph::new();
-        let a = graph.insert_node(EntityId(1));
-        let b = graph.insert_node(EntityId(2));
-        graph.insert_edge(a, b, EdgeWeight::new(5));
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        graph.insert_edge(a, b, EdgeWeight::new(5)).expect("insert");
 
         let serializable = SerializableGraph::from(&graph);
         let restored = Graph::from(serializable);
 
-        assert_eq!(graph.node_count(), restored.node_count());
-        assert_eq!(graph.edge_count(), restored.edge_count());
-        assert_eq!(restored.get_edge(a, b), Some(EdgeWeight::new(5)));
+        assert_eq!(
+            graph.node_count().expect("count"),
+            restored.node_count().expect("count")
+        );
+        assert_eq!(
+            graph.edge_count().expect("count"),
+            restored.edge_count().expect("count")
+        );
+        assert_eq!(
+            restored.get_edge(a, b).expect("get"),
+            Some(EdgeWeight::new(5))
+        );
     }
 }
