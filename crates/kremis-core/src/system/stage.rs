@@ -2,16 +2,23 @@
 //!
 //! Per KREMIS.md Section 9: Developmental Stages (FACET - Capability Maturation)
 //!
-//! This module implements the reference pattern for stage-based capability gating.
+//! ## Current Implementation Status
+//!
+//! **Stages are informational metrics only.** They indicate graph "maturity" based on
+//! stable edge counts, but do not gate or restrict any functionality. All graph
+//! operations are available regardless of the current stage.
+//!
+//! The [`StageCapability`] enum documents which capabilities *conceptually* belong
+//! to each stage, but no runtime checks are performed. This is intentional for v0.1.0.
 //!
 //! ## Stage Definitions
 //!
-//! | Stage | Name | Graph Threshold |
-//! |-------|------|-----------------|
-//! | S0 | Signal Segmentation | 0 nodes |
-//! | S1 | Pattern Crystallization | ~100 stable edges |
-//! | S2 | Causal Chaining | ~1000 stable edges |
-//! | S3 | Recursive Optimization | ~5000 stable edges |
+//! | Stage | Name | Graph Threshold | Behavior |
+//! |-------|------|-----------------|----------|
+//! | S0 | Signal Segmentation | 0 nodes | Informational |
+//! | S1 | Pattern Crystallization | ~100 stable edges | Informational |
+//! | S2 | Causal Chaining | ~1000 stable edges | Informational |
+//! | S3 | Recursive Optimization | ~5000 stable edges | Informational |
 //!
 //! ## Important Note
 //!
@@ -387,10 +394,15 @@ impl StageProgress {
 }
 
 // =============================================================================
-// STAGE CAPABILITY
+// STAGE CAPABILITY (Reference Pattern)
 // =============================================================================
 
-/// Capabilities gated by stage.
+/// Capabilities that conceptually belong to each developmental stage.
+///
+/// **Note:** This enum is a reference pattern documenting the intended capability
+/// progression. No runtime enforcement is performed in v0.1.0 — all operations
+/// are available regardless of the current stage. Use [`StageCapability::required_stage`]
+/// to query the conceptual stage requirement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StageCapability {
     SignalSegmentation,
