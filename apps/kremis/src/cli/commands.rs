@@ -473,9 +473,30 @@ pub fn cmd_query(
             );
         }
 
+        "properties" => {
+            let node_id = start.ok_or(KremisError::InvalidSignal)?;
+
+            match session.get_properties(NodeId(node_id)) {
+                Ok(props) => {
+                    if props.is_empty() {
+                        println!("Node {} has no properties", node_id);
+                    } else {
+                        println!("Properties for node {}:", node_id);
+                        for (attr, val) in &props {
+                            println!("  {} = {}", attr.as_str(), val.as_str());
+                        }
+                    }
+                }
+                Err(KremisError::NodeNotFound(_)) => {
+                    println!("Node {} not found", node_id);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
         _ => {
             return Err(KremisError::SerializationError(format!(
-                "Unknown query type: {}. Use: lookup, traverse, path, intersect",
+                "Unknown query type: {}. Use: lookup, traverse, path, intersect, properties",
                 query_type
             )));
         }

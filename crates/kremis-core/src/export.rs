@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub const CANONICAL_MAGIC: [u8; 4] = *b"KREX"; // Kremis Export
 
 /// Current canonical format version.
-pub const CANONICAL_VERSION: u8 = 1;
+pub const CANONICAL_VERSION: u8 = 2;
 
 /// Maximum allowed node count in canonical imports.
 ///
@@ -80,7 +80,7 @@ impl CanonicalHeader {
                 "Invalid file format".to_string(),
             ));
         }
-        if self.version != CANONICAL_VERSION {
+        if self.version != 1 && self.version != CANONICAL_VERSION {
             return Err(KremisError::SerializationError(
                 "Unsupported file version".to_string(),
             ));
@@ -147,9 +147,32 @@ impl CanonicalEdge {
     }
 }
 
+/// A property in canonical format.
+///
+/// Sorted by (node_id, attribute, value) for deterministic ordering.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CanonicalProperty {
+    /// The node ID this property belongs to.
+    pub node_id: u64,
+
+    /// The attribute name.
+    pub attribute: String,
+
+    /// The value.
+    pub value: String,
+}
+
 // =============================================================================
 // CANONICAL GRAPH (Sorted, Deterministic)
 // =============================================================================
+
+/// V1 canonical graph format (without properties) for backward compatibility.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct CanonicalGraphV1 {
+    nodes: Vec<CanonicalNode>,
+    edges: Vec<CanonicalEdge>,
+    next_node_id: u64,
+}
 
 /// A graph in canonical format for bit-exact serialization.
 ///
@@ -166,6 +189,9 @@ pub struct CanonicalGraph {
 
     /// Next node ID counter.
     pub next_node_id: u64,
+
+    /// Properties sorted by (node_id, attribute, value).
+    pub properties: Vec<CanonicalProperty>,
 }
 
 impl CanonicalGraph {
@@ -185,10 +211,26 @@ impl CanonicalGraph {
             .collect();
         edges.sort();
 
+        // Collect and sort properties
+        let mut properties: Vec<CanonicalProperty> = Vec::new();
+        for node in &nodes {
+            if let Ok(props) = graph.get_properties(NodeId(node.id)) {
+                for (attr, val) in props {
+                    properties.push(CanonicalProperty {
+                        node_id: node.id,
+                        attribute: attr.as_str().to_string(),
+                        value: val.as_str().to_string(),
+                    });
+                }
+            }
+        }
+        properties.sort();
+
         Self {
             nodes,
             edges,
             next_node_id: graph.next_node_id(),
+            properties,
         }
     }
 
@@ -232,6 +274,17 @@ impl CanonicalGraph {
             hash ^= edge.from.rotate_left(17);
             hash ^= edge.to.rotate_left(11);
             hash ^= (edge.weight as u64).rotate_left(5);
+        }
+
+        // Hash properties
+        for prop in &self.properties {
+            hash ^= prop.node_id.rotate_left(19);
+            for byte in prop.attribute.as_bytes() {
+                hash ^= (*byte as u64).rotate_left(23);
+            }
+            for byte in prop.value.as_bytes() {
+                hash ^= (*byte as u64).rotate_left(29);
+            }
         }
 
         // Hash metadata
@@ -326,12 +379,35 @@ pub fn import_canonical(data: &[u8]) -> Result<Graph, KremisError> {
         )));
     }
 
-    // Deserialize data (now safe since we validated size limits)
-    let canonical: CanonicalGraph = postcard::from_bytes(&data[4 + header_len..])
-        .map_err(|e| KremisError::SerializationError(format!("Data: {}", e)))?;
+    // Deserialize data based on version
+    let canonical: CanonicalGraph = if header.version == 1 {
+        // V1 format: no properties field
+        let v1: CanonicalGraphV1 = postcard::from_bytes(&data[4 + header_len..])
+            .map_err(|e| KremisError::SerializationError(format!("Data: {}", e)))?;
+        CanonicalGraph {
+            nodes: v1.nodes,
+            edges: v1.edges,
+            next_node_id: v1.next_node_id,
+            properties: Vec::new(),
+        }
+    } else {
+        postcard::from_bytes(&data[4 + header_len..])
+            .map_err(|e| KremisError::SerializationError(format!("Data: {}", e)))?
+    };
 
-    // Verify checksum
-    let computed_checksum = canonical.checksum();
+    // Verify checksum: for v1 imports, recompute using v1's checksum logic (no properties)
+    let computed_checksum = if header.version == 1 {
+        // Recompute without properties (v1 checksum logic)
+        let v1_canonical = CanonicalGraph {
+            nodes: canonical.nodes.clone(),
+            edges: canonical.edges.clone(),
+            next_node_id: canonical.next_node_id,
+            properties: Vec::new(),
+        };
+        v1_canonical.checksum()
+    } else {
+        canonical.checksum()
+    };
     if computed_checksum != header.checksum {
         return Err(KremisError::SerializationError(format!(
             "Checksum mismatch: expected {}, got {}",
@@ -983,5 +1059,113 @@ mod tests {
         assert_eq!(edge.from, 1);
         assert_eq!(edge.to, 2);
         assert_eq!(edge.weight, 50);
+    }
+
+    // =========================================================================
+    // Properties export/import tests (Bug 10)
+    // =========================================================================
+
+    #[test]
+    fn canonical_roundtrip_with_properties() {
+        use crate::{Attribute, Value};
+
+        let mut graph = create_test_graph();
+        let node_a = NodeId(0);
+
+        // Store properties via the GraphStore trait
+        graph
+            .store_property(node_a, Attribute::new("name"), Value::new("Alice"))
+            .expect("store property");
+        graph
+            .store_property(node_a, Attribute::new("role"), Value::new("admin"))
+            .expect("store property");
+
+        let exported = export_canonical(&graph).expect("export should succeed");
+        let imported = import_canonical(&exported).expect("import should succeed");
+
+        // Verify properties survived the roundtrip
+        let props = imported.get_properties(node_a).expect("get properties");
+        assert_eq!(props.len(), 2);
+        assert!(props.contains(&(Attribute::new("name"), Value::new("Alice"))));
+        assert!(props.contains(&(Attribute::new("role"), Value::new("admin"))));
+    }
+
+    #[test]
+    fn canonical_import_v1_backward_compat() {
+        // Create a v1-format export (no properties)
+        let graph = create_test_graph();
+        let v1 = CanonicalGraphV1 {
+            nodes: {
+                let mut nodes: Vec<CanonicalNode> =
+                    graph.nodes().map(CanonicalNode::from).collect();
+                nodes.sort();
+                nodes
+            },
+            edges: {
+                let mut edges: Vec<CanonicalEdge> = graph
+                    .edges()
+                    .map(|(from, to, weight)| CanonicalEdge::new(from, to, weight))
+                    .collect();
+                edges.sort();
+                edges
+            },
+            next_node_id: graph.next_node_id(),
+        };
+
+        // Compute v1 checksum (same algorithm, no properties)
+        let v1_as_canonical = CanonicalGraph {
+            nodes: v1.nodes.clone(),
+            edges: v1.edges.clone(),
+            next_node_id: v1.next_node_id,
+            properties: Vec::new(),
+        };
+        let checksum = v1_as_canonical.checksum();
+
+        let header = CanonicalHeader {
+            magic: CANONICAL_MAGIC,
+            version: 1,
+            node_count: v1.nodes.len() as u64,
+            edge_count: v1.edges.len() as u64,
+            checksum,
+        };
+
+        // Serialize as v1
+        let header_bytes = postcard::to_allocvec(&header).expect("header");
+        let data_bytes = postcard::to_allocvec(&v1).expect("data");
+
+        let mut data = Vec::new();
+        data.extend_from_slice(&(header_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(&header_bytes);
+        data.extend_from_slice(&data_bytes);
+
+        // Import should succeed with empty properties
+        let imported = import_canonical(&data).expect("import v1 should succeed");
+        assert_eq!(imported.node_count().expect("count"), 3);
+        assert_eq!(imported.edge_count().expect("count"), 3);
+
+        // Properties should be empty
+        let props = imported.get_properties(NodeId(0)).expect("get props");
+        assert!(props.is_empty());
+    }
+
+    #[test]
+    fn canonical_properties_included_in_checksum() {
+        use crate::{Attribute, Value};
+
+        let mut graph1 = create_test_graph();
+        let graph2 = create_test_graph();
+
+        // Add a property only to graph1
+        graph1
+            .store_property(NodeId(0), Attribute::new("name"), Value::new("Alice"))
+            .expect("store");
+
+        let checksum1 = canonical_checksum(&graph1);
+        let checksum2 = canonical_checksum(&graph2);
+
+        assert_ne!(
+            checksum1, checksum2,
+            "Properties should affect the checksum"
+        );
     }
 }

@@ -5,8 +5,8 @@
 use super::{
     AppState,
     types::{
-        ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest, QueryResponse,
-        StageResponse, StatusResponse,
+        ExportResponse, HealthResponse, IngestRequest, IngestResponse, PropertyJson, QueryRequest,
+        QueryResponse, StageResponse, StatusResponse,
     },
 };
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
@@ -184,6 +184,21 @@ fn execute_query_session(
                 None => Ok(QueryResponse::not_found()),
             }
         }
+
+        QueryRequest::Properties { node_id } => match session.get_properties(NodeId(*node_id)) {
+            Ok(props) => {
+                let properties: Vec<PropertyJson> = props
+                    .into_iter()
+                    .map(|(attr, val)| PropertyJson {
+                        attribute: attr.as_str().to_string(),
+                        value: val.as_str().to_string(),
+                    })
+                    .collect();
+                Ok(QueryResponse::with_properties(properties))
+            }
+            Err(KremisError::NodeNotFound(_)) => Ok(QueryResponse::not_found()),
+            Err(e) => Err(e),
+        },
     }
 }
 

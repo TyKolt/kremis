@@ -158,6 +158,17 @@ impl Graph {
             }
         }
 
+        for cp in &canonical.properties {
+            let node_id = NodeId(cp.node_id);
+            if graph.nodes.contains_key(&node_id) {
+                let _ = graph.store_property(
+                    node_id,
+                    Attribute::new(&cp.attribute),
+                    Value::new(&cp.value),
+                );
+            }
+        }
+
         graph
     }
 
@@ -607,14 +618,29 @@ pub struct SerializableGraph {
     pub nodes: Vec<Node>,
     pub edges: Vec<(NodeId, NodeId, EdgeWeight)>,
     pub next_node_id: u64,
+    #[serde(default)]
+    pub properties: Vec<(u64, String, String)>,
 }
 
 impl From<&Graph> for SerializableGraph {
     fn from(graph: &Graph) -> Self {
+        let mut properties = Vec::new();
+        for node in graph.nodes.values() {
+            if let Ok(props) = graph.get_properties(node.id) {
+                for (attr, val) in props {
+                    properties.push((
+                        node.id.0,
+                        attr.as_str().to_string(),
+                        val.as_str().to_string(),
+                    ));
+                }
+            }
+        }
         Self {
             nodes: graph.nodes.values().cloned().collect(),
             edges: graph.edges().collect(),
             next_node_id: graph.next_node_id,
+            properties,
         }
     }
 }
@@ -631,6 +657,10 @@ impl From<SerializableGraph> for Graph {
 
         for (from, to, weight) in sg.edges {
             let _ = graph.insert_edge(from, to, weight);
+        }
+
+        for (node_id, attr, val) in sg.properties {
+            let _ = graph.store_property(NodeId(node_id), Attribute::new(&attr), Value::new(&val));
         }
 
         graph
@@ -850,5 +880,46 @@ mod tests {
 
         let props = graph.get_properties(node).expect("get");
         assert!(props.is_empty());
+    }
+
+    #[test]
+    fn serializable_graph_roundtrip_with_properties() {
+        let mut graph = Graph::new();
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+        graph.insert_edge(a, b, EdgeWeight::new(5)).expect("insert");
+
+        graph
+            .store_property(a, Attribute::new("name"), Value::new("Alice"))
+            .expect("store");
+        graph
+            .store_property(a, Attribute::new("role"), Value::new("admin"))
+            .expect("store");
+        graph
+            .store_property(b, Attribute::new("name"), Value::new("Bob"))
+            .expect("store");
+
+        let serializable = SerializableGraph::from(&graph);
+        assert_eq!(serializable.properties.len(), 3);
+
+        let restored = Graph::from(serializable);
+
+        assert_eq!(
+            graph.node_count().expect("count"),
+            restored.node_count().expect("count")
+        );
+        assert_eq!(
+            graph.edge_count().expect("count"),
+            restored.edge_count().expect("count")
+        );
+
+        let props_a = restored.get_properties(a).expect("get");
+        assert_eq!(props_a.len(), 2);
+        assert!(props_a.contains(&(Attribute::new("name"), Value::new("Alice"))));
+        assert!(props_a.contains(&(Attribute::new("role"), Value::new("admin"))));
+
+        let props_b = restored.get_properties(b).expect("get");
+        assert_eq!(props_b.len(), 1);
+        assert!(props_b.contains(&(Attribute::new("name"), Value::new("Bob"))));
     }
 }

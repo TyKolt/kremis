@@ -168,6 +168,16 @@ pub enum QueryRequest {
         node_id: u64,
         depth: usize,
     },
+    Properties {
+        node_id: u64,
+    },
+}
+
+/// Property JSON representation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PropertyJson {
+    pub attribute: String,
+    pub value: String,
 }
 
 /// Query response.
@@ -177,6 +187,9 @@ pub struct QueryResponse {
     pub found: bool,
     pub path: Vec<u64>,
     pub edges: Vec<EdgeJson>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub properties: Vec<PropertyJson>,
     pub error: Option<String>,
 }
 
@@ -187,6 +200,7 @@ impl QueryResponse {
             found: false,
             path: vec![],
             edges: vec![],
+            properties: vec![],
             error: None,
         }
     }
@@ -197,6 +211,7 @@ impl QueryResponse {
             found: !path.is_empty(),
             path: path.iter().map(|n| n.0).collect(),
             edges: vec![],
+            properties: vec![],
             error: None,
         }
     }
@@ -221,6 +236,18 @@ impl QueryResponse {
             found: !artifact.path.is_empty(),
             path: artifact.path.iter().map(|n| n.0).collect(),
             edges,
+            properties: vec![],
+            error: None,
+        }
+    }
+
+    pub fn with_properties(properties: Vec<PropertyJson>) -> Self {
+        Self {
+            success: true,
+            found: !properties.is_empty(),
+            path: vec![],
+            edges: vec![],
+            properties,
             error: None,
         }
     }
@@ -231,6 +258,7 @@ impl QueryResponse {
             found: false,
             path: vec![],
             edges: vec![],
+            properties: vec![],
             error: Some(msg.into()),
         }
     }

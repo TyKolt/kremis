@@ -17,7 +17,9 @@
 use crate::graph::{Graph, GraphStore};
 use crate::ingestor::Ingestor;
 use crate::storage::RedbGraph;
-use crate::{Artifact, Buffer, EdgeWeight, EntityId, KremisError, NodeId, Signal};
+use crate::{
+    Artifact, Attribute, Buffer, EdgeWeight, EntityId, KremisError, NodeId, Signal, Value,
+};
 use std::path::Path;
 
 // =============================================================================
@@ -467,6 +469,18 @@ impl Session {
     }
 
     // =========================================================================
+    // PROPERTIES
+    // =========================================================================
+
+    /// Get all properties for a node.
+    pub fn get_properties(&self, node: NodeId) -> Result<Vec<(Attribute, Value)>, KremisError> {
+        match &self.backend {
+            StorageBackend::InMemory(graph) => graph.get_properties(node),
+            StorageBackend::Persistent(redb) => redb.get_properties(node),
+        }
+    }
+
+    // =========================================================================
     // EXPORT SUPPORT (M3 FIX)
     // =========================================================================
 
@@ -493,14 +507,23 @@ impl Session {
                 let mut graph = Graph::new();
 
                 // Import all nodes
-                for node in redb.nodes()? {
-                    // Insert node preserving original NodeId
-                    graph.import_node(node);
+                let nodes: Vec<_> = redb.nodes()?;
+                for node in &nodes {
+                    graph.import_node(node.clone());
                 }
 
                 // Import all edges
                 for (from, to, weight) in redb.edges()? {
                     let _ = graph.insert_edge(from, to, weight);
+                }
+
+                // Import all properties
+                for node in &nodes {
+                    if let Ok(props) = redb.get_properties(node.id) {
+                        for (attr, val) in props {
+                            let _ = graph.store_property(node.id, attr, val);
+                        }
+                    }
                 }
 
                 Ok(graph)
@@ -573,5 +596,39 @@ mod tests {
         let nodes = session.ingest_sequence(&signals).expect("ingest");
 
         assert!(session.get_edge(nodes[0], nodes[1]).is_some());
+    }
+
+    #[test]
+    fn get_properties_via_session() {
+        let mut session = Session::new();
+        let signal = make_signal(1, "name", "Alice");
+        let node = session.ingest(&signal).expect("ingest");
+
+        // Properties are stored during ingest
+        let props = session.get_properties(node).expect("get properties");
+        assert!(props.contains(&(Attribute::new("name"), Value::new("Alice"))));
+    }
+
+    #[test]
+    fn export_graph_snapshot_preserves_properties() {
+        use crate::export::{export_canonical, import_canonical};
+
+        let mut session = Session::new();
+        let signal1 = make_signal(1, "name", "Alice");
+        let signal2 = make_signal(2, "role", "admin");
+        let node1 = session.ingest(&signal1).expect("ingest");
+        let node2 = session.ingest(&signal2).expect("ingest");
+
+        // Export and re-import
+        let snapshot = session.export_graph_snapshot().expect("snapshot");
+        let exported = export_canonical(&snapshot).expect("export");
+        let imported = import_canonical(&exported).expect("import");
+
+        // Properties should survive the roundtrip
+        let props1 = imported.get_properties(node1).expect("props");
+        assert!(props1.contains(&(Attribute::new("name"), Value::new("Alice"))));
+
+        let props2 = imported.get_properties(node2).expect("props");
+        assert!(props2.contains(&(Attribute::new("role"), Value::new("admin"))));
     }
 }
