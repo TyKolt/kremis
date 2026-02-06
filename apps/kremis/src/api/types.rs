@@ -3,8 +3,8 @@
 //! This module defines the JSON structures for the HTTP API.
 
 use kremis_core::{
-    primitives::{MAX_ATTRIBUTE_LENGTH, MAX_VALUE_LENGTH},
     Artifact, Attribute, EntityId, KremisError, NodeId, Signal, Value,
+    primitives::{MAX_ATTRIBUTE_LENGTH, MAX_VALUE_LENGTH},
 };
 use serde::{Deserialize, Serialize};
 

@@ -8,7 +8,7 @@
 //! - Result annotated with evidence path
 //! - Unverifiable claims explicitly marked
 
-use crate::confidence::{compute_confidence, compute_path_confidence, ConfidenceScore};
+use crate::confidence::{ConfidenceScore, compute_confidence, compute_path_confidence};
 use crate::graph::{Graph, GraphStore};
 use crate::query::{Query, QueryType};
 use crate::{Artifact, NodeId};

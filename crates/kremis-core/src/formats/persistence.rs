@@ -18,7 +18,7 @@
 //! - Header validation before payload parsing
 //! - Graceful error handling for corrupted data
 
-use crate::{primitives, Graph, KremisError, SerializableGraph};
+use crate::{Graph, KremisError, SerializableGraph, primitives};
 
 // =============================================================================
 // SECURITY LIMITS (H7 Fix)

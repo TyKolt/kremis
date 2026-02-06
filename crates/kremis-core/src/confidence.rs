@@ -7,8 +7,8 @@
 //! - More edges confirming fact = higher confidence
 //! - Threshold for "verified" vs "speculative" output
 
-use crate::graph::Graph;
 use crate::Artifact;
+use crate::graph::Graph;
 
 /// Default threshold for considering a result "verified".
 ///

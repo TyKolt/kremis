@@ -58,11 +58,11 @@ pub use types::{
 pub use compositor::Compositor;
 pub use confidence::ConfidenceScore;
 pub use export::{
-    canonical_checksum, export_canonical, import_canonical, verify_canonical, CanonicalGraph,
-    CanonicalHeader,
+    CanonicalGraph, CanonicalHeader, canonical_checksum, export_canonical, import_canonical,
+    verify_canonical,
 };
 pub use graph::{Graph, GraphStore, SerializableGraph};
-pub use grounding::{verify_hypothesis, GroundedResult};
+pub use grounding::{GroundedResult, verify_hypothesis};
 pub use ingestor::Ingestor;
 pub use mutation::MutationEngine;
 pub use query::{Query, QueryType};
@@ -74,13 +74,13 @@ pub use storage::RedbGraph;
 // RE-EXPORTS: Formats (from formats module)
 // =============================================================================
 
-pub use formats::{graph_from_bytes, graph_to_bytes, PersistenceHeader};
+pub use formats::{PersistenceHeader, graph_from_bytes, graph_to_bytes};
 
 // =============================================================================
 // RE-EXPORTS: System (from system module)
 // =============================================================================
 
 pub use system::{
-    GraphMetrics, Stage, StageAssessor, StageCapability, StageProgress, S1_THRESHOLD, S2_THRESHOLD,
-    S3_THRESHOLD, STABLE_THRESHOLD,
+    GraphMetrics, S1_THRESHOLD, S2_THRESHOLD, S3_THRESHOLD, STABLE_THRESHOLD, Stage, StageAssessor,
+    StageCapability, StageProgress,
 };

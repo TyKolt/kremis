@@ -37,10 +37,10 @@ pub use types::{
 };
 
 use axum::{
-    http::{header, HeaderValue, Method},
+    Router,
+    http::{HeaderValue, Method, header},
     middleware as axum_middleware,
     routing::{get, post},
-    Router,
 };
 use kremis_core::{KremisError, Session};
 use std::sync::Arc;
@@ -90,7 +90,9 @@ fn build_cors_layer() -> CorsLayer {
     match origins_env.as_deref() {
         Some("*") => {
             // Explicit wildcard - warn about security implications
-            tracing::warn!("CORS: Allowing ALL origins (KREMIS_CORS_ORIGINS=*). This is insecure for production!");
+            tracing::warn!(
+                "CORS: Allowing ALL origins (KREMIS_CORS_ORIGINS=*). This is insecure for production!"
+            );
             CorsLayer::permissive()
         }
         Some(origins) => {

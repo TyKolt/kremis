@@ -98,8 +98,8 @@ impl Compositor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::{Graph, GraphStore};
     use crate::EntityId;
+    use crate::graph::{Graph, GraphStore};
 
     #[test]
     fn compose_returns_none_for_missing_node() {

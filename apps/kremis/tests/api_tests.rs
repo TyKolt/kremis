@@ -10,8 +10,8 @@
 use axum::http::HeaderValue;
 use axum_test::TestServer;
 use kremis::api::{
-    create_router, AppState, ExportResponse, HealthResponse, IngestRequest, IngestResponse,
-    QueryRequest, QueryResponse, StageResponse, StatusResponse,
+    AppState, ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest,
+    QueryResponse, StageResponse, StatusResponse, create_router,
 };
 use kremis_core::Session;
 use serde_json::json;
@@ -31,7 +31,8 @@ struct TestGuard {
 
 impl Drop for TestGuard {
     fn drop(&mut self) {
-        std::env::remove_var("KREMIS_API_KEY");
+        // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
+        unsafe { std::env::remove_var("KREMIS_API_KEY") };
     }
 }
 
@@ -39,7 +40,8 @@ impl Drop for TestGuard {
 /// Returns a guard that must be kept alive during the test.
 fn create_test_server() -> (TestServer, TestGuard) {
     let guard = AUTH_TEST_MUTEX.lock().unwrap();
-    std::env::remove_var("KREMIS_API_KEY");
+    // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
     let session = Session::new();
     let state = AppState::new(session);
     let router = create_router(state);
@@ -55,7 +57,8 @@ fn create_populated_test_server() -> (TestServer, TestGuard) {
     use kremis_core::{Attribute, EntityId, Signal, Value};
 
     let guard = AUTH_TEST_MUTEX.lock().unwrap();
-    std::env::remove_var("KREMIS_API_KEY");
+    // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
 
     let mut session = Session::new();
 
@@ -615,7 +618,8 @@ async fn test_invalid_json_body() {
 /// Create a test server with authentication enabled.
 /// Must be called while holding AUTH_TEST_MUTEX.
 fn create_auth_test_server(api_key: &str) -> TestServer {
-    std::env::set_var("KREMIS_API_KEY", api_key);
+    // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
+    unsafe { std::env::set_var("KREMIS_API_KEY", api_key) };
     let session = Session::new();
     let state = AppState::new(session);
     let router = create_router(state);
@@ -624,7 +628,8 @@ fn create_auth_test_server(api_key: &str) -> TestServer {
 
 /// Clean up auth env var after test.
 fn cleanup_auth_env() {
-    std::env::remove_var("KREMIS_API_KEY");
+    // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
 }
 
 #[tokio::test]

@@ -9,7 +9,7 @@
 //! operations are available regardless of the current stage.
 //!
 //! The [`StageCapability`] enum documents which capabilities *conceptually* belong
-//! to each stage, but no runtime checks are performed. This is intentional for v0.1.0.
+//! to each stage, but no runtime checks are performed. This is intentional for v0.2.0.
 //!
 //! ## Stage Definitions
 //!
@@ -400,7 +400,7 @@ impl StageProgress {
 /// Capabilities that conceptually belong to each developmental stage.
 ///
 /// **Note:** This enum is a reference pattern documenting the intended capability
-/// progression. No runtime enforcement is performed in v0.1.0 — all operations
+/// progression. No runtime enforcement is performed in v0.2.0 — all operations
 /// are available regardless of the current stage. Use [`StageCapability::required_stage`]
 /// to query the conceptual stage requirement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

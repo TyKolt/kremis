@@ -2,7 +2,7 @@
 
 REST API for Kremis - a minimal, deterministic, graph-based cognitive substrate.
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **License:** Apache 2.0
 **Base URL:** `http://localhost:8080`
 
@@ -127,7 +127,7 @@ Health check endpoint. Always accessible without authentication.
 ```json
 {
   "status": "ok",
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
 ```
 
@@ -592,7 +592,7 @@ curl -X POST http://localhost:8080/export \
 ```bash
 # 1. Check server health
 curl http://localhost:8080/health
-# {"status":"ok","version":"0.1.0"}
+# {"status":"ok","version":"0.2.0"}
 
 # 2. Ingest some signals
 curl -X POST http://localhost:8080/signal \

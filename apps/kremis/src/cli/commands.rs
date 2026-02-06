@@ -4,10 +4,10 @@
 
 use crate::api;
 use kremis_core::{
+    Graph, KremisError, NodeId, Session,
     export::{canonical_checksum, export_canonical, import_canonical},
     primitives::MAX_SEQUENCE_LENGTH,
     system::{GraphMetrics, StageAssessor},
-    Graph, KremisError, NodeId, Session,
 };
 use std::path::PathBuf;
 

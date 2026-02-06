@@ -912,7 +912,7 @@ mod tests {
         let mut data = Vec::new();
         data.extend_from_slice(&100u32.to_le_bytes()); // Header length = 100
         data.extend_from_slice(&[0x4B, 0x52, 0x45, 0x58]); // "KREX" magic
-                                                           // Only 4 more bytes, but header_len says 100
+        // Only 4 more bytes, but header_len says 100
 
         let result = import_canonical(&data);
         assert!(result.is_err());

@@ -16,7 +16,7 @@
 
 use axum::{
     body::Body,
-    http::{header, Request, StatusCode},
+    http::{Request, StatusCode, header},
     middleware::Next,
     response::Response,
 };
@@ -110,7 +110,8 @@ mod tests {
     #[test]
     fn test_get_api_key_empty_returns_none() {
         // Clear the env var if set
-        std::env::remove_var("KREMIS_API_KEY");
+        // SAFETY: This is a unit test running in isolation.
+        unsafe { std::env::remove_var("KREMIS_API_KEY") };
         assert!(get_api_key_from_env().is_none());
     }
 }
