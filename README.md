@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 > 🚧 **Work in Progress**  
 > Features incomplete. Breaking changes expected.
@@ -41,7 +41,7 @@ Current AI systems suffer from three fundamental problems:
 
 ## Requirements
 
-- Rust 1.75+ (stable)
+- Rust 1.85+ (stable, edition 2024)
 - Cargo
 
 ---

@@ -375,6 +375,22 @@ Get the related subgraph from a starting node.
 | `node_id` | integer (u64) | Yes | - | Starting node |
 | `depth` | integer | Yes | 0-100 | Maximum depth |
 
+##### 7. Properties
+
+Get the stored properties (attribute/value pairs) of a node.
+
+```json
+{
+  "type": "properties",
+  "node_id": 0
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Must be `"properties"` |
+| `node_id` | integer (u64) | Yes | Node to get properties for |
+
 #### Response
 
 **Status:** `200 OK`
@@ -418,7 +434,22 @@ Validation error:
 | `found` | boolean | Whether results were found |
 | `path` | array of u64 | Node path (for path queries) |
 | `edges` | array of Edge | Edges in result (for traversal queries) |
+| `properties` | array of Property | Node properties (for properties query, omitted when empty) |
 | `error` | string or null | Error message (if failed) |
+
+**Property Object:**
+
+```json
+{
+  "attribute": "name",
+  "value": "Alice"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `attribute` | string | Property attribute name |
+| `value` | string | Property value |
 
 **Edge Object:**
 
@@ -578,6 +609,15 @@ curl -X POST http://localhost:8080/query \
      -H "Authorization: Bearer your-api-key" \
      -H "Content-Type: application/json" \
      -d '{"type": "related", "node_id": 0, "depth": 2}'
+```
+
+#### Get Node Properties
+
+```bash
+curl -X POST http://localhost:8080/query \
+     -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{"type": "properties", "node_id": 0}'
 ```
 
 #### Export Graph

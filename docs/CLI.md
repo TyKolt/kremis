@@ -121,6 +121,7 @@ kremis query -t <TYPE> [OPTIONS]
 | `path` | `--start`, `--end` | Find strongest path |
 | `intersect` | `--nodes` | Find common connections |
 | `related` | `--start`, `--depth` | Compose related subgraph from node |
+| `properties` | `--start` | Get properties of a node |
 
 **Examples:**
 
@@ -131,6 +132,7 @@ kremis query -t path -s 0 -e 5
 kremis query -t intersect --nodes "0,1,2"
 kremis query -t related -s 0 -d 3
 kremis query -t traverse -s 0 -d 3 --min-weight 5
+kremis query -t properties -s 0
 ```
 
 ### export
