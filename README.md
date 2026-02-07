@@ -195,6 +195,10 @@ cargo fmt --all -- --check
 
 [Apache License 2.0](LICENSE)
 
+## Contributing
+
+This project is not accepting external contributions at this time. The architecture is still evolving. Feedback via [issues](https://github.com/M2Dr3g0n/kremis/issues) is welcome.
+
 ## Acknowledgments
 
 This project was developed with AI assistance.
