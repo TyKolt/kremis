@@ -78,7 +78,7 @@ The server implements rate limiting to prevent abuse.
 
 ### Default Limit
 
-- **100 requests per second** per client
+- **100 requests per second**, shared across all clients (global, not per-client)
 
 ### Configuration
 

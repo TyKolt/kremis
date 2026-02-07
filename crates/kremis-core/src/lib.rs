@@ -36,7 +36,6 @@ pub mod ingestor;
 pub mod mutation;
 pub mod primitives;
 pub mod query;
-pub mod response;
 pub mod session;
 pub mod storage;
 pub mod system;
@@ -66,7 +65,6 @@ pub use grounding::{GroundedResult, verify_hypothesis};
 pub use ingestor::Ingestor;
 pub use mutation::MutationEngine;
 pub use query::{Query, QueryType};
-pub use response::{Fact, HonestResponse, Inference, Unknown};
 pub use session::{Session, StorageBackend};
 pub use storage::RedbGraph;
 

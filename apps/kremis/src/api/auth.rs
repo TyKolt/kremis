@@ -46,7 +46,7 @@ pub fn get_api_key_from_env() -> Option<String> {
 pub async fn api_key_auth_middleware(
     request: Request<Body>,
     next: Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, (StatusCode, &'static str)> {
     let expected_key = get_api_key_from_env();
 
     // If no API key configured, allow all requests
@@ -89,12 +89,12 @@ pub async fn api_key_auth_middleware(
                 Ok(next.run(request).await)
             } else {
                 tracing::warn!("Authentication failed: invalid API key");
-                Err(StatusCode::UNAUTHORIZED)
+                Err((StatusCode::UNAUTHORIZED, "Unauthorized"))
             }
         }
         None => {
             tracing::warn!("Missing Authorization header");
-            Err(StatusCode::UNAUTHORIZED)
+            Err((StatusCode::UNAUTHORIZED, "Unauthorized"))
         }
     }
 }

@@ -22,6 +22,9 @@ use governor::{
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
+/// Default rate limit: 100 requests per second.
+const DEFAULT_RPS: NonZeroU32 = NonZeroU32::new(100).unwrap();
+
 // =============================================================================
 // RATE LIMITER
 // =============================================================================
@@ -37,8 +40,7 @@ pub type GlobalRateLimiter = Arc<RateLimiter<NotKeyed, InMemoryState, DefaultClo
 /// # Returns
 /// A thread-safe rate limiter wrapped in Arc.
 pub fn create_rate_limiter(requests_per_second: u32) -> GlobalRateLimiter {
-    let rps = NonZeroU32::new(requests_per_second)
-        .unwrap_or_else(|| NonZeroU32::new(100).expect("100 is non-zero"));
+    let rps = NonZeroU32::new(requests_per_second).unwrap_or(DEFAULT_RPS);
     let quota = Quota::per_second(rps);
     Arc::new(RateLimiter::direct(quota))
 }
@@ -61,12 +63,12 @@ pub async fn rate_limit_middleware(
     State(limiter): State<GlobalRateLimiter>,
     request: Request<Body>,
     next: Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, (StatusCode, &'static str)> {
     match limiter.check() {
         Ok(_) => Ok(next.run(request).await),
         Err(_) => {
             tracing::warn!("Rate limit exceeded");
-            Err(StatusCode::TOO_MANY_REQUESTS)
+            Err((StatusCode::TOO_MANY_REQUESTS, "Too Many Requests"))
         }
     }
 }

@@ -193,7 +193,7 @@ kremis stage --detailed
 
 # Export/Import
 kremis export -o graph.bin -t canonical
-kremis import -i graph.bin
+kremis import -i graph.bin -B file
 
 # JSON mode for scripting
 kremis --json-mode status
