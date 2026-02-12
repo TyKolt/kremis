@@ -23,12 +23,12 @@ fn test_health_response_default() {
 fn test_health_response_serialization() {
     let health = HealthResponse {
         status: "ok".to_string(),
-        version: "0.2.0".to_string(),
+        version: "0.2.1".to_string(),
     };
 
     let json = serde_json::to_string(&health).unwrap();
     assert!(json.contains("\"status\":\"ok\""));
-    assert!(json.contains("\"version\":\"0.2.0\""));
+    assert!(json.contains("\"version\":\"0.2.1\""));
 }
 
 #[test]
