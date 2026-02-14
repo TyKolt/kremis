@@ -667,6 +667,37 @@ curl http://localhost:8080/stage
 
 ---
 
+## MCP Server
+
+Kremis provides an MCP server (`apps/kremis-mcp`) that enables AI assistants to interact with the knowledge graph via stdio transport.
+
+**Protocol:** Model Context Protocol (rmcp 0.15)
+**Transport:** stdio (JSON-RPC)
+**Status:** Beta
+
+### Available Tools
+
+| Tool | HTTP Equivalent | Description |
+|------|----------------|-------------|
+| `kremis_ingest` | `POST /signal` | Ingest signal |
+| `kremis_lookup` | `POST /query` (lookup) | Look up entity |
+| `kremis_traverse` | `POST /query` (traverse) | Traverse graph |
+| `kremis_path` | `POST /query` (strongest_path) | Find strongest path |
+| `kremis_intersect` | `POST /query` (intersect) | Common connections |
+| `kremis_status` | `GET /status` | Graph statistics |
+| `kremis_properties` | `POST /query` (properties) | Node properties |
+
+### Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KREMIS_URL` | Kremis server URL | `http://localhost:8080` |
+| `KREMIS_API_KEY` | Optional Bearer token | (disabled) |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.
+
+---
+
 ## See Also
 
 - [GitHub Repository](https://github.com/M2Dr3g0n/kremis) - Source code and issues

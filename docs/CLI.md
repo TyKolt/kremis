@@ -206,3 +206,4 @@ kremis --json-mode status
 ## See Also
 
 - [API Documentation](./API.md) — HTTP API reference
+- [MCP Server](./API.md#mcp-server) — AI assistant integration via Model Context Protocol
