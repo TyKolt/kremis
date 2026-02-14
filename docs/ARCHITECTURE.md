@@ -174,6 +174,41 @@ Stages are **informational only** — they do not gate functionality. `StageCapa
 
 ---
 
+## MCP Server (kremis-mcp)
+
+External process that translates MCP (Model Context Protocol) into HTTP calls to the Kremis REST API. Does not embed `kremis-core`.
+
+```
+Claude/GPT <--MCP (stdio)--> kremis-mcp <--HTTP--> kremis server
+```
+
+| Module | Responsibility |
+|--------|---------------|
+| `main.rs` | Entry point: env vars, tracing to stderr, stdio transport |
+| `server.rs` | `KremisMcp` + `ServerHandler` + 7 MCP tools via `rmcp` |
+| `client.rs` | `KremisClient`: HTTP wrapper (`reqwest`) to Kremis API |
+
+### MCP Tools
+
+| Tool | Kremis API Call | Description |
+|------|----------------|-------------|
+| `kremis_ingest` | `POST /signal` | Add entity or relation |
+| `kremis_lookup` | `POST /query` (lookup) | Look up entity by ID |
+| `kremis_traverse` | `POST /query` (traverse) | Traverse from node |
+| `kremis_path` | `POST /query` (strongest_path) | Find strongest path |
+| `kremis_intersect` | `POST /query` (intersect) | Find common connections |
+| `kremis_status` | `GET /status` | Graph statistics |
+| `kremis_properties` | `POST /query` (properties) | Node properties |
+
+### Configuration
+
+| Env Variable | Default | Description |
+|-------------|---------|-------------|
+| `KREMIS_URL` | `http://localhost:8080` | Kremis server URL |
+| `KREMIS_API_KEY` | (none) | Optional Bearer token |
+
+---
+
 ## Rust API Reference
 
 Run `cargo doc --no-deps --package kremis-core --open` for the complete, compiler-generated API reference.

@@ -1,0 +1,35 @@
+# =============================================================================
+# APPS/KREMIS-MCP - MCP Server Bridge
+# =============================================================================
+#
+# External process that translates MCP (Model Context Protocol) into
+# HTTP calls to the Kremis REST API. Pure protocol translator.
+#
+# Claude/GPT <--MCP (stdio)--> kremis-mcp <--HTTP--> kremis server
+#
+# Does NOT embed kremis-core. Communicates exclusively via HTTP.
+# =============================================================================
+
+[package]
+name = "kremis-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kremis MCP Server - Model Context Protocol bridge to Kremis API"
+
+[[bin]]
+name = "kremis-mcp"
+path = "src/main.rs"
+
+[dependencies]
+rmcp = { version = "0.15", features = ["server", "transport-io", "schemars"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = "0.8"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

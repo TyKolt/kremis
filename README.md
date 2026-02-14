@@ -107,6 +107,36 @@ cargo run -p kremis -- import -i graph.bin -B file
 
 See [docs/API.md](docs/API.md) for full API documentation with examples.
 
+### MCP Server
+
+Kremis provides an MCP (Model Context Protocol) server that enables AI assistants like Claude to interact with the knowledge graph directly.
+
+```bash
+# Build the MCP server
+cargo build -p kremis-mcp --release
+
+# Run (requires a Kremis HTTP server running)
+KREMIS_URL=http://localhost:8080 ./target/release/kremis-mcp
+```
+
+Configure in Claude Code (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "kremis": {
+      "command": "/path/to/kremis-mcp",
+      "env": {
+        "KREMIS_URL": "http://localhost:8080",
+        "KREMIS_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+7 tools available: `kremis_ingest`, `kremis_lookup`, `kremis_traverse`, `kremis_path`, `kremis_intersect`, `kremis_status`, `kremis_properties`.
+
 ### Rust API
 
 ```rust
@@ -131,6 +161,7 @@ let node_id = session.ingest(&signal)?;
 |-----------|-------------|
 | **kremis-core** | Deterministic graph engine (pure Rust, no async) |
 | **apps/kremis** | HTTP server + CLI (tokio, axum, clap) |
+| **apps/kremis-mcp** | MCP server bridge for AI assistants (rmcp, stdio) |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for internal details (data flow, storage backends, algorithms, export formats).
 

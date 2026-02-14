@@ -2,6 +2,7 @@
 members = [
     "crates/kremis-core",
     "apps/kremis",
+    "apps/kremis-mcp",
 ]
 resolver = "2"
 
