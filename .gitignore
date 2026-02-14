@@ -38,6 +38,11 @@ venv/
 .env.*
 !.env.example
 
+# Local tooling (not part of the Rust project)
+social/
+video/
+
 # OS
 .DS_Store
 Thumbs.db
+nul
