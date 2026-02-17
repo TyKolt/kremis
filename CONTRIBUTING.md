@@ -21,8 +21,7 @@ kremis/
 ├── crates/kremis-core/   # Graph engine (pure Rust, no async, no network)
 ├── apps/kremis/           # HTTP server + CLI (axum, clap)
 ├── apps/kremis-mcp/       # MCP server bridge (rmcp, stdio)
-├── docs/                  # Public documentation (API.md, CLI.md, ARCHITECTURE.md)
-└── dev-docs/              # Developer docs (CLAUDE.md, ROADMAP.md)
+└── docs/                  # Public documentation (API.md, CLI.md, ARCHITECTURE.md)
 ```
 
 ---
@@ -124,8 +123,6 @@ Committed files that contain the version (all must be updated together):
 | `Cargo.toml` | `[workspace.package] version` |
 | `docs/API.md` | Version in header |
 | `apps/kremis/tests/types_tests.rs` | Version assertion |
-
-> **Note:** The maintainer also updates local files (`dev-docs/CLAUDE.md`, `dev-docs/ROADMAP.md`) that are not in the public repo.
 
 ---
 
