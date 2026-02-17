@@ -24,7 +24,6 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
-      - "rust"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -42,4 +41,3 @@ updates:
       prefix: "ci"
     labels:
       - "dependencies"
-      - "ci"
