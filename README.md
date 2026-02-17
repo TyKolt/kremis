@@ -164,7 +164,7 @@ cargo build -p kremis-mcp --release
 KREMIS_URL=http://localhost:8080 ./target/release/kremis-mcp
 ```
 
-Configure in Claude Code (`claude_desktop_config.json`):
+Configure in Claude Desktop (`claude_desktop_config.json`):
 
 ```json
 {
@@ -216,7 +216,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for internal details (data flow
 
 ```bash
 cargo test --workspace
-cargo clippy --all-targets -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 ```
 
@@ -228,7 +228,7 @@ cargo fmt --all -- --check
 
 ## Contributing
 
-This project is not accepting external contributions at this time. The architecture is still evolving. Feedback via [issues](https://github.com/M2Dr3g0n/kremis/issues) is welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The architecture is still evolving — open an [issue](https://github.com/M2Dr3g0n/kremis/issues) before submitting a PR.
 
 ## Acknowledgments
 
