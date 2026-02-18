@@ -1,0 +1,41 @@
+---
+title: "Installation"
+description: "Build Kremis from source or run with Docker."
+icon: "wrench"
+---
+
+## From Source
+
+Requires **Rust 1.85+** (stable, edition 2024).
+
+```bash
+git clone https://github.com/M2Dr3g0n/kremis.git
+cd kremis
+cargo build --release
+```
+
+The binaries are built to `target/release/`:
+- `kremis` — CLI and HTTP server
+- `kremis-mcp` — MCP server for AI assistants
+
+### Verify
+
+```bash
+cargo test --workspace
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+## Docker
+
+```bash
+docker build -t kremis .
+docker run -d -p 8080:8080 -v kremis-data:/data kremis
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KREMIS_API_KEY` | Enables Bearer token authentication | (disabled) |
+| `KREMIS_RATE_LIMIT` | Requests per second rate limit | `100` |
+| `KREMIS_CORS_ORIGINS` | Comma-separated allowed origins, or `*` | localhost only |

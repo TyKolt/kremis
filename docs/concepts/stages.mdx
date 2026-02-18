@@ -1,0 +1,61 @@
+---
+title: "Developmental Stages"
+description: "How Kremis tracks graph maturity through four developmental stages."
+icon: "stairs"
+---
+
+Kremis tracks the maturity of the graph through **developmental stages** based on the count of stable edges (edges with weight ≥ 10).
+
+<Note>
+  Stages are **informational only** — they do not gate functionality.
+</Note>
+
+## Stage Progression
+
+| Stage | Name | Stable Edge Threshold |
+|-------|------|-----------------------|
+| **S0** | Signal Segmentation | 0 |
+| **S1** | Pattern Crystallization | 100 |
+| **S2** | Causal Chaining | 1,000 |
+| **S3** | Recursive Optimization | 5,000 |
+
+## What Each Stage Represents
+
+<Steps>
+  <Step title="S0 — Signal Segmentation">
+    Initial stage. The graph is building basic structure from incoming signals. Few or no stable patterns yet.
+  </Step>
+  <Step title="S1 — Pattern Crystallization">
+    Patterns are emerging from repeated signals. At least 100 edges have been reinforced to stability (weight ≥ 10).
+  </Step>
+  <Step title="S2 — Causal Chaining">
+    Strong interconnections are forming. The graph contains meaningful chains of stable relationships.
+  </Step>
+  <Step title="S3 — Recursive Optimization">
+    The graph is well-connected and stable. Over 5,000 edges have been reinforced through repeated observation.
+  </Step>
+</Steps>
+
+## Querying the Stage
+
+### HTTP API
+
+```bash
+curl http://localhost:8080/stage
+```
+
+```json
+{
+  "stage": "S1",
+  "name": "Pattern Crystallization",
+  "progress_percent": 45,
+  "stable_edges_needed": 100,
+  "stable_edges_current": 45
+}
+```
+
+### CLI
+
+```bash
+kremis stage --detailed
+```

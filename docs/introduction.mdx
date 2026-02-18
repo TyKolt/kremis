@@ -1,0 +1,67 @@
+---
+title: "Introduction"
+description: "Kremis is a minimal, deterministic, graph-based cognitive substrate implemented in Rust."
+---
+
+**Kremis** is a minimal, deterministic, graph-based cognitive substrate implemented in Rust.
+
+It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
+
+<Warning>
+  **Work in Progress** — Features incomplete. Breaking changes expected.
+</Warning>
+
+<Note>
+  The system does not *understand*. It contains only the structure of the signals it has processed.
+</Note>
+
+## Why Kremis
+
+| Problem | How Kremis addresses it |
+|---------|------------------------|
+| **Hallucination** | No fabricated data. Every result traces back to real ingested signals. Explicit "not found" for missing data. |
+| **Opacity** | Fully inspectable state. No hidden layers, no black box. Every result traces back to a graph path. |
+| **Lack of grounding** | Zero pre-loaded knowledge. All structure emerges from real signals, not assumptions. |
+| **Non-determinism** | Same input, same output. No randomness, no floating-point arithmetic in core. |
+| **Data loss** | ACID transactions via `redb` embedded database. Crash-safe by design. |
+
+## Architecture Overview
+
+| Component | Description |
+|-----------|-------------|
+| **kremis-core** | Deterministic graph engine (pure Rust, no async) |
+| **apps/kremis** | HTTP server + CLI (tokio, axum, clap) |
+| **apps/kremis-mcp** | MCP server bridge for AI assistants (rmcp, stdio) |
+
+<CardGroup cols={3}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get running in 2 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    REST API endpoints
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Command-line interface
+  </Card>
+</CardGroup>
+
+## Design Principles
+
+<Steps>
+  <Step title="Minimal">
+    No pre-loaded knowledge. No plugins. No configuration beyond what's needed.
+  </Step>
+  <Step title="Deterministic">
+    Same input always produces the same output. BTreeMap everywhere, no HashMap.
+  </Step>
+  <Step title="Grounded">
+    Every piece of data traces back to an ingested signal. Nothing is invented.
+  </Step>
+  <Step title="Honest">
+    Explicit "not found" responses. No guessing, no hallucination.
+  </Step>
+</Steps>
+
+## License
+
+[Apache License 2.0](https://github.com/M2Dr3g0n/kremis/blob/main/LICENSE)

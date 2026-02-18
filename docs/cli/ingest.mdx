@@ -1,0 +1,50 @@
+---
+title: "ingest"
+description: "Ingest signals from a file."
+icon: "upload"
+---
+
+```bash
+kremis ingest -f <FILE> [-t <FORMAT>]
+```
+
+Read signals from a file and ingest them into the graph.
+
+## Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--file <path>` | `-f` | Path to the input file | (required) |
+| `--format <fmt>` | `-t` | Input format: `json` or `text` | `json` |
+
+## Input Formats
+
+### JSON
+
+Array of signal objects:
+
+```json
+[
+  {"entity_id": 1, "attribute": "name", "value": "Alice"},
+  {"entity_id": 2, "attribute": "name", "value": "Bob"}
+]
+```
+
+### Text
+
+Colon-separated `entity_id:attribute:value` per line:
+
+```text
+1:name:Alice
+2:name:Bob
+```
+
+## Examples
+
+```bash
+# Ingest JSON signals
+kremis ingest -f examples/sample_signals.json -t json
+
+# Ingest text signals
+kremis ingest -f examples/sample_signals.txt -t text
+```

@@ -1,0 +1,101 @@
+---
+title: "Architecture"
+description: "Internal architecture of the Kremis graph engine."
+icon: "building"
+---
+
+## Data Flow
+
+```
+Signal (Entity | Attribute | Value)
+        │
+        ▼
+   ┌─────────┐    validate attribute ≤256B, value ≤64KB
+   │ Ingestor │    get_or_create node for entity
+   └────┬────┘    store_property(node, attribute, value)
+        │         link adjacent signals (ASSOCIATION_WINDOW = 1)
+        ▼
+   ┌─────────┐
+   │ Session  │──── match backend ────┐
+   └─────────┘                        │
+        │                             │
+   ┌────┴─────┐               ┌──────┴──────┐
+   │ InMemory │               │ Persistent  │
+   │  (Graph) │               │ (RedbGraph) │
+   └──────────┘               └─────────────┘
+        │                             │
+        ▼                             ▼
+   ┌──────────┐               ┌──────────────┐
+   │Compositor│               │  Compositor  │
+   │ (query)  │               │   (query)    │
+   └────┬─────┘               └──────┬───────┘
+        │                             │
+        ▼                             ▼
+     Artifact { path, subgraph }
+```
+
+## Session and Storage
+
+`Session` wraps a `StorageBackend` enum and a volatile `Buffer`:
+
+```rust
+pub struct Session {
+    backend: StorageBackend,   // graph data (persistent or in-memory)
+    buffer: Buffer,            // active context (always volatile, never saved)
+}
+
+pub enum StorageBackend {
+    InMemory(Graph),
+    Persistent(RedbGraph),
+}
+```
+
+Every operation delegates via `match`. Both backends implement the `GraphStore` trait (16 methods), ensuring identical behavior.
+
+## Signal Ingestion Pipeline
+
+```
+ingest_signal(graph, signal):
+  1. validate(signal)            → KremisError::InvalidSignal if bad
+  2. node_id = insert_node(entity) or get existing
+  3. store_property(node_id, attribute, value)
+  4. return node_id
+
+ingest_sequence(graph, [A, B, C]):
+  Uses signals.windows(ASSOCIATION_WINDOW + 1) = windows(2)
+  → ingest A, ingest B, edge A→B (weight +1)
+  → ingest B, ingest C, edge B→C (weight +1)
+  Repeated signals on same edge: weight increments (saturating)
+```
+
+## Export Formats
+
+### Canonical (bit-exact, for verification)
+
+```
+[header_len: u32 LE] [CanonicalHeader: postcard] [CanonicalGraph: postcard]
+
+Header: magic=b"KREX", version=2, node_count, edge_count, checksum
+Data:   nodes (sorted), edges (sorted), next_node_id, properties (sorted)
+```
+
+- Checksum: XOR-based deterministic hash (not cryptographic)
+- V1 backward compatibility: imports without properties field
+- Import limits: 1M nodes, 10M edges (DoS protection)
+
+### Persistence (binary, for disk storage)
+
+```
+[magic: b"KREM" 4B] [version: 1B] [SerializableGraph: postcard]
+```
+
+- Payload limit: 500 MB
+- `SerializableGraph`: JSON-compatible via serde
+
+## Rust API Reference
+
+Generate the full compiler-generated API reference:
+
+```bash
+cargo doc --no-deps --package kremis-core --open
+```

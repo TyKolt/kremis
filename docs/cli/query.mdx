@@ -1,0 +1,63 @@
+---
+title: "query"
+description: "Execute a query on the graph."
+icon: "magnifying-glass"
+---
+
+```bash
+kremis query -t <TYPE> [OPTIONS]
+```
+
+## Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--query-type <type>` | `-t` | Query type (see below) | (required) |
+| `--start <id>` | `-s` | Start node ID | — |
+| `--end <id>` | `-e` | End node ID (for path) | — |
+| `--depth <n>` | `-d` | Traversal depth | `3` |
+| `--entity <id>` | | Entity ID (for lookup) | — |
+| `--nodes <ids>` | | Comma-separated node IDs (for intersect) | — |
+| `--min-weight <w>` | | Minimum edge weight filter | — |
+
+## Query Types
+
+| Type | Required Options | Description |
+|------|-----------------|-------------|
+| `lookup` | `--entity` | Find node by entity ID |
+| `traverse` | `--start`, `--depth` | BFS traversal from node |
+| `path` | `--start`, `--end` | Find strongest path |
+| `intersect` | `--nodes` | Find common connections |
+| `related` | `--start`, `--depth` | Compose related subgraph |
+| `properties` | `--start` | Get properties of a node |
+
+Add `--min-weight` to `traverse` for filtered traversal.
+
+## Examples
+
+```bash
+# Lookup entity
+kremis query -t lookup --entity 1
+
+# Traverse from node 0, depth 3
+kremis query -t traverse -s 0 -d 3
+
+# Filtered traverse (weight >= 5)
+kremis query -t traverse -s 0 -d 3 --min-weight 5
+
+# Strongest path between nodes
+kremis query -t path -s 0 -e 5
+
+# Intersect nodes
+kremis query -t intersect --nodes "0,1,2"
+
+# Related subgraph
+kremis query -t related -s 0 -d 3
+
+# Node properties
+kremis query -t properties -s 0
+```
+
+<Tip>
+  Use `--json-mode` (global option) for machine-readable output when scripting.
+</Tip>

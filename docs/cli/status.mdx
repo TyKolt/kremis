@@ -1,0 +1,41 @@
+---
+title: "status / stage"
+description: "Show graph statistics and developmental stage."
+icon: "chart-bar"
+---
+
+## status
+
+```bash
+kremis status
+```
+
+Shows graph statistics: node count, edge count, density.
+
+## stage
+
+```bash
+kremis stage [--detailed]
+```
+
+Shows the current developmental stage.
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--detailed` | `-d` | Show detailed progress information |
+
+## Examples
+
+```bash
+# Basic status
+kremis status
+
+# Stage information
+kremis stage
+
+# Detailed stage with progress
+kremis stage --detailed
+
+# JSON output for scripting
+kremis --json-mode status
+```

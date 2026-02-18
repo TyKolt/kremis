@@ -1,0 +1,30 @@
+---
+title: "init"
+description: "Initialize a new empty database."
+icon: "database"
+---
+
+```bash
+kremis init [--force]
+```
+
+Creates a new empty Kremis database at the configured path.
+
+## Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--force` | `-f` | Force initialization even if database exists |
+
+## Examples
+
+```bash
+# Initialize default database
+kremis init
+
+# Force re-initialize (resets all data)
+kremis init --force
+
+# Initialize at custom path
+kremis -D /path/to/my.db init
+```

@@ -1,0 +1,52 @@
+---
+title: "Query: Related"
+description: "Get the related subgraph from a starting node."
+icon: "share-nodes"
+---
+
+<ParamField path="method" type="POST">
+  `/query`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Retrieve the subgraph of nodes and edges reachable from a starting node up to a given depth.
+
+## Request
+
+```json
+{
+  "type": "related",
+  "node_id": 0,
+  "depth": 2
+}
+```
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `type` | string | Yes | `"related"` | — |
+| `node_id` | integer (u64) | Yes | — | Starting node. |
+| `depth` | integer | Yes | 0-100 | Maximum depth. |
+
+## Response
+
+```json 200 OK
+{
+  "success": true,
+  "found": true,
+  "path": [0, 1, 2],
+  "edges": [
+    {"from": 0, "to": 1, "weight": 10},
+    {"from": 0, "to": 2, "weight": 7}
+  ],
+  "error": null
+}
+```
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "related", "node_id": 0, "depth": 2}'
+```

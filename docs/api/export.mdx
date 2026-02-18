@@ -1,0 +1,55 @@
+---
+title: "POST /export"
+description: "Export the graph in canonical binary format."
+icon: "download"
+---
+
+<ParamField path="method" type="POST">
+  `/export`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Export the entire graph as base64-encoded canonical binary data with a checksum for verification.
+
+<Info>
+  Export works for both in-memory and persistent (redb) backends. For persistent backends, a snapshot is built by iterating all nodes and edges.
+</Info>
+
+## Response
+
+<CodeGroup>
+
+```json 200 OK — Success
+{
+  "success": true,
+  "data": "S1JFWA...",
+  "checksum": 12345678,
+  "error": null
+}
+```
+
+```json 500 Internal Server Error — Failure
+{
+  "success": false,
+  "data": null,
+  "checksum": null,
+  "error": "Failed to build graph snapshot: ..."
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether export succeeded. |
+| `data` | string or null | Base64-encoded graph data. |
+| `checksum` | integer (u64) or null | Deterministic checksum for verification. |
+| `error` | string or null | Error message (if failed). |
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/export \
+     -H "Authorization: Bearer your-api-key"
+```

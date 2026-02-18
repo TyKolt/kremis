@@ -1,0 +1,55 @@
+---
+title: "Query: Properties"
+description: "Get the stored properties (attribute/value pairs) of a node."
+icon: "list"
+---
+
+<ParamField path="method" type="POST">
+  `/query`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Retrieve all stored attribute/value pairs for a specific node.
+
+## Request
+
+```json
+{
+  "type": "properties",
+  "node_id": 0
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Must be `"properties"`. |
+| `node_id` | integer (u64) | Yes | Node to get properties for. |
+
+## Response
+
+```json 200 OK
+{
+  "success": true,
+  "found": true,
+  "path": [],
+  "edges": [],
+  "properties": [
+    {"attribute": "name", "value": "Alice"},
+    {"attribute": "role", "value": "engineer"}
+  ],
+  "error": null
+}
+```
+
+<Note>
+  The `properties` field is only included when non-empty.
+</Note>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "properties", "node_id": 0}'
+```

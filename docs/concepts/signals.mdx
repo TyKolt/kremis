@@ -1,0 +1,64 @@
+---
+title: "Signals"
+description: "Signals are the atomic unit of data in Kremis: Entity | Attribute | Value."
+icon: "signal"
+---
+
+A **signal** is a grounded observation in the form:
+
+```
+Entity | Attribute | Value
+```
+
+Every piece of data in Kremis enters as a signal. There is no other way to add information to the graph.
+
+## Structure
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `entity_id` | `u64` | — | Unique identifier for the entity |
+| `attribute` | `string` | Max 256 bytes, non-empty | The attribute name |
+| `value` | `string` | Max 64 KB, non-empty | The attribute value |
+
+## Example
+
+```json
+{"entity_id": 1, "attribute": "name", "value": "Alice"}
+```
+
+This signal records that entity `1` has an attribute `name` with value `Alice`.
+
+## Ingestion Behavior
+
+When a signal is ingested:
+
+1. **Validate** — attribute and value length are checked
+2. **Node creation** — a node is created for the entity (or the existing one is reused)
+3. **Property storage** — the attribute/value pair is stored as a property on the node
+4. **Edge formation** — when signals are ingested in sequence, adjacent signals form edges with weight `+1`
+
+<Info>
+  Repeated signals on the same edge cause the weight to increment (saturating arithmetic). This is how patterns emerge — frequently co-occurring signals produce stronger edges.
+</Info>
+
+## Input Formats
+
+### JSON
+
+```json
+[
+  {"entity_id": 1, "attribute": "name", "value": "Alice"},
+  {"entity_id": 2, "attribute": "name", "value": "Bob"},
+  {"entity_id": 1, "attribute": "knows", "value": "Bob"}
+]
+```
+
+### Text
+
+Colon-separated `entity_id:attribute:value` per line:
+
+```text
+1:name:Alice
+2:name:Bob
+1:knows:Bob
+```

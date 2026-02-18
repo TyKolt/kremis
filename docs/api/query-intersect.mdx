@@ -1,0 +1,49 @@
+---
+title: "Query: Intersect"
+description: "Find nodes connected to all specified input nodes."
+icon: "circle-nodes"
+---
+
+<ParamField path="method" type="POST">
+  `/query`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Find nodes that are neighbors of **all** input nodes (set intersection of neighbor sets).
+
+## Request
+
+```json
+{
+  "type": "intersect",
+  "nodes": [0, 1, 2]
+}
+```
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `type` | string | Yes | `"intersect"` | — |
+| `nodes` | array of u64 | Yes | Max 100 items | Node IDs to intersect. |
+
+## Response
+
+```json 200 OK
+{
+  "success": true,
+  "found": true,
+  "path": [5, 8],
+  "edges": [],
+  "error": null
+}
+```
+
+The `path` array contains the node IDs that are connected to all input nodes.
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "intersect", "nodes": [0, 1, 2]}'
+```

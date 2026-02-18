@@ -1,0 +1,103 @@
+---
+title: "Quick Start"
+description: "Get Kremis running in under 2 minutes."
+icon: "rocket"
+---
+
+## Prerequisites
+
+- **Rust 1.85+** (stable, edition 2024)
+- Cargo (included with Rust)
+
+## Build
+
+```bash
+git clone https://github.com/M2Dr3g0n/kremis.git
+cd kremis
+cargo build --release
+cargo test --workspace
+```
+
+## First Run
+
+<Steps>
+  <Step title="Initialize the database">
+    ```bash
+    cargo run -p kremis -- init
+    ```
+  </Step>
+  <Step title="Ingest sample data">
+    The repository includes sample signals with 3 entities (Alice, Bob, Kremis) and their relationships.
+    ```bash
+    cargo run -p kremis -- ingest -f examples/sample_signals.json -t json
+    ```
+  </Step>
+  <Step title="Start the HTTP server">
+    ```bash
+    cargo run -p kremis -- server
+    ```
+    The server starts on `http://localhost:8080` by default.
+  </Step>
+  <Step title="Query the graph">
+    In a separate terminal:
+    ```bash
+    # Health check
+    curl http://localhost:8080/health
+
+    # Look up entity 1 (Alice)
+    curl -X POST http://localhost:8080/query \
+         -H "Content-Type: application/json" \
+         -d '{"type": "lookup", "entity_id": 1}'
+
+    # Traverse from node 0, depth 3
+    curl -X POST http://localhost:8080/query \
+         -H "Content-Type: application/json" \
+         -d '{"type": "traverse", "node_id": 0, "depth": 3}'
+
+    # Get properties of node 0
+    curl -X POST http://localhost:8080/query \
+         -H "Content-Type: application/json" \
+         -d '{"type": "properties", "node_id": 0}'
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  CLI commands and the HTTP server cannot run simultaneously — redb holds an exclusive lock. Stop the server before using CLI commands like `ingest`, `status`, or `export`.
+</Warning>
+
+## Docker
+
+```bash
+docker build -t kremis .
+docker run -d -p 8080:8080 -v kremis-data:/data kremis
+```
+
+With configuration:
+
+```bash
+docker run -d -p 8080:8080 \
+  -v kremis-data:/data \
+  -e KREMIS_API_KEY=your-secret \
+  -e KREMIS_CORS_ORIGINS="https://example.com" \
+  kremis
+```
+
+Multi-stage build (~136 MB image). Data persists in `/data` volume. Built-in healthcheck on `/health`.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore all HTTP endpoints
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Full command-line documentation
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/signals">
+    Understand signals, graphs, and stages
+  </Card>
+  <Card title="MCP Server" icon="robot" href="/mcp/overview">
+    Connect AI assistants to Kremis
+  </Card>
+</CardGroup>

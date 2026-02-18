@@ -1,0 +1,47 @@
+---
+title: "export / import"
+description: "Export and import graph data."
+icon: "arrows-rotate"
+---
+
+## export
+
+```bash
+kremis export -o <FILE> [-t <FORMAT>]
+```
+
+Export the graph to a file.
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--output <path>` | `-o` | Output file path | (required) |
+| `--format <fmt>` | `-t` | Export format: `canonical` or `json` | `canonical` |
+
+## import
+
+```bash
+kremis import -i <FILE> -B file
+```
+
+Import a graph from a canonical format file.
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--input <path>` | `-i` | Input file path |
+
+<Warning>
+  Import is currently supported only with the `file` backend (`-B file`). Import to `redb` backend is not yet implemented.
+</Warning>
+
+## Examples
+
+```bash
+# Export as canonical binary
+kremis export -o graph.bin -t canonical
+
+# Export as JSON
+kremis export -o graph.json -t json
+
+# Import (file backend only)
+kremis import -i graph.bin -B file
+```

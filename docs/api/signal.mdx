@@ -1,0 +1,66 @@
+---
+title: "POST /signal"
+description: "Ingest a new signal into the graph."
+icon: "upload"
+---
+
+<ParamField path="method" type="POST">
+  `/signal`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Ingest a signal representing a grounded observation: **Entity | Attribute | Value**.
+
+## Request Body
+
+```json
+{
+  "entity_id": 1,
+  "attribute": "name",
+  "value": "Alice"
+}
+```
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `entity_id` | integer (u64) | Yes | — | Entity identifier. |
+| `attribute` | string | Yes | Max 256 bytes, non-empty | Attribute name. |
+| `value` | string | Yes | Max 64 KB, non-empty | Attribute value. |
+
+## Response
+
+<CodeGroup>
+
+```json 200 OK — Success
+{
+  "success": true,
+  "node_id": 0,
+  "error": null
+}
+```
+
+```json 400 Bad Request — Validation Error
+{
+  "success": false,
+  "node_id": null,
+  "error": "Attribute length 300 exceeds maximum 256 bytes"
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether ingestion succeeded. |
+| `node_id` | integer or null | Created/existing node ID (if successful). |
+| `error` | string or null | Error message (if failed). |
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/signal \
+     -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{"entity_id": 1, "attribute": "name", "value": "Alice"}'
+```

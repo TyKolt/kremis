@@ -1,0 +1,75 @@
+---
+title: "Query: Traverse"
+description: "Traverse the graph from a node up to a specified depth."
+icon: "route"
+---
+
+<ParamField path="method" type="POST">
+  `/query`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+BFS traversal from a starting node. Optionally filter by minimum edge weight.
+
+## Standard Traverse
+
+```json
+{
+  "type": "traverse",
+  "node_id": 0,
+  "depth": 3
+}
+```
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `type` | string | Yes | `"traverse"` | — |
+| `node_id` | integer (u64) | Yes | — | Starting node. |
+| `depth` | integer | Yes | 0-100 | Maximum traversal depth. |
+
+## Filtered Traverse
+
+Include only edges above a minimum weight:
+
+```json
+{
+  "type": "traverse_filtered",
+  "node_id": 0,
+  "depth": 3,
+  "min_weight": 5
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `min_weight` | integer (i64) | Yes | Minimum edge weight to include. |
+
+## Response
+
+```json 200 OK
+{
+  "success": true,
+  "found": true,
+  "path": [0, 1, 2],
+  "edges": [
+    {"from": 0, "to": 1, "weight": 10},
+    {"from": 1, "to": 2, "weight": 5}
+  ],
+  "error": null
+}
+```
+
+## Examples
+
+```bash
+# Standard traverse
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "traverse", "node_id": 0, "depth": 3}'
+
+# Filtered traverse (weight >= 5 only)
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "traverse_filtered", "node_id": 0, "depth": 3, "min_weight": 5}'
+```

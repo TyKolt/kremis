@@ -1,0 +1,32 @@
+---
+title: "server"
+description: "Start the HTTP API server."
+icon: "server"
+---
+
+```bash
+kremis server [OPTIONS]
+```
+
+Starts the Kremis HTTP API server.
+
+## Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--host <host>` | `-H` | Host address to bind to | `127.0.0.1` |
+| `--port <port>` | `-p` | Port to listen on | `8080` |
+
+## Examples
+
+```bash
+# Start with defaults (localhost:8080)
+kremis server
+
+# Custom host and port
+kremis server -H 0.0.0.0 -p 3000
+```
+
+<Warning>
+  The server holds an exclusive lock on the redb database. Other CLI commands cannot run while the server is active.
+</Warning>

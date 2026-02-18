@@ -1,0 +1,36 @@
+---
+title: "GET /status"
+description: "Returns current graph statistics."
+icon: "chart-bar"
+---
+
+<ParamField path="method" type="GET">
+  `/status`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+## Response
+
+```json 200 OK
+{
+  "node_count": 42,
+  "edge_count": 35,
+  "stable_edges": 10,
+  "density_millionths": 1234
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `node_count` | integer | Total number of nodes in the graph. |
+| `edge_count` | integer | Total number of edges. |
+| `stable_edges` | integer | Edges above the stability threshold (weight ≥ 10). |
+| `density_millionths` | integer | Graph density expressed in millionths. |
+
+## Example
+
+```bash
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8080/status
+```

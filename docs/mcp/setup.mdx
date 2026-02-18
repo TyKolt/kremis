@@ -1,0 +1,70 @@
+---
+title: "MCP Setup"
+description: "How to configure the Kremis MCP server with AI assistants."
+icon: "gear"
+---
+
+## Prerequisites
+
+1. A running Kremis HTTP server
+2. The `kremis-mcp` binary (built from `apps/kremis-mcp`)
+
+## Build
+
+```bash
+cargo build -p kremis-mcp --release
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KREMIS_URL` | `http://localhost:8080` | Kremis server URL |
+| `KREMIS_API_KEY` | (none) | Optional Bearer token |
+
+## Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "kremis": {
+      "command": "/path/to/kremis-mcp",
+      "env": {
+        "KREMIS_URL": "http://localhost:8080",
+        "KREMIS_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+## Claude Code
+
+Add to your `.mcp.json` or project settings:
+
+```json
+{
+  "mcpServers": {
+    "kremis": {
+      "command": "/path/to/kremis-mcp",
+      "env": {
+        "KREMIS_URL": "http://localhost:8080"
+      }
+    }
+  }
+}
+```
+
+## Manual Testing
+
+```bash
+# Start the Kremis server first
+kremis server
+
+# In another terminal, run the MCP server
+KREMIS_URL=http://localhost:8080 ./target/release/kremis-mcp
+```
+
+The MCP server communicates via stdin/stdout using JSON-RPC. It will wait for MCP protocol messages.

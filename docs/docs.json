@@ -1,0 +1,153 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kremis",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#14B88A",
+    "dark": "#0A7A60"
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/M2Dr3g0n/kremis"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Quick Start",
+    "url": "/quickstart"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/signals",
+              "concepts/graph-engine",
+              "concepts/stages"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview"
+            ]
+          },
+          {
+            "group": "Health",
+            "pages": [
+              "api/health",
+              "api/status",
+              "api/stage"
+            ]
+          },
+          {
+            "group": "Signals",
+            "pages": [
+              "api/signal"
+            ]
+          },
+          {
+            "group": "Queries",
+            "pages": [
+              "api/query-lookup",
+              "api/query-traverse",
+              "api/query-path",
+              "api/query-intersect",
+              "api/query-related",
+              "api/query-properties"
+            ]
+          },
+          {
+            "group": "Export",
+            "pages": [
+              "api/export"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "icon": "terminal",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "cli/overview",
+              "cli/init",
+              "cli/server",
+              "cli/ingest",
+              "cli/query",
+              "cli/status",
+              "cli/export-import"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "MCP Server",
+        "icon": "robot",
+        "groups": [
+          {
+            "group": "Integration",
+            "pages": [
+              "mcp/overview",
+              "mcp/tools",
+              "mcp/setup"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/M2Dr3g0n/kremis",
+          "icon": "github"
+        },
+        {
+          "anchor": "Contributing",
+          "href": "https://github.com/M2Dr3g0n/kremis/blob/main/CONTRIBUTING.md",
+          "icon": "handshake"
+        }
+      ]
+    }
+  },
+  "footerSocials": {
+    "github": "https://github.com/M2Dr3g0n/kremis"
+  }
+}

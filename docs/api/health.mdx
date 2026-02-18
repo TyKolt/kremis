@@ -1,0 +1,31 @@
+---
+title: "GET /health"
+description: "Health check endpoint. Always accessible without authentication."
+icon: "heart-pulse"
+---
+
+<ParamField path="method" type="GET">
+  `/health`
+</ParamField>
+
+**Authentication:** Not required (always public)
+
+## Response
+
+```json 200 OK
+{
+  "status": "ok",
+  "version": "0.3.1"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Always `"ok"` if server is running. |
+| `version` | string | Server version. |
+
+## Example
+
+```bash
+curl http://localhost:8080/health
+```

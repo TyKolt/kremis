@@ -1,0 +1,40 @@
+---
+title: "GET /stage"
+description: "Returns the current developmental stage of the graph."
+icon: "stairs"
+---
+
+<ParamField path="method" type="GET">
+  `/stage`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+## Response
+
+```json 200 OK
+{
+  "stage": "S1",
+  "name": "Pattern Crystallization",
+  "progress_percent": 45,
+  "stable_edges_needed": 100,
+  "stable_edges_current": 45
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `stage` | string | Current stage (`S0`, `S1`, `S2`, `S3`). |
+| `name` | string | Human-readable stage name. |
+| `progress_percent` | integer | Progress towards next stage (0-100). |
+| `stable_edges_needed` | integer | Stable edges required for next stage. |
+| `stable_edges_current` | integer | Current count of stable edges. |
+
+See [Developmental Stages](/concepts/stages) for details on each stage.
+
+## Example
+
+```bash
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8080/stage
+```

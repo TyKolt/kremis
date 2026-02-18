@@ -1,0 +1,71 @@
+---
+title: "Graph Engine"
+description: "How the deterministic graph engine stores and queries data."
+icon: "diagram-project"
+---
+
+The graph engine is the core of Kremis. It stores nodes (entities), edges (relationships), and properties (attributes) in a fully deterministic structure.
+
+## Data Structures
+
+All collections use `BTreeMap` for **deterministic iteration order** — no `HashMap` is used anywhere in the core.
+
+```rust
+pub struct Graph {
+    nodes:        BTreeMap<NodeId, Node>,
+    edges:        BTreeMap<NodeId, BTreeMap<NodeId, EdgeWeight>>,
+    entity_index: BTreeMap<EntityId, NodeId>,
+    properties:   BTreeMap<NodeId, BTreeMap<Attribute, Vec<Value>>>,
+    next_node_id: u64,
+}
+```
+
+## Storage Backends
+
+<CardGroup cols={2}>
+  <Card title="In-Memory" icon="memory">
+    `Graph` struct in RAM. Fast, volatile. Used for testing and temporary sessions.
+  </Card>
+  <Card title="Persistent (redb)" icon="database">
+    ACID transactions, crash-safe. Copy-on-write B-trees with MVCC concurrent readers.
+  </Card>
+</CardGroup>
+
+### RedbGraph Tables
+
+| Table | Key | Value | Purpose |
+|-------|-----|-------|---------|
+| `NODES` | `u64` | `&[u8]` (postcard) | NodeId → serialized Node |
+| `EDGES` | `(u64, u64)` | `i64` | (from, to) → weight |
+| `ENTITY_INDEX` | `u64` | `u64` | EntityId → NodeId |
+| `METADATA` | `&str` | `u64` | Counters (e.g. `next_node_id`) |
+| `PROPERTIES` | `(u64, u64)` | `&[u8]` (postcard) | (node_id, attr_hash) → (Attribute, Vec\<Value\>) |
+
+## Query Algorithms
+
+| Method | Algorithm | Details |
+|--------|-----------|---------|
+| `compose` | BFS | `VecDeque` queue, bounded by `depth` (max 100) |
+| `compose_filtered` | BFS + weight filter | Skips edges below `min_weight` |
+| `strongest_path` | Dijkstra | Cost = `i64::MAX - weight` (higher weight = preferred) |
+| `intersect` | Set intersection | Neighbors of first node, intersect with remaining |
+| `related_context` | BFS | Contextual alias for `compose` |
+
+All traversals return an `Artifact` containing the path and optional subgraph edges.
+
+## Export Formats
+
+### Canonical (bit-exact)
+
+```
+[header_len: u32 LE] [CanonicalHeader: postcard] [CanonicalGraph: postcard]
+```
+
+- Magic: `b"KREX"`, version 2
+- Checksum: XOR-based deterministic hash
+- Import limits: 1M nodes, 10M edges (DoS protection)
+- V1 backward compatibility (imports without properties)
+
+### JSON
+
+`SerializableGraph` with serde — nodes, edges, next_node_id, properties.

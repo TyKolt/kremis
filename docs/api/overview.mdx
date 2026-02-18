@@ -1,0 +1,65 @@
+---
+title: "API Overview"
+description: "REST API for Kremis — authentication, rate limiting, and input validation."
+icon: "code"
+---
+
+**Base URL:** `http://localhost:8080`
+**Version:** 0.3.1
+**License:** Apache 2.0
+
+## Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (always public) |
+| `/status` | GET | Graph statistics |
+| `/stage` | GET | Developmental stage |
+| `/signal` | POST | Ingest a signal |
+| `/query` | POST | Execute a query |
+| `/export` | POST | Export graph |
+
+<Warning>
+  The HTTP server holds an exclusive lock on the redb database. CLI commands (`ingest`, `status`, `export`) cannot run while the server is active.
+</Warning>
+
+## Authentication
+
+Authentication is **optional**, controlled by the `KREMIS_API_KEY` environment variable.
+
+```bash
+export KREMIS_API_KEY="your-secret-api-key"
+```
+
+When enabled, include the key in requests:
+
+```
+Authorization: Bearer <your-api-key>
+```
+
+The `/health` endpoint is always accessible without authentication.
+
+## Rate Limiting
+
+- **Default:** 100 requests per second (global, not per-client)
+- **Configure:** `KREMIS_RATE_LIMIT=200`
+- **Exceeded:** returns `429 Too Many Requests`
+
+## Input Validation
+
+| Field | Limit |
+|-------|-------|
+| `attribute` | Max 256 bytes |
+| `value` | Max 64 KB (65,536 bytes) |
+| `depth` | Max 100 |
+| `nodes` (intersect) | Max 100 items |
+
+## Error Codes
+
+| Status | Description | Response Type |
+|--------|-------------|---------------|
+| `200` | Success | JSON |
+| `400` | Bad Request — invalid input | JSON with `error` field |
+| `401` | Unauthorized — missing or invalid API key | Plain text |
+| `429` | Too Many Requests — rate limit exceeded | Plain text |
+| `500` | Internal Server Error | JSON with `error` field |

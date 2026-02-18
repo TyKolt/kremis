@@ -1,0 +1,40 @@
+---
+title: "CLI Overview"
+description: "Command-line interface for Kremis."
+icon: "terminal"
+---
+
+The Kremis CLI provides direct access to the graph engine for initialization, ingestion, querying, and export operations.
+
+## Global Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--verbose` | `-v` | Enable verbose output | Off |
+| `--quiet` | `-q` | Suppress banner output | Off |
+| `--database <path>` | `-D` | Path to the graph database | `kremis.db` |
+| `--backend <type>` | `-B` | Storage backend: `file` or `redb` | `redb` |
+| `--json-mode` | | Output in JSON format | Off |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| [`init`](/cli/init) | Initialize a new empty database |
+| [`server`](/cli/server) | Start the HTTP API server |
+| [`ingest`](/cli/ingest) | Ingest signals from a file |
+| [`query`](/cli/query) | Execute a query on the graph |
+| [`status`](/cli/status) | Show graph status and developmental stage |
+| [`export` / `import`](/cli/export-import) | Export or import graph data |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KREMIS_API_KEY` | Enables Bearer token authentication | (disabled) |
+| `KREMIS_RATE_LIMIT` | Requests per second rate limit | `100` |
+| `KREMIS_CORS_ORIGINS` | Comma-separated allowed origins, or `*` | localhost only |
+
+<Warning>
+  CLI commands and the HTTP server cannot run simultaneously — redb holds an exclusive lock. Stop the server before using CLI commands like `ingest`, `status`, or `export`.
+</Warning>

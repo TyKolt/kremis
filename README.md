@@ -150,7 +150,7 @@ cargo run -p kremis -- import -i graph.bin -B file
 | `/query` | POST | Execute a query |
 | `/export` | POST | Export graph |
 
-See [docs/API.md](docs/API.md) for full API documentation with examples.
+See the [full documentation](https://kremis.mintlify.app/api/overview) or browse the [source docs](docs/api/) for API reference.
 
 ### MCP Server
 
@@ -208,7 +208,7 @@ let node_id = session.ingest(&signal)?;
 | **apps/kremis** | HTTP server + CLI (tokio, axum, clap) |
 | **apps/kremis-mcp** | MCP server bridge for AI assistants (rmcp, stdio) |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for internal details (data flow, storage backends, algorithms, export formats).
+See the [architecture docs](https://kremis.mintlify.app/architecture) or browse the [source](docs/architecture.mdx) for internal details (data flow, storage backends, algorithms, export formats).
 
 ---
 

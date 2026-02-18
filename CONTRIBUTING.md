@@ -21,7 +21,7 @@ kremis/
 ├── crates/kremis-core/   # Graph engine (pure Rust, no async, no network)
 ├── apps/kremis/           # HTTP server + CLI (axum, clap)
 ├── apps/kremis-mcp/       # MCP server bridge (rmcp, stdio)
-└── docs/                  # Public documentation (API.md, CLI.md, ARCHITECTURE.md)
+└── docs/                  # Public documentation (Mintlify MDX format)
 ```
 
 ---
@@ -104,7 +104,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 feat: add batch signal ingestion
 fix: correct edge weight overflow on increment
-docs: update API.md with new query type
+docs: update API reference with new query type
 chore: update dependencies
 test: add proptest for canonical roundtrip
 ```
@@ -121,7 +121,7 @@ Committed files that contain the version (all must be updated together):
 | File | What to update |
 |------|---------------|
 | `Cargo.toml` | `[workspace.package] version` |
-| `docs/API.md` | Version in header |
+| `docs/api/overview.mdx` | Version in description |
 | `apps/kremis/tests/types_tests.rs` | Version assertion |
 
 ---

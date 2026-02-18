@@ -1,0 +1,62 @@
+---
+title: "Query: Lookup"
+description: "Find a node by entity ID."
+icon: "magnifying-glass"
+---
+
+<ParamField path="method" type="POST">
+  `/query`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Find a node by its entity ID.
+
+## Request
+
+```json
+{
+  "type": "lookup",
+  "entity_id": 1
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Must be `"lookup"`. |
+| `entity_id` | integer (u64) | Yes | Entity to look up. |
+
+## Response
+
+<CodeGroup>
+
+```json Found
+{
+  "success": true,
+  "found": true,
+  "path": [0],
+  "edges": [],
+  "error": null
+}
+```
+
+```json Not Found
+{
+  "success": true,
+  "found": false,
+  "path": [],
+  "edges": [],
+  "error": null
+}
+```
+
+</CodeGroup>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/query \
+     -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{"type": "lookup", "entity_id": 1}'
+```
