@@ -1,6 +1,7 @@
 # Kremis
 
 [![CI](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-mintlify-0D9373.svg)](https://kremis.mintlify.app)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
