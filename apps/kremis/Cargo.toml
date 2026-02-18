@@ -38,7 +38,7 @@ path = "src/main.rs"
 # Internal dependency
 kremis-core = { path = "../../crates/kremis-core" }
 
-# App dependencies (per AGENTS.md Section 5.9 - FACETS only)
+# App dependencies
 tokio = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }

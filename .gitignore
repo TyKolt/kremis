@@ -7,19 +7,14 @@
 # Export artifacts (generated at runtime)
 *.bin
 
-# Claude Code
-tmpclaude*
+# Local
 .claude/
 .agent/
 .agents/
-
-# Archived code (kept locally, not published)
 _archive/
-
-# Internal dev docs (kept locally, not published)
 dev-docs/
-
-# Python (for archived cortex code)
+social/
+video/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -37,10 +32,6 @@ venv/
 .env
 .env.*
 !.env.example
-
-# Local tooling (not part of the Rust project)
-social/
-video/
 
 # OS
 .DS_Store

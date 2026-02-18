@@ -1,8 +1,7 @@
 //! # Confidence Module
 //!
-//! Confidence scoring for CORTEX-CORE verification.
+//! Confidence scoring for Core verification.
 //!
-//! Per ROADMAP.md Section 10.7.2:
 //! - Score based on graph density supporting the claim
 //! - More edges confirming fact = higher confidence
 //! - Threshold for "verified" vs "speculative" output

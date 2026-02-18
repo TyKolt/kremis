@@ -15,7 +15,7 @@
 //!
 //! ## Architectural Constraints
 //!
-//! Per AGENTS.md, the CORE:
+//! The CORE:
 //! - Is the ONLY place where memory exists (stateful)
 //! - Is closed: no external logic may be injected
 //! - Is minimal: if a feature is not essential to signal processing, it is removed

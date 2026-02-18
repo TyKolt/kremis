@@ -50,7 +50,7 @@ impl EdgeWeight {
     }
 
     /// Increment the edge weight by 1 using saturating arithmetic.
-    /// This is the ONLY allowed mutation for edge weights per AGENTS.md.
+    /// This is the ONLY allowed mutation for edge weights.
     #[must_use]
     pub const fn increment(self) -> Self {
         Self(self.0.saturating_add(1))
@@ -69,7 +69,7 @@ impl EdgeWeight {
 
 /// A Node in the graph, representing a structural entity.
 ///
-/// Per ROADMAP.md Section 4.1.1, a Node contains only an EntityId.
+/// A Node contains only an EntityId.
 /// The NodeId is the internal identifier used for graph operations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
@@ -138,7 +138,7 @@ impl Value {
 /// Signals are normalized representations of external events in the form:
 /// `[Entity | Attribute | Value]`
 ///
-/// Per AGENTS.md Section 3.1, if input cannot be represented in this form,
+/// If input cannot be represented in this form,
 /// it must be discarded. No interpretation or semantic inference is allowed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signal {
@@ -168,7 +168,7 @@ impl Signal {
 
 /// An Artifact is the output of a graph traversal operation.
 ///
-/// Per AGENTS.md Section 3.3, the Compositor outputs raw symbolic structures only.
+/// The Compositor outputs raw symbolic structures only.
 /// No language, text, or meaning generation is allowed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Artifact {
@@ -216,7 +216,6 @@ impl Artifact {
 
 /// Buffer is the volatile, session-local working memory.
 ///
-/// Per ROADMAP.md Section 5.3:
 /// - Active Context is VOLATILE
 /// - Never serialized to disk
 /// - Cleared on `Buffer::clear()`
@@ -225,7 +224,7 @@ impl Artifact {
 #[derive(Debug, Clone, Default)]
 pub struct Buffer {
     /// Currently activated nodes in this session.
-    /// Uses BTreeSet for deterministic ordering (per AGENTS.md Section 5.3).
+    /// Uses BTreeSet for deterministic ordering.
     pub active_nodes: BTreeSet<NodeId>,
 }
 
@@ -265,7 +264,6 @@ impl Buffer {
 
 /// The Facet trait defines the interface between external world and CORE.
 ///
-/// Per AGENTS.md Section 5.6:
 /// - `ingest`: Transforms raw bytes into a Signal
 /// - `emit`: Transforms an Artifact into raw bytes
 ///
@@ -296,7 +294,6 @@ pub trait Facet: Send + Sync {
 
 /// Errors that can occur in the Kremis system.
 ///
-/// Per AGENTS.md Section 5.4:
 /// - No silent failures
 /// - Use `Result<T, KremisError>` for fallible operations
 /// - The CORE should never panic; all errors must be recoverable

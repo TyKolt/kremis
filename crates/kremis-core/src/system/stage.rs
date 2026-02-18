@@ -1,6 +1,6 @@
 //! # Stage Assessment
 //!
-//! Per KREMIS.md Section 9: Developmental Stages (FACET - Capability Maturation)
+//! Developmental Stages (Capability Maturation)
 //!
 //! ## Current Implementation Status
 //!
@@ -22,7 +22,7 @@
 //!
 //! ## Important Note
 //!
-//! Per KREMIS.md: The edge counts (100, 1000, 5000) are illustrative placeholders.
+//! The edge counts (100, 1000, 5000) are illustrative placeholders.
 //! Real-world thresholds may be orders of magnitude higher.
 
 use crate::{Graph, GraphStore, Session, StorageBackend};
@@ -42,14 +42,14 @@ pub const S2_THRESHOLD: usize = 1000;
 pub const S3_THRESHOLD: usize = 5000;
 
 /// Weight threshold for "stable" edges
-/// Per KREMIS.md Section 6: Stable Layer = weight >= STABLE_THRESHOLD
+/// Stable Layer = weight >= STABLE_THRESHOLD
 pub const STABLE_THRESHOLD: i64 = 10;
 
 // =============================================================================
 // STAGE ENUM
 // =============================================================================
 
-/// Developmental stages per KREMIS.md Section 9.
+/// Developmental stages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Stage {
     /// S0: Signal Segmentation
@@ -134,7 +134,7 @@ pub struct GraphMetrics {
     /// Number of edges with weight >= STABLE_THRESHOLD.
     pub stable_edge_count: usize,
     /// Graph density: edge_count / node_count (0 if no nodes).
-    /// Stored as fixed-point: density * 1_000_000 (integer only per AGENTS.md).
+    /// Stored as fixed-point: density * 1_000_000 (integer only).
     pub density_millionths: u64,
     /// Maximum traversal depth achievable from any node.
     pub max_depth: usize,

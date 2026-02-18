@@ -2,7 +2,6 @@
 //!
 //! Consolidates graph mutation operations for the Kremis CORE.
 //!
-//! Per ROADMAP.md Section 6:
 //! > This is NOT learning.
 //! > This is deterministic recording of signal occurrence.
 //!
@@ -18,7 +17,7 @@ use crate::{EdgeWeight, KremisError, NodeId, Signal};
 
 /// The MutationEngine consolidates all graph mutation operations.
 ///
-/// Per KREMIS.md, the CORE is a closed system. All mutations follow
+/// The CORE is a closed system. All mutations follow
 /// deterministic, hardcoded rules.
 pub struct MutationEngine;
 
@@ -32,7 +31,6 @@ impl MutationEngine {
 
     /// Process a sequence of signals with automatic edge creation.
     ///
-    /// Per ROADMAP.md Section 6.3.2:
     /// - Edges are created on co-occurrence
     /// - Weight increments on repetition using `saturating_add(1)`
     /// - Links formed only between adjacent signals (ASSOCIATION_WINDOW = 1)
@@ -45,7 +43,6 @@ impl MutationEngine {
 
     /// Check if an edge weight is above the promotion threshold.
     ///
-    /// Per ROADMAP.md Section 6.3.4:
     /// - Edges with `weight >= PROMOTION_THRESHOLD` are considered "Stable"
     /// - This is used by FACETS to determine edge significance
     /// - The CORE does not make decisions based on this; it only exposes the check

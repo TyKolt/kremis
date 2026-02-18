@@ -2,7 +2,6 @@
 //!
 //! Session management combining Graph and Buffer.
 //!
-//! Per ROADMAP.md Section 5.2.3:
 //! - Buffer is volatile, session-local state
 //! - Never serialized to disk
 //! - Cleared on session reset
@@ -78,7 +77,7 @@ fn log_and_default<T: Default>(result: Result<T, KremisError>, context: &str) ->
 
 /// Storage backend for a Session.
 ///
-/// Per ROADMAP.md, supports both in-memory and persistent storage.
+/// Supports both in-memory and persistent storage.
 #[derive(Debug)]
 pub enum StorageBackend {
     /// In-memory graph (fast, volatile).
@@ -244,7 +243,7 @@ impl Session {
     /// Returns `None` if using persistent storage.
     /// Callers should use session methods directly for persistent backends.
     ///
-    /// Per AGENTS.md Section 5.7: No unsafe blocks in Core.
+    /// No unsafe blocks in Core.
     #[must_use]
     pub fn graph_mut(&mut self) -> Option<&mut Graph> {
         match &mut self.backend {
@@ -368,7 +367,6 @@ impl Session {
 
     /// Clear the active context (session reset).
     ///
-    /// Per ROADMAP.md:
     /// - Buffer is volatile
     /// - Cleared on reset
     /// - Graph persists

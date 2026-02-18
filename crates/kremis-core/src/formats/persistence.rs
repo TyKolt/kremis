@@ -4,8 +4,7 @@
 //!
 //! MIGRATED FROM: kremis-facet-std/src/persistence.rs
 //!
-//! Per ROADMAP.md Section 4.1.3, persistence format is defined here.
-//! File I/O operations are in the app layer.
+//! Persistence format is defined here. File I/O operations are in the app layer.
 //!
 //! Format: Header (5 bytes) + postcard-serialized graph data.
 //! - 4 bytes: Magic ("KREM")

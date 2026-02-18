@@ -4,7 +4,7 @@
 //!
 //! MIGRATED FROM: kremis-facet-system/src/stage.rs
 //!
-//! Per KREMIS.md Section 9: Developmental Stages (FACET - Capability Maturation)
+//! Developmental Stages (Capability Maturation)
 //!
 //! This module implements the reference pattern for stage-based capability gating.
 //! The CORE does NOT implement stages - this is a FACET responsibility.

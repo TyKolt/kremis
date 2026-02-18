@@ -5,7 +5,7 @@
 # This crate is the deterministic Graph Engine for Kremis.
 # It merges the old kremis-types, kremis-core, and selected facet logic.
 #
-# ARCHITECTURAL CONSTRAINTS (per AGENTS.md):
+# ARCHITECTURAL CONSTRAINTS:
 # - Pure Rust: No async, no network dependencies
 # - Deterministic: BTreeMap only, no HashMap, no floats, no randomness
 # - Minimal: Only what's essential for signal processing
@@ -32,7 +32,7 @@ default = []
 crypto-hash = ["dep:blake3"]
 
 [dependencies]
-# CORE (per AGENTS.md Section 5.9 - CORE Approved)
+# CORE
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 redb = { workspace = true }

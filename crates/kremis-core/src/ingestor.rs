@@ -2,7 +2,6 @@
 //!
 //! Signal validation and ingestion protocol for Kremis CORE.
 //!
-//! Per ROADMAP.md Section 5.2.1:
 //! - Validate signals before graph mutation
 //! - Reject malformed input
 //! - Deduplicate identical signals
@@ -16,7 +15,7 @@ use crate::{KremisError, NodeId, Signal};
 
 /// The Ingestor handles signal validation and graph ingestion.
 ///
-/// Per AGENTS.md Section 3.1, the Ingestor:
+/// The Ingestor:
 /// - Accepts raw input from Facets
 /// - Sanitizes and validates signals
 /// - Reduces input to strict Logical Primitives
@@ -83,7 +82,7 @@ impl Ingestor {
     /// Ingest a sequence of signals with automatic edge creation.
     ///
     /// Works with both in-memory Graph and persistent RedbGraph.
-    /// Per ROADMAP.md, edges are formed between adjacent signals
+    /// Edges are formed between adjacent signals
     /// within the ASSOCIATION_WINDOW (= 1).
     ///
     /// Returns the list of NodeIds created/updated.

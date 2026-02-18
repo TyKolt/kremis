@@ -2,7 +2,6 @@
 //!
 //! Output assembly protocol for Kremis CORE.
 //!
-//! Per ROADMAP.md Section 5.2.2:
 //! - Output raw structure only
 //! - No natural language generation
 //! - No formatting logic in the Core
@@ -13,7 +12,7 @@ use crate::{Artifact, EdgeWeight, KremisError, NodeId};
 
 /// The Compositor handles output assembly from the graph.
 ///
-/// Per AGENTS.md Section 3.3, the Compositor:
+/// The Compositor:
 /// - Traverses the graph from active nodes
 /// - Extracts paths or subgraphs
 /// - Assembles Graph Artifacts

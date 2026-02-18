@@ -1,10 +1,9 @@
 //! # Grounding Module
 //!
-//! Hypothesis verification for CORTEX-CORE interaction.
+//! Hypothesis verification for Core interaction.
 //!
-//! Per ROADMAP.md Section 10.7.3:
-//! - CORTEX generates hypothesis
-//! - CORE validates via graph traversal
+//! - External layer generates hypothesis
+//! - Core validates via graph traversal
 //! - Result annotated with evidence path
 //! - Unverifiable claims explicitly marked
 
@@ -57,7 +56,7 @@ impl GroundedResult {
 
 /// Execute a query and return a grounded result.
 ///
-/// This is the main entry point for CORTEX-CORE interaction.
+/// This is the main entry point for Core verification.
 /// It executes the query, computes confidence, and annotates
 /// the result with verification status.
 #[must_use]

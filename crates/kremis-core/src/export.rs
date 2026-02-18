@@ -1,7 +1,5 @@
 //! # Canonical Export Module
 //!
-//! Per ROADMAP.md Section 1.2 and AGENTS.md Section 5.9:
-//!
 //! > **The "Redb Compromise":**
 //! > - Runtime: CORE uses `redb` for performance and ACID transactions.
 //! > - Verification: `redb` files are NOT guaranteed bit-identical across runs.
@@ -176,7 +174,6 @@ struct CanonicalGraphV1 {
 
 /// A graph in canonical format for bit-exact serialization.
 ///
-/// Per AGENTS.md Section 5.9:
 /// > "The System MUST implement a `export_canonical()` function that serializes
 /// > the graph into a sorted, bit-exact `postcard` stream."
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -300,7 +297,7 @@ impl CanonicalGraph {
 
 /// Export a graph to canonical postcard format.
 ///
-/// This is the primary export function per AGENTS.md mandate.
+/// This is the primary export function.
 ///
 /// Format:
 /// ```text

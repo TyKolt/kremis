@@ -1,6 +1,5 @@
 //! # Validation Tier Tests (T0-T3)
 //!
-//! Per KREMIS.md Section 7 and ROADMAP.md Section 12:
 //! If ANY tier fails, the system is INVALID.
 //!
 //! ## Tiers

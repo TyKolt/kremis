@@ -2,30 +2,37 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Kremis",
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "favicon": "/favicon.svg",
+  "description": "A minimal, deterministic graph engine for grounded AI. Records, associates, and retrieves — but never invents.",
   "colors": {
     "primary": "#0D9373",
     "light": "#14B88A",
     "dark": "#0A7A60"
   },
-  "topbarLinks": [
-    {
-      "name": "GitHub",
-      "url": "https://github.com/M2Dr3g0n/kremis"
+  "appearance": {
+    "default": "dark"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/M2Dr3g0n/kremis"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/M2Dr3g0n/kremis"
     }
-  ],
-  "topbarCtaButton": {
-    "name": "Quick Start",
-    "url": "/quickstart"
   },
   "feedback": {
     "thumbsRating": true,
     "suggestEdit": true,
     "raiseIssue": true
+  },
+  "search": {
+    "prompt": "Search Kremis docs..."
+  },
+  "metadata": {
+    "timestamp": true
   },
   "navigation": {
     "tabs": [
@@ -146,6 +153,14 @@
         }
       ]
     }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
   },
   "footerSocials": {
     "github": "https://github.com/M2Dr3g0n/kremis"

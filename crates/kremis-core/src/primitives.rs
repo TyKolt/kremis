@@ -2,7 +2,7 @@
 //!
 //! Hardcoded runtime constants and primitives for the Kremis CORE.
 //!
-//! Per KREMIS.md Section 8, Kremis starts with **zero data** but **fixed logic**.
+//! Kremis starts with zero data but fixed logic.
 //! These primitives are compiled into the binary and are immutable at runtime.
 //!
 //! ## Primitives
@@ -13,7 +13,6 @@
 
 /// The association window defines how many adjacent signals can form links.
 ///
-/// Per ROADMAP.md Section 3.2:
 /// - `ASSOCIATION_WINDOW = 1`: Links are formed only between strictly adjacent signals.
 /// - Signal A connects to Signal B only if B immediately follows A.
 ///
@@ -22,7 +21,6 @@ pub const ASSOCIATION_WINDOW: usize = 1;
 
 /// Magic bytes for the Kremis binary format header.
 ///
-/// Per ROADMAP.md Section 1.3:
 /// - File Header = Magic Bytes ("KREM") + Version (u8) before payload.
 pub const MAGIC_BYTES: &[u8; 4] = b"KREM";
 
@@ -33,7 +31,6 @@ pub const FORMAT_VERSION: u8 = 1;
 
 /// Default threshold for considering an edge "stable".
 ///
-/// Per ROADMAP.md Section 6.3.4:
 /// - Edges with `weight >= PROMOTION_THRESHOLD` are treated as "Stable" by FACETS.
 /// - The CORE exposes weights but does not decide what constitutes a "Stable" edge.
 /// - Promotion logic is implemented in FACETS.
@@ -43,7 +40,6 @@ pub const PROMOTION_THRESHOLD: i64 = 10;
 
 /// Maximum traversal depth for graph queries.
 ///
-/// Per ROADMAP.md Section 7.4.5:
 /// - All queries must be computationally bounded.
 /// - This prevents runaway traversals in large graphs.
 pub const MAX_TRAVERSAL_DEPTH: usize = 100;
@@ -86,7 +82,7 @@ mod tests {
 
     #[test]
     fn association_window_is_one() {
-        // Per ROADMAP.md, ASSOCIATION_WINDOW must be exactly 1
+        // ASSOCIATION_WINDOW must be exactly 1
         assert_eq!(ASSOCIATION_WINDOW, 1);
     }
 

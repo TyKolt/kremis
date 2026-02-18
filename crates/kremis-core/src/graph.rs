@@ -2,7 +2,7 @@
 //!
 //! The deterministic graph storage for Kremis CORE.
 //!
-//! This module implements `GraphStore` trait from AGENTS.md Section 5.6.
+//! This module implements the `GraphStore` trait.
 //! All data structures use `BTreeMap` for deterministic ordering.
 
 use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Value};
@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 /// The GraphStore trait defines the core graph operations.
 ///
-/// Per AGENTS.md Section 5.6, all queries must be computationally bounded.
+/// All queries must be computationally bounded.
 ///
 /// All fallible operations return `Result<T, KremisError>` to support both
 /// in-memory and persistent storage backends uniformly.
@@ -103,7 +103,7 @@ pub trait GraphStore {
 /// The main Graph structure.
 ///
 /// Uses `BTreeMap` exclusively for deterministic ordering.
-/// No `HashMap` allowed per AGENTS.md Section 5.3.
+/// No `HashMap` allowed.
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
     /// Node storage: NodeId -> Node
@@ -532,7 +532,7 @@ impl GraphStore for Graph {
 impl Graph {
     /// Depth-first traversal from a starting node.
     ///
-    /// Per ROADMAP.md Section 7.4.2, DFS is an alternative to BFS
+    /// DFS is an alternative to BFS
     /// with deterministic ordering via BTreeMap.
     pub fn traverse_dfs(&self, start: NodeId, depth: usize) -> Option<Artifact> {
         use crate::primitives::MAX_TRAVERSAL_DEPTH;

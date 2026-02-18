@@ -1,8 +1,7 @@
 //! # Query Module
 //!
-//! Structured query types for CORTEX-CORE interaction.
+//! Structured query types for Core interaction.
 //!
-//! Per ROADMAP.md Section 10.7.1:
 //! - Map user questions to structured traversal operations
 //! - Deterministic query parsing (no semantic guessing)
 //! - Support for complex queries
