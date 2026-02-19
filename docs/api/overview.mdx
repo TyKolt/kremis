@@ -63,3 +63,24 @@ The `/health` endpoint is always accessible without authentication.
 | `401` | Unauthorized — missing or invalid API key | Plain text |
 | `429` | Too Many Requests — rate limit exceeded | Plain text |
 | `500` | Internal Server Error | JSON with `error` field |
+
+## Query Response: Grounding Field
+
+Every query response includes a `grounding` field that classifies the result:
+
+| Value | Meaning | Query types |
+|-------|---------|-------------|
+| `"fact"` | Data retrieved directly | `lookup`, `properties` |
+| `"inference"` | Result derived via graph traversal | `traverse`, `traverse_filtered`, `strongest_path`, `intersect`, `related` |
+| `"unknown"` | No data found | Any query when `found: false` |
+
+```json
+{
+  "success": true,
+  "found": true,
+  "path": [0],
+  "edges": [],
+  "grounding": "fact",
+  "error": null
+}
+```
