@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kremis icon">
+  <!-- Container -->
+  <rect width="48" height="48" rx="10" fill="#c1440e"/>
+  <!-- Convergence arms -->
+  <line x1="6"  y1="24"   x2="18.8" y2="24"   stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <line x1="40" y1="8"    x2="27.5" y2="20.5" stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <line x1="40" y1="40"   x2="27.5" y2="27.5" stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <!-- Center node -->
+  <circle cx="24" cy="24" r="5.2" fill="white"/>
+  <circle cx="24" cy="24" r="2"   fill="#c1440e"/>
+</svg>

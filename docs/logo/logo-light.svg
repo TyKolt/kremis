@@ -1,0 +1,20 @@
+<svg width="640" height="192" viewBox="0 0 160 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kremis">
+  <!-- Icon -->
+  <rect width="48" height="48" rx="10" fill="#c1440e"/>
+  <line x1="6"  y1="24"   x2="18.8" y2="24"   stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <line x1="40" y1="8"    x2="27.5" y2="20.5" stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <line x1="40" y1="40"   x2="27.5" y2="27.5" stroke="white" stroke-width="4.2" stroke-linecap="round"/>
+  <circle cx="24" cy="24" r="5.2" fill="white"/>
+  <circle cx="24" cy="24" r="2"   fill="#c1440e"/>
+  <!-- Wordmark — for use on light backgrounds -->
+  <text
+    x="63"
+    y="24"
+    dominant-baseline="central"
+    font-family="'IBM Plex Mono', 'Courier New', monospace"
+    font-weight="500"
+    font-size="26"
+    letter-spacing="-0.3"
+    fill="#111111"
+  >kremis</text>
+</svg>

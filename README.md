@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo/icon.svg" alt="Kremis" width="64" height="64">
+</p>
+
 # Kremis
 
 [![CI](https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/TyKolt/kremis/actions/workflows/ci.yml)

@@ -3,6 +3,11 @@
   "theme": "mint",
   "name": "Kremis",
   "description": "A minimal, deterministic graph engine for grounded AI. Records, associates, and retrieves — but never invents.",
+  "logo": {
+    "dark": "/logo/logo-dark.svg",
+    "light": "/logo/logo-light.svg"
+  },
+  "favicon": "/logo/favicon.svg",
   "colors": {
     "primary": "#0D9373",
     "light": "#14B88A",
