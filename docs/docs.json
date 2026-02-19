@@ -15,12 +15,12 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/M2Dr3g0n/kremis"
+        "href": "https://github.com/TyKolt/kremis"
       }
     ],
     "primary": {
       "type": "github",
-      "href": "https://github.com/M2Dr3g0n/kremis"
+      "href": "https://github.com/TyKolt/kremis"
     }
   },
   "feedback": {
@@ -143,12 +143,12 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/M2Dr3g0n/kremis",
+          "href": "https://github.com/TyKolt/kremis",
           "icon": "github"
         },
         {
           "anchor": "Contributing",
-          "href": "https://github.com/M2Dr3g0n/kremis/blob/main/CONTRIBUTING.md",
+          "href": "https://github.com/TyKolt/kremis/blob/main/CONTRIBUTING.md",
           "icon": "handshake"
         }
       ]
@@ -163,6 +163,6 @@
     ]
   },
   "footerSocials": {
-    "github": "https://github.com/M2Dr3g0n/kremis"
+    "github": "https://github.com/TyKolt/kremis"
   }
 }

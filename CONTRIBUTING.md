@@ -40,7 +40,7 @@ Every contribution must respect these laws. PRs that violate them will be reject
 ## Development Setup
 
 ```bash
-git clone https://github.com/M2Dr3g0n/kremis.git
+git clone https://github.com/TyKolt/kremis.git
 cd kremis
 cargo build --workspace
 cargo test --workspace
@@ -161,7 +161,7 @@ To keep the project focused, the following will not be accepted:
 
 ## Reporting Bugs
 
-Open an [issue](https://github.com/M2Dr3g0n/kremis/issues) with:
+Open an [issue](https://github.com/TyKolt/kremis/issues) with:
 
 - Kremis version (`cargo run -p kremis -- --version`)
 - OS and Rust version (`rustc --version`)

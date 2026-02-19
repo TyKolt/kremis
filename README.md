@@ -1,6 +1,6 @@
 # Kremis
 
-[![CI](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/M2Dr3g0n/kremis/actions/workflows/ci.yml)
+[![CI](https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/TyKolt/kremis/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-mintlify-0D9373.svg)](https://kremis.mintlify.app)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
@@ -33,7 +33,7 @@ It functions solely as a mechanism to **record**, **associate**, and **retrieve*
 Requires **Rust 1.85+** (stable, edition 2024) and Cargo.
 
 ```bash
-git clone https://github.com/M2Dr3g0n/kremis.git
+git clone https://github.com/TyKolt/kremis.git
 cd kremis
 cargo build --release
 cargo test --workspace
@@ -229,7 +229,7 @@ cargo fmt --all -- --check
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The architecture is still evolving — open an [issue](https://github.com/M2Dr3g0n/kremis/issues) before submitting a PR.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The architecture is still evolving — open an [issue](https://github.com/TyKolt/kremis/issues) before submitting a PR.
 
 ## Acknowledgments
 
