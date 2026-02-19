@@ -23,12 +23,12 @@ fn test_health_response_default() {
 fn test_health_response_serialization() {
     let health = HealthResponse {
         status: "ok".to_string(),
-        version: "0.3.1".to_string(),
+        version: "0.4.0".to_string(),
     };
 
     let json = serde_json::to_string(&health).unwrap();
     assert!(json.contains("\"status\":\"ok\""));
-    assert!(json.contains("\"version\":\"0.3.1\""));
+    assert!(json.contains("\"version\":\"0.4.0\""));
 }
 
 #[test]
@@ -326,6 +326,46 @@ fn test_query_response_serialization() {
     assert!(json.contains("\"success\":true"));
     assert!(json.contains("\"found\":true"));
     assert!(json.contains("[1,2]"));
+}
+
+// =============================================================================
+// GROUNDING FIELD TESTS
+// =============================================================================
+
+#[test]
+fn test_query_response_not_found_grounding_is_unknown() {
+    let response = QueryResponse::not_found();
+    assert_eq!(response.grounding, "unknown");
+}
+
+#[test]
+fn test_query_response_error_grounding_is_unknown() {
+    let response = QueryResponse::error("something went wrong");
+    assert_eq!(response.grounding, "unknown");
+}
+
+#[test]
+fn test_query_response_with_path_grounding_default_is_unknown() {
+    use kremis_core::NodeId;
+    let response = QueryResponse::with_path(vec![NodeId(1), NodeId(2)]);
+    // Default before handler override
+    assert_eq!(response.grounding, "unknown");
+}
+
+#[test]
+fn test_query_response_grounding_serialized() {
+    let mut response = QueryResponse::not_found();
+    response.grounding = "fact".to_string();
+    let json = serde_json::to_string(&response).unwrap();
+    assert!(json.contains("\"grounding\":\"fact\""));
+}
+
+#[test]
+fn test_query_response_grounding_default_on_deserialize() {
+    // Old response without grounding field should deserialize with "unknown"
+    let json = r#"{"success":true,"found":false,"path":[],"edges":[],"error":null}"#;
+    let response: QueryResponse = serde_json::from_str(json).unwrap();
+    assert_eq!(response.grounding, "unknown");
 }
 
 // =============================================================================

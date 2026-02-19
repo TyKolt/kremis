@@ -272,6 +272,7 @@ async fn test_query_lookup_not_found() {
     assert!(result.success);
     assert!(!result.found);
     assert!(result.path.is_empty());
+    assert_eq!(result.grounding, "unknown");
 }
 
 #[tokio::test]
@@ -286,6 +287,7 @@ async fn test_query_lookup_found() {
     assert!(result.success);
     assert!(result.found);
     assert!(!result.path.is_empty());
+    assert_eq!(result.grounding, "fact");
 }
 
 #[tokio::test]
@@ -327,6 +329,7 @@ async fn test_query_traverse() {
         result.path.contains(&node_id),
         "Traverse result should include the starting node"
     );
+    assert_eq!(result.grounding, "inference");
 }
 
 #[tokio::test]
@@ -359,6 +362,7 @@ async fn test_query_traverse_filtered() {
         !result.path.is_empty(),
         "Traverse filtered should return nodes"
     );
+    assert_eq!(result.grounding, "inference");
 
     // Test with very high min_weight - may return fewer or no edges
     let high_filter = QueryRequest::TraverseFiltered {
@@ -415,6 +419,7 @@ async fn test_query_strongest_path() {
             Some(&node2),
             "Path should end with end node"
         );
+        assert_eq!(result.grounding, "inference");
     }
 }
 
@@ -447,6 +452,8 @@ async fn test_query_intersect() {
         result.error.is_none(),
         "Intersect should not return an error"
     );
+    let expected = if result.found { "inference" } else { "unknown" };
+    assert_eq!(result.grounding, expected);
 }
 
 #[tokio::test]
@@ -470,6 +477,7 @@ async fn test_query_intersect_nonexistent_nodes() {
         result.path.is_empty(),
         "Path should be empty for nonexistent nodes"
     );
+    assert_eq!(result.grounding, "unknown");
 }
 
 #[tokio::test]
@@ -499,6 +507,7 @@ async fn test_query_related() {
         result.path.contains(&node_id),
         "Related result should include the query node"
     );
+    assert_eq!(result.grounding, "inference");
 }
 
 #[tokio::test]
@@ -522,6 +531,7 @@ async fn test_query_related_nonexistent_node() {
         result.path.is_empty(),
         "Path should be empty for nonexistent node"
     );
+    assert_eq!(result.grounding, "unknown");
 }
 
 // =============================================================================

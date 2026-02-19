@@ -259,7 +259,11 @@ impl ServerHandler for KremisMcp {
 fn format_query_response(resp: &serde_json::Value) -> String {
     let found = resp.get("found").and_then(|v| v.as_bool()).unwrap_or(false);
     if !found {
-        return "Not found.".to_string();
+        let grounding = resp
+            .get("grounding")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        return format!("Not found.\nGrounding: {grounding}");
     }
 
     let mut parts = Vec::new();
@@ -301,6 +305,10 @@ fn format_query_response(resp: &serde_json::Value) -> String {
             let val = prop.get("value").and_then(|v| v.as_str()).unwrap_or("?");
             parts.push(format!("  {attr}: {val}"));
         }
+    }
+
+    if let Some(grounding) = resp.get("grounding").and_then(|v| v.as_str()) {
+        parts.push(format!("Grounding: {grounding}"));
     }
 
     if parts.is_empty() {

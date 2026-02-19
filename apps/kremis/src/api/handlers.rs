@@ -124,8 +124,28 @@ fn validate_depth(depth: usize) -> Result<(), KremisError> {
     Ok(())
 }
 
+/// Classify grounding based on query type and whether data was found.
+fn classify_grounding(request: &QueryRequest, found: bool) -> &'static str {
+    if !found {
+        return "unknown";
+    }
+    match request {
+        QueryRequest::Lookup { .. } | QueryRequest::Properties { .. } => "fact",
+        _ => "inference",
+    }
+}
+
 /// Execute a query using Session methods (works with both InMemory and Persistent backends).
 fn execute_query_session(
+    session: &Session,
+    request: &QueryRequest,
+) -> Result<QueryResponse, KremisError> {
+    let mut response = execute_query_inner(session, request)?;
+    response.grounding = classify_grounding(request, response.found).to_string();
+    Ok(response)
+}
+
+fn execute_query_inner(
     session: &Session,
     request: &QueryRequest,
 ) -> Result<QueryResponse, KremisError> {

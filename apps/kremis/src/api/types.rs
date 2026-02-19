@@ -180,6 +180,10 @@ pub struct PropertyJson {
     pub value: String,
 }
 
+fn default_grounding() -> String {
+    "unknown".to_string()
+}
+
 /// Query response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryResponse {
@@ -190,6 +194,8 @@ pub struct QueryResponse {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub properties: Vec<PropertyJson>,
+    #[serde(default = "default_grounding")]
+    pub grounding: String,
     pub error: Option<String>,
 }
 
@@ -201,6 +207,7 @@ impl QueryResponse {
             path: vec![],
             edges: vec![],
             properties: vec![],
+            grounding: "unknown".to_string(),
             error: None,
         }
     }
@@ -212,6 +219,7 @@ impl QueryResponse {
             path: path.iter().map(|n| n.0).collect(),
             edges: vec![],
             properties: vec![],
+            grounding: "unknown".to_string(),
             error: None,
         }
     }
@@ -237,6 +245,7 @@ impl QueryResponse {
             path: artifact.path.iter().map(|n| n.0).collect(),
             edges,
             properties: vec![],
+            grounding: "unknown".to_string(),
             error: None,
         }
     }
@@ -247,6 +256,7 @@ impl QueryResponse {
             found: !properties.is_empty(),
             path: vec![],
             edges: vec![],
+            grounding: "unknown".to_string(),
             properties,
             error: None,
         }
@@ -259,6 +269,7 @@ impl QueryResponse {
             path: vec![],
             edges: vec![],
             properties: vec![],
+            grounding: "unknown".to_string(),
             error: Some(msg.into()),
         }
     }
