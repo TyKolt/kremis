@@ -1,0 +1,833 @@
+openapi: 3.1.0
+
+info:
+  title: Kremis API
+  version: 0.4.0
+  description: |
+    Kremis is a deterministic, graph-based memory engine for AI agents.
+
+    ## Authentication
+
+    Authentication is optional and controlled by the `KREMIS_API_KEY`
+    environment variable. When set, all endpoints (except `GET /health`)
+    require a Bearer token in the `Authorization` header.
+
+    When `KREMIS_API_KEY` is not set, all endpoints are publicly accessible.
+
+  contact:
+    name: TyKolt
+    url: https://github.com/TyKolt/kremis
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+externalDocs:
+  description: Full documentation
+  url: https://kremis.mintlify.app
+
+tags:
+  - name: health
+    description: Server liveness and reachability.
+  - name: graph
+    description: Graph state — node/edge counts, developmental stage.
+  - name: signals
+    description: Ingest signals (entity–attribute–value triples).
+  - name: queries
+    description: Query the graph — lookup, traverse, pathfinding, intersection.
+  - name: export
+    description: Export the full graph snapshot in canonical binary format.
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: |
+        Always returns `200 OK` with server status and version.
+        This endpoint is **always public** — it bypasses authentication
+        and rate limiting. Use it for load balancer health checks.
+      tags: [health]
+      security: []
+      responses:
+        "200":
+          description: Server is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                version: "0.4.0"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /status:
+    get:
+      operationId: getStatus
+      summary: Graph status
+      description: Returns current graph metrics — node count, edge count, stable edges, density.
+      tags: [graph]
+      responses:
+        "200":
+          description: Graph metrics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+              example:
+                node_count: 1024
+                edge_count: 3891
+                stable_edges: 207
+                density_millionths: 7432
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /stage:
+    get:
+      operationId: getStage
+      summary: Developmental stage
+      description: |
+        Returns the current developmental stage of the graph (S0–S3).
+
+        Stages are assessed from structural metrics — no inference, no magic.
+        Progress toward the next stage is expressed as a percentage and as
+        raw stable-edge counts.
+      tags: [graph]
+      responses:
+        "200":
+          description: Current developmental stage.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StageResponse"
+              example:
+                stage: S1
+                name: Emerging
+                progress_percent: 42
+                stable_edges_needed: 500
+                stable_edges_current: 207
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /signal:
+    post:
+      operationId: ingestSignal
+      summary: Ingest a signal
+      description: |
+        Ingests a single entity–attribute–value triple into the graph.
+
+        The signal is validated, hashed, and stored. If the same signal is
+        ingested again, its edge weight is incremented (idempotent by design).
+
+        **Limits** (enforced server-side):
+        - `attribute`: 1–256 bytes
+        - `value`: 1–65536 bytes (64 KB)
+        - Request body: 2 MB maximum
+      tags: [signals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+            examples:
+              entity_property:
+                summary: Store a property for an entity
+                value:
+                  entity_id: 12345678901234567
+                  attribute: name
+                  value: Alice
+              entity_relation:
+                summary: Store a relation between two entities
+                value:
+                  entity_id: 12345678901234567
+                  attribute: knows
+                  value: Bob
+      responses:
+        "200":
+          description: Signal ingested successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+              examples:
+                success:
+                  summary: Successful ingest
+                  value:
+                    success: true
+                    node_id: 9876543210
+                    error: null
+                failure:
+                  summary: Invalid signal
+                  value:
+                    success: false
+                    node_id: null
+                    error: "Invalid signal: attribute exceeds maximum length"
+        "400":
+          description: Malformed request body or validation failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /query:
+    post:
+      operationId: queryGraph
+      summary: Query the graph
+      description: |
+        Executes a typed query against the graph. The `type` field selects
+        the query variant. All results include a `grounding` field indicating
+        the epistemic status of the response:
+
+        - `fact` — result derives directly from stored data (Lookup, Properties)
+        - `inference` — result is structurally derived (Traverse, Path, Intersect)
+        - `unknown` — no supporting graph path found
+
+        **Query types:**
+
+        | type | Description | Limits |
+        |------|-------------|--------|
+        | `lookup` | Resolve entity ID to node ID | — |
+        | `traverse` | BFS/DFS from a node | depth ≤ 100 |
+        | `traverse_filtered` | Traverse with minimum edge weight | depth ≤ 100 |
+        | `strongest_path` | Highest-weight path between two nodes | — |
+        | `intersect` | Nodes reachable from all given nodes | ≤ 100 nodes |
+        | `related` | Subgraph around a node | depth ≤ 100 |
+        | `properties` | Key-value properties of a node | — |
+      tags: [queries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+            examples:
+              lookup:
+                summary: Resolve entity to node
+                value:
+                  type: lookup
+                  entity_id: 12345678901234567
+              traverse:
+                summary: Traverse from node, depth 3
+                value:
+                  type: traverse
+                  node_id: 9876543210
+                  depth: 3
+              traverse_filtered:
+                summary: Traverse with weight filter
+                value:
+                  type: traverse_filtered
+                  node_id: 9876543210
+                  depth: 3
+                  min_weight: 10
+              strongest_path:
+                summary: Highest-weight path between two nodes
+                value:
+                  type: strongest_path
+                  start: 111
+                  end: 999
+              intersect:
+                summary: Common nodes reachable from both
+                value:
+                  type: intersect
+                  nodes: [111, 222, 333]
+              related:
+                summary: Subgraph around node
+                value:
+                  type: related
+                  node_id: 9876543210
+                  depth: 2
+              properties:
+                summary: Properties of a node
+                value:
+                  type: properties
+                  node_id: 9876543210
+      responses:
+        "200":
+          description: Query executed. Check `found` to determine if data exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+              examples:
+                found:
+                  summary: Path found
+                  value:
+                    success: true
+                    found: true
+                    path: [111, 222, 333]
+                    edges:
+                      - from: 111
+                        to: 222
+                        weight: 15
+                      - from: 222
+                        to: 333
+                        weight: 8
+                    grounding: inference
+                    error: null
+                not_found:
+                  summary: No path exists
+                  value:
+                    success: true
+                    found: false
+                    path: []
+                    edges: []
+                    grounding: unknown
+                    error: null
+                properties:
+                  summary: Properties query result
+                  value:
+                    success: true
+                    found: true
+                    path: []
+                    edges: []
+                    properties:
+                      - attribute: name
+                        value: Alice
+                      - attribute: role
+                        value: engineer
+                    grounding: fact
+                    error: null
+        "400":
+          description: Invalid query parameters (depth out of bounds, too many nodes).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /export:
+    post:
+      operationId: exportGraph
+      summary: Export graph snapshot
+      description: |
+        Exports the full graph in Kremis canonical binary format.
+
+        The response contains a Base64-encoded payload and a checksum.
+        The format is bit-exact and deterministic: same graph state always
+        produces the same bytes.
+
+        **Format**: `[header_len: u32][header][postcard-encoded data]`
+        **Magic bytes**: `KREM`
+        **Version**: 1
+
+        Use the checksum to verify integrity after transfer.
+      tags: [export]
+      responses:
+        "200":
+          description: Graph exported successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportResponse"
+              examples:
+                success:
+                  summary: Successful export
+                  value:
+                    success: true
+                    data: "S1JFTQ..."
+                    checksum: 14823901234567890
+                    error: null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Export failed (storage error).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportResponse"
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API key authentication via Bearer token.
+
+        Set the `KREMIS_API_KEY` environment variable on the server to enable.
+        When not set, all endpoints are publicly accessible.
+
+        `GET /health` is always public regardless of configuration.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key.
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: Unauthorized
+    TooManyRequests:
+      description: Rate limit exceeded (default 100 req/s).
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: Too Many Requests
+
+  schemas:
+
+    # -------------------------------------------------------------------------
+    # Health
+    # -------------------------------------------------------------------------
+
+    HealthResponse:
+      type: object
+      description: Server health status.
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          description: Always `ok` when the server is running.
+          example: ok
+        version:
+          type: string
+          description: Server version (semver).
+          example: "0.4.0"
+
+    # -------------------------------------------------------------------------
+    # Graph state
+    # -------------------------------------------------------------------------
+
+    StatusResponse:
+      type: object
+      description: Current graph metrics.
+      required: [node_count, edge_count, stable_edges, density_millionths]
+      properties:
+        node_count:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Total number of nodes in the graph.
+          example: 1024
+        edge_count:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Total number of directed edges in the graph.
+          example: 3891
+        stable_edges:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: |
+            Number of edges with weight ≥ 10 (promotion threshold).
+            Used to compute developmental stage progress.
+          example: 207
+        density_millionths:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Graph density expressed in millionths (density × 1,000,000).
+          example: 7432
+
+    StageResponse:
+      type: object
+      description: Developmental stage assessment.
+      required:
+        - stage
+        - name
+        - progress_percent
+        - stable_edges_needed
+        - stable_edges_current
+      properties:
+        stage:
+          type: string
+          description: Stage identifier (S0, S1, S2, S3).
+          enum: [S0, S1, S2, S3]
+          example: S1
+        name:
+          type: string
+          description: Human-readable stage name.
+          example: Emerging
+        progress_percent:
+          type: integer
+          format: uint8
+          minimum: 0
+          maximum: 100
+          description: Progress toward the next stage, expressed as a percentage.
+          example: 42
+        stable_edges_needed:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Total stable edges required to reach the next stage.
+          example: 500
+        stable_edges_current:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Current number of stable edges.
+          example: 207
+
+    # -------------------------------------------------------------------------
+    # Signals
+    # -------------------------------------------------------------------------
+
+    IngestRequest:
+      type: object
+      description: A single entity–attribute–value signal to ingest into the graph.
+      required: [entity_id, attribute, value]
+      properties:
+        entity_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: |
+            Stable numeric identifier for the entity.
+            Typically a hash of the entity name or an external ID.
+          example: 12345678901234567
+        attribute:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: |
+            The attribute or relation type (e.g. `name`, `knows`, `role`).
+            Maximum 256 bytes.
+          example: name
+        value:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: |
+            The attribute value (e.g. `Alice`, `engineer`).
+            Maximum 65,536 bytes (64 KB).
+          example: Alice
+
+    IngestResponse:
+      type: object
+      description: Result of a signal ingestion.
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          description: Whether the signal was ingested successfully.
+          example: true
+        node_id:
+          type: ["integer", "null"]
+          format: uint64
+          minimum: 0
+          description: Internal node ID assigned to the entity, if successful.
+          example: 9876543210
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null
+
+    # -------------------------------------------------------------------------
+    # Queries
+    # -------------------------------------------------------------------------
+
+    QueryRequest:
+      description: |
+        A typed graph query. Use the `type` field to select the query variant.
+
+        All variants are mutually exclusive — include only the fields for the
+        selected variant.
+      oneOf:
+        - $ref: "#/components/schemas/LookupQuery"
+        - $ref: "#/components/schemas/TraverseQuery"
+        - $ref: "#/components/schemas/TraverseFilteredQuery"
+        - $ref: "#/components/schemas/StrongestPathQuery"
+        - $ref: "#/components/schemas/IntersectQuery"
+        - $ref: "#/components/schemas/RelatedQuery"
+        - $ref: "#/components/schemas/PropertiesQuery"
+      discriminator:
+        propertyName: type
+        mapping:
+          lookup: "#/components/schemas/LookupQuery"
+          traverse: "#/components/schemas/TraverseQuery"
+          traverse_filtered: "#/components/schemas/TraverseFilteredQuery"
+          strongest_path: "#/components/schemas/StrongestPathQuery"
+          intersect: "#/components/schemas/IntersectQuery"
+          related: "#/components/schemas/RelatedQuery"
+          properties: "#/components/schemas/PropertiesQuery"
+
+    LookupQuery:
+      type: object
+      description: Resolve an entity ID to its internal node ID.
+      required: [type, entity_id]
+      properties:
+        type:
+          type: string
+          const: lookup
+        entity_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: The entity ID to resolve.
+          example: 12345678901234567
+
+    TraverseQuery:
+      type: object
+      description: BFS/DFS traversal from a node up to a given depth.
+      required: [type, node_id, depth]
+      properties:
+        type:
+          type: string
+          const: traverse
+        node_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Starting node ID.
+          example: 9876543210
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum traversal depth (1–100).
+          example: 3
+
+    TraverseFilteredQuery:
+      type: object
+      description: Traverse from a node, including only edges with weight ≥ `min_weight`.
+      required: [type, node_id, depth, min_weight]
+      properties:
+        type:
+          type: string
+          const: traverse_filtered
+        node_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Starting node ID.
+          example: 9876543210
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum traversal depth (1–100).
+          example: 3
+        min_weight:
+          type: integer
+          format: int64
+          description: |
+            Minimum edge weight to include. Edges below this threshold are
+            ignored during traversal. Use 10 (promotion threshold) to follow
+            only stable edges.
+          example: 10
+
+    StrongestPathQuery:
+      type: object
+      description: Find the highest-weight path between two nodes.
+      required: [type, start, end]
+      properties:
+        type:
+          type: string
+          const: strongest_path
+        start:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Source node ID.
+          example: 111
+        end:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Destination node ID.
+          example: 999
+
+    IntersectQuery:
+      type: object
+      description: Find nodes reachable from all given nodes (set intersection of neighborhoods).
+      required: [type, nodes]
+      properties:
+        type:
+          type: string
+          const: intersect
+        nodes:
+          type: array
+          minItems: 2
+          maxItems: 100
+          items:
+            type: integer
+            format: uint64
+            minimum: 0
+          description: Node IDs to intersect (2–100 nodes).
+          example: [111, 222, 333]
+
+    RelatedQuery:
+      type: object
+      description: Returns the subgraph around a node up to a given depth.
+      required: [type, node_id, depth]
+      properties:
+        type:
+          type: string
+          const: related
+        node_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Center node ID.
+          example: 9876543210
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum traversal depth (1–100).
+          example: 2
+
+    PropertiesQuery:
+      type: object
+      description: Returns all key-value properties stored for a node.
+      required: [type, node_id]
+      properties:
+        type:
+          type: string
+          const: properties
+        node_id:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Node ID to retrieve properties for.
+          example: 9876543210
+
+    QueryResponse:
+      type: object
+      description: |
+        Result of a graph query.
+
+        Always check `found` before consuming `path`, `edges`, or `properties`.
+        The `grounding` field indicates the epistemic status of the result:
+
+        - `fact` — direct lookup from stored data
+        - `inference` — structurally derived from graph traversal
+        - `unknown` — no supporting path exists
+      required: [success, found, path, edges, grounding]
+      properties:
+        success:
+          type: boolean
+          description: Whether the query executed without errors.
+          example: true
+        found:
+          type: boolean
+          description: Whether any result was found in the graph.
+          example: true
+        path:
+          type: array
+          items:
+            type: integer
+            format: uint64
+            minimum: 0
+          description: Ordered list of node IDs in the result path.
+          example: [111, 222, 333]
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/EdgeJson"
+          description: Edges in the result subgraph.
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyJson"
+          description: Node properties (only present for `properties` query type).
+        grounding:
+          type: string
+          enum: [fact, inference, unknown]
+          default: unknown
+          description: Epistemic status of the result.
+          example: inference
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null
+
+    EdgeJson:
+      type: object
+      description: A directed, weighted edge between two nodes.
+      required: [from, to, weight]
+      properties:
+        from:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Source node ID.
+          example: 111
+        to:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Destination node ID.
+          example: 222
+        weight:
+          type: integer
+          format: int64
+          description: |
+            Edge weight (signed 64-bit integer).
+            Increases with each repeated signal. Edges with weight ≥ 10
+            are considered stable.
+          example: 15
+
+    PropertyJson:
+      type: object
+      description: A key-value property of a node.
+      required: [attribute, value]
+      properties:
+        attribute:
+          type: string
+          description: Property key (e.g. `name`, `role`).
+          example: name
+        value:
+          type: string
+          description: Property value.
+          example: Alice
+
+    # -------------------------------------------------------------------------
+    # Export
+    # -------------------------------------------------------------------------
+
+    ExportResponse:
+      type: object
+      description: Graph snapshot in canonical binary format.
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          description: Whether the export succeeded.
+          example: true
+        data:
+          type: ["string", "null"]
+          contentEncoding: base64
+          description: |
+            Base64-encoded Kremis canonical binary snapshot.
+            Format: `[header_len: u32][header][postcard-encoded graph]`
+            Magic bytes: `KREM` (first 4 bytes after decoding).
+          example: "S1JFTQ..."
+        checksum:
+          type: ["integer", "null"]
+          format: uint64
+          minimum: 0
+          description: |
+            Deterministic checksum of the graph state.
+            Same graph content always produces the same checksum.
+            Use this to verify integrity after transfer.
+          example: 14823901234567890
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null

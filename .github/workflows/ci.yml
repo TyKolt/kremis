@@ -78,6 +78,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+  openapi:
+    name: OpenAPI Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx --yes @redocly/cli lint docs/openapi.yml --skip-rule=no-server-example.com
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -103,7 +110,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [fmt, clippy, test, audit, build]
+    needs: [fmt, clippy, test, audit, openapi, build]
     if: always()
     steps:
       - name: Check all jobs passed
@@ -112,6 +119,7 @@ jobs:
              [[ "${{ needs.clippy.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
              [[ "${{ needs.audit.result }}" != "success" ]] || \
+             [[ "${{ needs.openapi.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]]; then
             echo "One or more required jobs failed"
             exit 1
