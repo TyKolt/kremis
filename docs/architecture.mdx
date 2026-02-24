@@ -66,6 +66,15 @@ ingest_sequence(graph, [A, B, C]):
   → ingest A, ingest B, edge A→B (weight +1)
   → ingest B, ingest C, edge B→C (weight +1)
   Repeated signals on same edge: weight increments (saturating)
+
+RedbGraph::ingest_batch([A, B, C]):   ← v0.6.0, Persistent backend only
+  1. Validate all signals (reject batch atomically on any invalid signal)
+  2. Open ONE redb write transaction
+  3. Insert nodes + properties for all signals (read-modify-write in same txn)
+  4. Create edges between adjacent signals (ASSOCIATION_WINDOW = 1)
+  5. Commit → 1 fsync instead of ~3N
+  Session::ingest_sequence routes to ingest_batch for Persistent backends.
+  Throughput: ~100 sig/s → ~10,000+ sig/s.
 ```
 
 ## Export Formats

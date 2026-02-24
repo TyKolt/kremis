@@ -285,7 +285,7 @@ impl Session {
     pub fn ingest_sequence(&mut self, signals: &[Signal]) -> Result<Vec<NodeId>, KremisError> {
         let nodes = match &mut self.backend {
             StorageBackend::InMemory(graph) => Ingestor::ingest_sequence(graph, signals)?,
-            StorageBackend::Persistent(redb) => Ingestor::ingest_sequence(redb, signals)?,
+            StorageBackend::Persistent(redb) => redb.ingest_batch(signals)?,
         };
         for &node in &nodes {
             self.buffer.activate(node);

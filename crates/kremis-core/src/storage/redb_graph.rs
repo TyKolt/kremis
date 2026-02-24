@@ -16,7 +16,7 @@
 //! `RedbGraph` persists data to disk automatically.
 
 use crate::graph::GraphStore;
-use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Value};
+use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Signal, Value};
 use redb::{Database, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -139,6 +139,164 @@ impl RedbGraph {
             .compact()
             .map_err(|e| KremisError::IoError(e.to_string()))?;
         Ok(())
+    }
+
+    /// Ingest a sequence of signals in a single batch ACID transaction.
+    ///
+    /// Unlike `Ingestor::ingest_sequence`, this method groups all writes
+    /// (nodes, properties, edges) into a single redb transaction, reducing
+    /// fsync overhead from O(N) to O(1).
+    ///
+    /// Edges are formed between adjacent signals per `ASSOCIATION_WINDOW`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `KremisError::InvalidSignal` if:
+    /// - The sequence exceeds `MAX_SEQUENCE_LENGTH`
+    /// - Any signal is invalid (all signals are validated before the transaction opens)
+    pub fn ingest_batch(&mut self, signals: &[Signal]) -> Result<Vec<NodeId>, KremisError> {
+        use crate::ingestor::Ingestor;
+        use crate::primitives::{ASSOCIATION_WINDOW, MAX_SEQUENCE_LENGTH};
+
+        if signals.is_empty() {
+            return Ok(Vec::new());
+        }
+        if signals.len() > MAX_SEQUENCE_LENGTH {
+            return Err(KremisError::InvalidSignal);
+        }
+
+        // Validate all signals before touching the database.
+        // If any signal is invalid, the entire batch is rejected atomically.
+        for signal in signals {
+            Ingestor::validate(signal)?;
+        }
+
+        // Track entities newly inserted in this batch (not yet in entity_cache).
+        let mut batch_entity_map: BTreeMap<EntityId, NodeId> = BTreeMap::new();
+        let mut current_next_id = self.next_node_id;
+        let mut node_ids = Vec::with_capacity(signals.len());
+
+        let write_txn = self
+            .db
+            .begin_write()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        {
+            let mut nodes_table = write_txn
+                .open_table(NODES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut entity_table = write_txn
+                .open_table(ENTITY_INDEX)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut edges_table = write_txn
+                .open_table(EDGES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut props_table = write_txn
+                .open_table(PROPERTIES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut meta_table = write_txn
+                .open_table(METADATA)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+            // Pass 1: insert nodes and properties.
+            for signal in signals {
+                let node_id = if let Some(&existing) = self.entity_cache.get(&signal.entity) {
+                    existing
+                } else if let Some(&batch_node) = batch_entity_map.get(&signal.entity) {
+                    batch_node
+                } else {
+                    let new_node_id = NodeId(current_next_id);
+                    current_next_id = current_next_id.saturating_add(1);
+
+                    let node = Node::new(new_node_id, signal.entity);
+                    let node_bytes = postcard::to_allocvec(&node)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?;
+
+                    nodes_table
+                        .insert(new_node_id.0, node_bytes.as_slice())
+                        .map_err(|e| KremisError::IoError(e.to_string()))?;
+                    entity_table
+                        .insert(signal.entity.0, new_node_id.0)
+                        .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+                    batch_entity_map.insert(signal.entity, new_node_id);
+                    new_node_id
+                };
+
+                // Store property: read-modify-write within the same transaction.
+                let mut hasher = DefaultHasher::new();
+                signal.attribute.as_str().hash(&mut hasher);
+                let attr_hash = hasher.finish();
+
+                let mut values: Vec<Value> = props_table
+                    .get((node_id.0, attr_hash))
+                    .map_err(|e| KremisError::IoError(e.to_string()))?
+                    .map(|data| {
+                        postcard::from_bytes::<(Attribute, Vec<Value>)>(data.value())
+                            .map(|(_, v)| v)
+                            .unwrap_or_default()
+                    })
+                    .unwrap_or_default();
+                values.push(signal.value.clone());
+
+                let prop_bytes = postcard::to_allocvec(&(signal.attribute.clone(), values))
+                    .map_err(|e| KremisError::SerializationError(e.to_string()))?;
+                props_table
+                    .insert((node_id.0, attr_hash), prop_bytes.as_slice())
+                    .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+                node_ids.push(node_id);
+            }
+
+            // Pass 2: create edges between adjacent signals (ASSOCIATION_WINDOW = 1).
+            for window in signals.windows(ASSOCIATION_WINDOW + 1) {
+                let current_signal = &window[window.len() - 1];
+                let current_node = self
+                    .entity_cache
+                    .get(&current_signal.entity)
+                    .copied()
+                    .or_else(|| batch_entity_map.get(&current_signal.entity).copied())
+                    .ok_or(KremisError::InvalidSignal)?;
+
+                for prev_signal in window.iter().take(window.len() - 1) {
+                    let prev_node = self
+                        .entity_cache
+                        .get(&prev_signal.entity)
+                        .copied()
+                        .or_else(|| batch_entity_map.get(&prev_signal.entity).copied())
+                        .ok_or(KremisError::InvalidSignal)?;
+
+                    let current_weight = edges_table
+                        .get((prev_node.0, current_node.0))
+                        .map_err(|e| KremisError::IoError(e.to_string()))?
+                        .map(|v| v.value())
+                        .unwrap_or(0);
+                    edges_table
+                        .insert(
+                            (prev_node.0, current_node.0),
+                            current_weight.saturating_add(1),
+                        )
+                        .map_err(|e| KremisError::IoError(e.to_string()))?;
+                }
+            }
+
+            // Update metadata.
+            meta_table
+                .insert("next_node_id", current_next_id)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+        }
+
+        write_txn
+            .commit()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+
+        // Update in-memory state only after successful commit.
+        self.next_node_id = current_next_id;
+        for (entity, node_id) in batch_entity_map {
+            self.entity_cache.insert(entity, node_id);
+        }
+
+        Ok(node_ids)
     }
 
     /// Get all edges in deterministic order.
@@ -1472,6 +1630,119 @@ mod tests {
             .insert_edge(NodeId(888), dangling, EdgeWeight::new(5))
             .expect("insert edge");
         assert_eq!(graph.edge_count().expect("count"), 0);
+    }
+
+    // =========================================================================
+    // ingest_batch tests
+    // =========================================================================
+
+    fn make_signal(entity_id: u64, attr: &str, val: &str) -> crate::Signal {
+        crate::Signal::new(
+            EntityId(entity_id),
+            crate::Attribute::new(attr),
+            crate::Value::new(val),
+        )
+    }
+
+    #[test]
+    fn ingest_batch_basic() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let signals = vec![
+            make_signal(1, "type", "word"),
+            make_signal(2, "type", "word"),
+            make_signal(3, "type", "word"),
+        ];
+
+        let nodes = graph.ingest_batch(&signals).expect("ingest batch");
+
+        assert_eq!(nodes.len(), 3);
+        assert_eq!(graph.node_count().expect("count"), 3);
+        // Adjacent edges created
+        assert_eq!(graph.edge_count().expect("count"), 2);
+    }
+
+    #[test]
+    fn ingest_batch_creates_edges() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let signals = vec![
+            make_signal(10, "name", "Alice"),
+            make_signal(20, "name", "Bob"),
+            make_signal(30, "name", "Charlie"),
+        ];
+
+        let nodes = graph.ingest_batch(&signals).expect("ingest batch");
+
+        // Edge from node 0 to node 1
+        let w01 = graph.get_edge(nodes[0], nodes[1]).expect("get edge");
+        assert_eq!(w01, Some(EdgeWeight::new(1)));
+
+        // Edge from node 1 to node 2
+        let w12 = graph.get_edge(nodes[1], nodes[2]).expect("get edge");
+        assert_eq!(w12, Some(EdgeWeight::new(1)));
+
+        // No edge from node 0 to node 2 (ASSOCIATION_WINDOW = 1)
+        let w02 = graph.get_edge(nodes[0], nodes[2]).expect("get edge");
+        assert!(w02.is_none());
+    }
+
+    #[test]
+    fn ingest_batch_deduplication() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        // Same entity twice: should result in one node, two properties
+        let signals = vec![
+            make_signal(1, "name", "Alice"),
+            make_signal(1, "role", "admin"),
+        ];
+
+        let nodes = graph.ingest_batch(&signals).expect("ingest batch");
+
+        assert_eq!(nodes[0], nodes[1], "Same entity must map to same NodeId");
+        assert_eq!(graph.node_count().expect("count"), 1);
+
+        let props = graph.get_properties(nodes[0]).expect("get props");
+        assert_eq!(props.len(), 2);
+        assert!(props.contains(&(crate::Attribute::new("name"), crate::Value::new("Alice"))));
+        assert!(props.contains(&(crate::Attribute::new("role"), crate::Value::new("admin"))));
+    }
+
+    #[test]
+    fn ingest_batch_empty() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let nodes = graph.ingest_batch(&[]).expect("empty batch");
+        assert!(nodes.is_empty());
+        assert_eq!(graph.node_count().expect("count"), 0);
+    }
+
+    #[test]
+    fn ingest_batch_preserves_properties() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let signals = vec![
+            make_signal(1, "city", "Paris"),
+            make_signal(2, "city", "Rome"),
+        ];
+
+        let nodes = graph.ingest_batch(&signals).expect("ingest batch");
+
+        let props1 = graph.get_properties(nodes[0]).expect("props 1");
+        assert!(props1.contains(&(crate::Attribute::new("city"), crate::Value::new("Paris"))));
+
+        let props2 = graph.get_properties(nodes[1]).expect("props 2");
+        assert!(props2.contains(&(crate::Attribute::new("city"), crate::Value::new("Rome"))));
     }
 
     #[test]
