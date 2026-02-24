@@ -1,15 +1,28 @@
+# Build artifacts
 target/
+
+# Runtime data (generated)
 *.db
 *.bin
+
+# Development tools (never in image)
 .claude/
-.agent/
 .agents/
-_archive/
-dev-docs/
-social/
-video/
+
+# Documentation (not needed in image)
+docs/
+examples/
+
+# CI/CD configuration
+.github/
+
+# Version control
 .git/
+
+# Environment files
 .env
 .env.*
+
+# OS
 .DS_Store
 Thumbs.db

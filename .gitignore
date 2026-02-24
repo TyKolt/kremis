@@ -1,4 +1,4 @@
-# Rust build artifacts
+# Build artifacts
 /target
 
 # Database files (generated at runtime)

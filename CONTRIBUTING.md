@@ -135,6 +135,15 @@ Committed files that contain the version (all must be updated together):
 5. **Write a clear description.** Explain what changed, why, and how to test it.
 6. **Be patient.** This is a solo-maintained project. Reviews may take time.
 
+### Merge Authority
+
+**Only the maintainer can merge pull requests into `main`.**
+
+- Contributors cannot merge their own PRs, regardless of CI status.
+- No direct commits to `main` from external contributors — all changes go through a PR.
+- The maintainer reviews every PR for compliance with the 4 Fundamental Laws before merging.
+- A passing CI is necessary but not sufficient for merge approval.
+
 ### PR Checklist
 
 - [ ] All tests pass (`cargo test --workspace`)
