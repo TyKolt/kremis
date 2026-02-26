@@ -2,6 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.8.0] - 2026-02-26
+
+### Documentation
+
+- Add CHANGELOG.md with git-cliff and update release workflow ([`da5b949`](https://github.com/TyKolt/kremis/commit/da5b94906f0f8d7c9efa398a329e61ea6bab1b86))
+- Regenerate CHANGELOG for v0.8.0 ([`b6f41f6`](https://github.com/TyKolt/kremis/commit/b6f41f6025dc43dff7cb5ce309ac486f4b94200e))
+
+### Features
+
+- Add decrement_edge + POST /signal/retract for edge invalidation ([`e579c97`](https://github.com/TyKolt/kremis/commit/e579c970335b557cfb71b509c76d06ccb0ad2092))
+
 ## [0.7.0] - 2026-02-26
 
 ### Features
