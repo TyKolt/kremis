@@ -12,6 +12,7 @@
 //! - `export` - Export graph to file
 //! - `import` - Import graph from file
 //! - `init` - Initialize new database
+//! - `hash` - Compute BLAKE3 cryptographic hash of graph
 
 mod commands;
 
@@ -148,6 +149,9 @@ pub enum Commands {
         #[arg(short, long)]
         force: bool,
     },
+
+    /// Compute BLAKE3 cryptographic hash of graph
+    Hash,
 }
 
 // =============================================================================
@@ -195,6 +199,7 @@ pub async fn execute(cli: Cli) -> Result<(), KremisError> {
         }
         Some(Commands::Import { input }) => cmd_import(&cli.database, backend, &input),
         Some(Commands::Init { force }) => cmd_init(&cli.database, backend, force),
+        Some(Commands::Hash) => cmd_hash(&cli.database, backend, json_mode),
         None => {
             // No subcommand - show status by default
             cmd_status(&cli.database, backend, json_mode)

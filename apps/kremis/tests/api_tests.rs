@@ -986,3 +986,105 @@ async fn test_auth_bearer_prefix_only_rejected() {
         "Bearer prefix with no key should return 401 Unauthorized"
     );
 }
+
+// =============================================================================
+// HASH ENDPOINT TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_hash_empty_graph() {
+    let (server, _guard) = create_test_server();
+
+    let response = server.get("/hash").await;
+
+    response.assert_status_ok();
+    let body: serde_json::Value = response.json();
+    assert_eq!(body["success"], true);
+    assert_eq!(body["algorithm"], "blake3");
+    let hash = body["hash"].as_str().expect("hash should be a string");
+    assert_eq!(hash.len(), 64, "BLAKE3 hex digest must be 64 characters");
+    assert!(
+        hash.chars().all(|c| c.is_ascii_hexdigit()),
+        "Hash must be hex"
+    );
+}
+
+#[tokio::test]
+async fn test_hash_after_ingest() {
+    use kremis_core::{Attribute, EntityId, Signal, Value};
+
+    // Acquire mutex once; build both servers within the same lock scope
+    // to avoid deadlock from two separate create_*_server() calls.
+    let (server_empty, _guard) = create_test_server();
+    let hash_empty: serde_json::Value = server_empty.get("/hash").await.json();
+    let empty_hash = hash_empty["hash"].as_str().unwrap().to_string();
+
+    // Build populated server manually without re-acquiring the mutex
+    let mut session2 = Session::new();
+    session2
+        .ingest_sequence(&[
+            Signal::new(EntityId(1), Attribute::new("name"), Value::new("Alice")),
+            Signal::new(EntityId(2), Attribute::new("name"), Value::new("Bob")),
+        ])
+        .unwrap();
+    let router2 = create_router(AppState::new(session2));
+    let server_populated = TestServer::new(router2).unwrap();
+
+    let hash_populated: serde_json::Value = server_populated.get("/hash").await.json();
+    let populated_hash = hash_populated["hash"].as_str().unwrap().to_string();
+
+    assert_ne!(
+        empty_hash, populated_hash,
+        "Hash must change when graph content changes"
+    );
+    assert_eq!(populated_hash.len(), 64);
+}
+
+// =============================================================================
+// METRICS ENDPOINT TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_metrics_content_type() {
+    let (server, _guard) = create_test_server();
+
+    let response = server.get("/metrics").await;
+
+    response.assert_status_ok();
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .expect("content-type header must be present")
+        .to_str()
+        .expect("content-type must be valid utf8");
+    assert_eq!(
+        content_type, "text/plain; version=0.0.4",
+        "Prometheus endpoint must return correct Content-Type"
+    );
+}
+
+#[tokio::test]
+async fn test_metrics_contains_labels() {
+    let (server, _guard) = create_test_server();
+
+    let response = server.get("/metrics").await;
+
+    response.assert_status_ok();
+    let body = response.text();
+    assert!(
+        body.contains("kremis_node_count"),
+        "Metrics must contain kremis_node_count"
+    );
+    assert!(
+        body.contains("kremis_edge_count"),
+        "Metrics must contain kremis_edge_count"
+    );
+    assert!(
+        body.contains("kremis_stage"),
+        "Metrics must contain kremis_stage"
+    );
+    assert!(
+        body.contains("# TYPE"),
+        "Metrics must contain Prometheus TYPE annotations"
+    );
+}

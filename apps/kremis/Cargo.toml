@@ -36,7 +36,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal dependency
-kremis-core = { path = "../../crates/kremis-core" }
+kremis-core = { path = "../../crates/kremis-core", features = ["crypto-hash"] }
 
 # App dependencies
 tokio = { workspace = true }

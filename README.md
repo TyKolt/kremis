@@ -197,6 +197,8 @@ cargo run -p kremis -- import -i graph.bin -B file
 | `/signal` | POST | Ingest a signal |
 | `/query` | POST | Execute a query |
 | `/export` | POST | Export graph |
+| `/hash` | GET | BLAKE3 cryptographic hash |
+| `/metrics` | GET | Prometheus metrics |
 
 See the [full documentation](https://kremis.mintlify.app/api/overview) or browse the [source docs](docs/api/) for API reference.
 

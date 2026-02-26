@@ -12,9 +12,9 @@ use super::{
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use kremis_core::{
     EdgeWeight, EntityId, KremisError, NodeId, Session,
-    export::{canonical_checksum, export_canonical},
+    export::{canonical_checksum, canonical_crypto_hash, export_canonical},
     primitives::{MAX_INTERSECT_NODES, MAX_TRAVERSAL_DEPTH},
-    system::{GraphMetrics, StageAssessor},
+    system::{GraphMetrics, Stage, StageAssessor},
 };
 
 // =============================================================================
@@ -236,6 +236,89 @@ fn execute_query_inner(
             Err(e) => Err(e),
         },
     }
+}
+
+// =============================================================================
+// HASH HANDLER
+// =============================================================================
+
+/// Compute BLAKE3 cryptographic hash of graph canonical export.
+pub async fn hash_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let session = state.session.read().await;
+    let graph = match session.export_graph_snapshot() {
+        Ok(g) => g,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"success": false, "error": format!("Snapshot failed: {}", e)}),
+                ),
+            );
+        }
+    };
+    let hash = canonical_crypto_hash(&graph);
+    let checksum = canonical_checksum(&graph);
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "hash": hash,
+            "algorithm": "blake3",
+            "checksum": checksum
+        })),
+    )
+}
+
+// =============================================================================
+// METRICS HANDLER
+// =============================================================================
+
+/// Prometheus-compatible metrics endpoint.
+pub async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let session = state.session.read().await;
+    let metrics = GraphMetrics::from_session(&session);
+    let assessor = StageAssessor::new();
+    let progress = assessor.progress_to_next_session(&session);
+    let stage_num = match progress.current {
+        Stage::S0 => 0u8,
+        Stage::S1 => 1u8,
+        Stage::S2 => 2u8,
+        Stage::S3 => 3u8,
+    };
+    let body = format!(
+        "# HELP kremis_node_count Total number of nodes in the graph\n\
+         # TYPE kremis_node_count gauge\n\
+         kremis_node_count {}\n\
+         # HELP kremis_edge_count Total number of edges in the graph\n\
+         # TYPE kremis_edge_count gauge\n\
+         kremis_edge_count {}\n\
+         # HELP kremis_stable_edges Edges with weight >= stable threshold\n\
+         # TYPE kremis_stable_edges gauge\n\
+         kremis_stable_edges {}\n\
+         # HELP kremis_density_millionths Graph density (edges*1M/nodes)\n\
+         # TYPE kremis_density_millionths gauge\n\
+         kremis_density_millionths {}\n\
+         # HELP kremis_stage Current developmental stage (0=S0 1=S1 2=S2 3=S3)\n\
+         # TYPE kremis_stage gauge\n\
+         kremis_stage {}\n\
+         # HELP kremis_stage_progress_percent Progress toward next stage\n\
+         # TYPE kremis_stage_progress_percent gauge\n\
+         kremis_stage_progress_percent {}\n",
+        metrics.node_count,
+        metrics.edge_count,
+        metrics.stable_edge_count,
+        metrics.density_millionths,
+        stage_num,
+        progress.percent,
+    );
+    (
+        StatusCode::OK,
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
+        body,
+    )
 }
 
 // =============================================================================

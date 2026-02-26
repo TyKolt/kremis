@@ -108,6 +108,13 @@
             "pages": [
               "api/export"
             ]
+          },
+          {
+            "group": "Observability",
+            "pages": [
+              "api/hash",
+              "api/metrics"
+            ]
           }
         ]
       },
@@ -124,7 +131,8 @@
               "cli/ingest",
               "cli/query",
               "cli/status",
-              "cli/export-import"
+              "cli/export-import",
+              "cli/hash"
             ]
           }
         ]

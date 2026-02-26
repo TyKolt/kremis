@@ -1,0 +1,64 @@
+---
+title: "GET /metrics"
+description: "Prometheus-compatible graph metrics in text format."
+icon: "chart-line"
+---
+
+<ParamField path="method" type="GET">
+  `/metrics`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Returns graph metrics in Prometheus text format (version 0.0.4).
+The response is `text/plain` — compatible with any Prometheus scraper or monitoring tool.
+
+## Response
+
+**Content-Type:** `text/plain; version=0.0.4`
+
+```text 200 OK
+# HELP kremis_node_count Total number of nodes in the graph
+# TYPE kremis_node_count gauge
+kremis_node_count 1024
+# HELP kremis_edge_count Total number of edges in the graph
+# TYPE kremis_edge_count gauge
+kremis_edge_count 3891
+# HELP kremis_stable_edges Edges with weight >= stable threshold
+# TYPE kremis_stable_edges gauge
+kremis_stable_edges 207
+# HELP kremis_density_millionths Graph density (edges*1M/nodes)
+# TYPE kremis_density_millionths gauge
+kremis_density_millionths 7432
+# HELP kremis_stage Current developmental stage (0=S0 1=S1 2=S2 3=S3)
+# TYPE kremis_stage gauge
+kremis_stage 1
+# HELP kremis_stage_progress_percent Progress toward next stage
+# TYPE kremis_stage_progress_percent gauge
+kremis_stage_progress_percent 42
+```
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `kremis_node_count` | gauge | Total nodes in the graph. |
+| `kremis_edge_count` | gauge | Total directed edges. |
+| `kremis_stable_edges` | gauge | Edges with weight ≥ 10 (stable threshold). |
+| `kremis_density_millionths` | gauge | Graph density × 1,000,000. |
+| `kremis_stage` | gauge | Current stage: 0=S0, 1=S1, 2=S2, 3=S3. |
+| `kremis_stage_progress_percent` | gauge | Progress toward next stage (0–100). |
+
+## Example
+
+```bash
+# Scrape metrics
+curl http://localhost:8080/metrics \
+     -H "Authorization: Bearer your-api-key"
+
+# Prometheus scrape_config example
+# scrape_configs:
+#   - job_name: kremis
+#     static_configs:
+#       - targets: ['localhost:8080']
+#     metrics_path: /metrics
+#     bearer_token: your-api-key
+```

@@ -1,0 +1,64 @@
+---
+title: "GET /hash"
+description: "Compute BLAKE3 cryptographic hash of the graph canonical export."
+icon: "fingerprint"
+---
+
+<ParamField path="method" type="GET">
+  `/hash`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Computes a BLAKE3 cryptographic hash of the graph's canonical binary export.
+The hash is deterministic: the same graph state always produces the same 64-character hex digest.
+
+<Info>
+  Also returns the lightweight XOR-based checksum for fast comparisons. Use the BLAKE3 hash for
+  cryptographic integrity verification; use the checksum for quick equality checks.
+</Info>
+
+## Response
+
+<CodeGroup>
+
+```json 200 OK — Success
+{
+  "success": true,
+  "hash": "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8",
+  "algorithm": "blake3",
+  "checksum": 14823901234567890
+}
+```
+
+```json 500 Internal Server Error — Failure
+{
+  "success": false,
+  "error": "Snapshot failed: ..."
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the hash was computed successfully. |
+| `hash` | string or null | 64-character BLAKE3 hex digest. |
+| `algorithm` | string or null | Always `"blake3"`. |
+| `checksum` | integer (u64) or null | XOR-based deterministic checksum. |
+| `error` | string or null | Error message (if failed). |
+
+## Example
+
+```bash
+curl http://localhost:8080/hash \
+     -H "Authorization: Bearer your-api-key"
+```
+
+```bash
+# Compare hash before and after a change
+HASH_BEFORE=$(curl -s http://localhost:8080/hash | jq -r '.hash')
+kremis ingest --file signals.json
+HASH_AFTER=$(curl -s http://localhost:8080/hash | jq -r '.hash')
+[ "$HASH_BEFORE" != "$HASH_AFTER" ] && echo "Graph changed"
+```

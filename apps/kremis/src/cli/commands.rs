@@ -654,6 +654,32 @@ pub fn cmd_init(db_path: &PathBuf, backend: &str, force: bool) -> Result<(), Kre
 }
 
 // =============================================================================
+// HASH COMMAND
+// =============================================================================
+
+/// Compute BLAKE3 cryptographic hash of the graph.
+pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(), KremisError> {
+    use kremis_core::export::canonical_crypto_hash;
+    let session = load_or_create_session(db_path, backend)?;
+    let graph = session.export_graph_snapshot()?;
+    let hash = canonical_crypto_hash(&graph);
+    let checksum = canonical_checksum(&graph);
+    if json_mode {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "hash": hash, "algorithm": "blake3", "checksum": checksum
+            }))
+            .unwrap_or_default()
+        );
+    } else {
+        println!("BLAKE3: {}", hash);
+        println!("Checksum (XOR): {}", checksum);
+    }
+    Ok(())
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
