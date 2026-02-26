@@ -138,6 +138,43 @@ impl IngestResponse {
 }
 
 // =============================================================================
+// RETRACT REQUEST/RESPONSE
+// =============================================================================
+
+/// Signal retraction request — decrements the weight of an existing edge.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RetractRequest {
+    pub from_entity: u64,
+    pub to_entity: u64,
+}
+
+/// Signal retraction response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RetractResponse {
+    pub success: bool,
+    pub new_weight: Option<i64>,
+    pub error: Option<String>,
+}
+
+impl RetractResponse {
+    pub fn success(new_weight: i64) -> Self {
+        Self {
+            success: true,
+            new_weight: Some(new_weight),
+            error: None,
+        }
+    }
+
+    pub fn error(msg: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            new_weight: None,
+            error: Some(msg.into()),
+        }
+    }
+}
+
+// =============================================================================
 // QUERY REQUEST/RESPONSE
 // =============================================================================
 

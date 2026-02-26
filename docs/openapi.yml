@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.7.0
+  version: 0.8.0
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -187,6 +187,84 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+
+  /signal/retract:
+    post:
+      operationId: retractSignal
+      summary: Retract a signal
+      description: |
+        Decrements the edge weight between two entities by 1, floored at 0.
+
+        Use this to correct erroneously ingested signals. The operation is
+        symmetric to `POST /signal` — each retraction undoes one ingest.
+
+        **Weight floor:** The weight is never decremented below 0. Negative
+        weights are architecturally forbidden because `strongest_path` computes
+        cost as `i64::MAX - weight`; a negative weight would cause overflow.
+
+        **Returns 404** if either entity does not exist or if no edge exists
+        between them. No edge is created by a retract operation.
+      tags: [signals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetractRequest"
+            example:
+              from_entity: 12345678901234567
+              to_entity: 98765432109876543
+      responses:
+        "200":
+          description: Edge weight decremented successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetractResponse"
+              examples:
+                success:
+                  summary: Weight decremented
+                  value:
+                    success: true
+                    new_weight: 4
+                    error: null
+                floored:
+                  summary: Weight floored at zero
+                  value:
+                    success: true
+                    new_weight: 0
+                    error: null
+        "400":
+          description: Malformed request body.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Entity not found or edge does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetractResponse"
+              examples:
+                entity_not_found:
+                  summary: from_entity not found
+                  value:
+                    success: false
+                    new_weight: null
+                    error: "from_entity not found"
+                edge_not_found:
+                  summary: Edge does not exist
+                  value:
+                    success: false
+                    new_weight: null
+                    error: "edge not found"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal storage error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetractResponse"
 
   /query:
     post:
@@ -602,6 +680,49 @@ components:
           minimum: 0
           description: Internal node ID assigned to the entity, if successful.
           example: 9876543210
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null
+
+    # -------------------------------------------------------------------------
+    # Retract
+    # -------------------------------------------------------------------------
+
+    RetractRequest:
+      type: object
+      description: Identifies the two entities whose edge weight should be decremented.
+      required: [from_entity, to_entity]
+      properties:
+        from_entity:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Entity ID of the source node.
+          example: 12345678901234567
+        to_entity:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Entity ID of the destination node.
+          example: 98765432109876543
+
+    RetractResponse:
+      type: object
+      description: Result of a retract operation.
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          description: Whether the retraction was applied.
+          example: true
+        new_weight:
+          type: ["integer", "null"]
+          format: int64
+          description: |
+            Updated edge weight after decrement, floored at 0.
+            Present only when `success` is `true`.
+          example: 4
         error:
           type: ["string", "null"]
           description: Error message, present only when `success` is `false`.

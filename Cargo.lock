@@ -1254,7 +1254,7 @@ dependencies = [
 
 [[package]]
 name = "kremis"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "axum-test",
@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "kremis-core"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "criterion",
@@ -1290,7 +1290,7 @@ dependencies = [
 
 [[package]]
 name = "kremis-mcp"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "reqwest",
  "rmcp",

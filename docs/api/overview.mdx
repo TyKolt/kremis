@@ -5,7 +5,7 @@ icon: "code"
 ---
 
 **Base URL:** `http://localhost:8080`
-**Version:** 0.7.0
+**Version:** 0.8.0
 **License:** Apache 2.0
 
 ## Endpoints
@@ -16,6 +16,7 @@ icon: "code"
 | `/status` | GET | Graph statistics |
 | `/stage` | GET | Developmental stage |
 | `/signal` | POST | Ingest a signal |
+| `/signal/retract` | POST | Retract a signal (decrement edge weight) |
 | `/query` | POST | Execute a query |
 | `/export` | POST | Export graph |
 | `/hash` | GET | BLAKE3 cryptographic hash of graph |

@@ -1,0 +1,82 @@
+---
+title: "POST /signal/retract"
+description: "Retract a signal — decrement the edge weight between two entities."
+icon: "minus"
+---
+
+<ParamField path="method" type="POST">
+  `/signal/retract`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Decrements the edge weight between two entities by 1, floored at 0.
+
+Use this to correct erroneously ingested signals. Each retraction undoes one
+`POST /signal` ingest. The weight is never decremented below 0 — negative
+weights are architecturally forbidden because `strongest_path` computes path
+cost as `i64::MAX - weight`.
+
+## Request Body
+
+```json
+{
+  "from_entity": 1,
+  "to_entity": 2
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `from_entity` | integer (u64) | Yes | Entity ID of the source node. |
+| `to_entity` | integer (u64) | Yes | Entity ID of the destination node. |
+
+## Response
+
+<CodeGroup>
+
+```json 200 OK — Decremented
+{
+  "success": true,
+  "new_weight": 4,
+  "error": null
+}
+```
+
+```json 404 Not Found — Entity missing
+{
+  "success": false,
+  "new_weight": null,
+  "error": "from_entity not found"
+}
+```
+
+```json 404 Not Found — Edge missing
+{
+  "success": false,
+  "new_weight": null,
+  "error": "edge not found"
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the retraction was applied. |
+| `new_weight` | integer or null | Updated edge weight (floored at 0) if successful. |
+| `error` | string or null | Error message if failed. |
+
+<Note>
+  The weight floor is 0, not −1. If you retract more times than you ingested,
+  the weight stays at 0 rather than going negative.
+</Note>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/signal/retract \
+     -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{"from_entity": 1, "to_entity": 2}'
+```

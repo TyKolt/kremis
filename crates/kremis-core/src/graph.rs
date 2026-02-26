@@ -36,6 +36,12 @@ pub trait GraphStore {
     /// Creates the edge with weight 1 if it doesn't exist.
     fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError>;
 
+    /// Decrement the weight of an existing edge by 1, floored at 0.
+    ///
+    /// Returns `KremisError::EdgeNotFound` if the edge does not exist.
+    /// Weight is clamped at 0 — negative weights break `strongest_path`.
+    fn decrement_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError>;
+
     /// Lookup a node by its NodeId. Returns owned Node for storage compatibility.
     fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError>;
 
@@ -275,6 +281,15 @@ impl GraphStore for Graph {
         let targets = self.edges.entry(from).or_default();
         let current = targets.get(&to).copied().unwrap_or(EdgeWeight::new(0));
         targets.insert(to, current.increment());
+        Ok(())
+    }
+
+    fn decrement_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        let current = self
+            .get_edge(from, to)?
+            .ok_or(KremisError::EdgeNotFound(from, to))?;
+        let new_weight = current.decrement();
+        self.edges.entry(from).or_default().insert(to, new_weight);
         Ok(())
     }
 
@@ -712,6 +727,54 @@ mod tests {
         // Second increment increases to 2
         graph.increment_edge(a, b).expect("increment");
         assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(2)));
+    }
+
+    #[test]
+    fn decrement_edge_reduces_weight_by_one() {
+        let mut graph = Graph::new();
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+
+        graph.insert_edge(a, b, EdgeWeight::new(5)).expect("insert");
+        graph.decrement_edge(a, b).expect("decrement");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(4)));
+    }
+
+    #[test]
+    fn decrement_edge_floors_at_zero() {
+        let mut graph = Graph::new();
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+
+        graph.insert_edge(a, b, EdgeWeight::new(1)).expect("insert");
+        graph.decrement_edge(a, b).expect("decrement to 0");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(0)));
+
+        // Further decrements stay at 0
+        graph.decrement_edge(a, b).expect("decrement at 0");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(0)));
+    }
+
+    #[test]
+    fn decrement_edge_nonexistent_returns_error() {
+        let mut graph = Graph::new();
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+
+        let result = graph.decrement_edge(a, b);
+        assert!(matches!(result, Err(KremisError::EdgeNotFound(_, _))));
+    }
+
+    #[test]
+    fn decrement_edge_then_increment_roundtrip() {
+        let mut graph = Graph::new();
+        let a = graph.insert_node(EntityId(1)).expect("insert");
+        let b = graph.insert_node(EntityId(2)).expect("insert");
+
+        graph.insert_edge(a, b, EdgeWeight::new(3)).expect("insert");
+        graph.decrement_edge(a, b).expect("decrement");
+        graph.increment_edge(a, b).expect("increment");
+        assert_eq!(graph.get_edge(a, b).expect("get"), Some(EdgeWeight::new(3)));
     }
 
     #[test]

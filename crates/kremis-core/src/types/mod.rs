@@ -50,10 +50,22 @@ impl EdgeWeight {
     }
 
     /// Increment the edge weight by 1 using saturating arithmetic.
-    /// This is the ONLY allowed mutation for edge weights.
     #[must_use]
     pub const fn increment(self) -> Self {
         Self(self.0.saturating_add(1))
+    }
+
+    /// Decrement the edge weight by 1, floored at 0.
+    ///
+    /// Negative weights are forbidden: `strongest_path` computes cost as
+    /// `i64::MAX - weight`, which overflows on negative values.
+    #[must_use]
+    pub const fn decrement(self) -> Self {
+        if self.0 <= 0 {
+            Self(0)
+        } else {
+            Self(self.0 - 1)
+        }
     }
 
     /// Get the raw weight value.

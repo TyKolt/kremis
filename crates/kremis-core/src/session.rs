@@ -293,6 +293,16 @@ impl Session {
         Ok(nodes)
     }
 
+    /// Decrement the weight of an existing edge by 1, floored at 0.
+    ///
+    /// Returns `KremisError::EdgeNotFound` if the edge does not exist.
+    pub fn decrement_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        match &mut self.backend {
+            StorageBackend::InMemory(graph) => graph.decrement_edge(from, to),
+            StorageBackend::Persistent(redb) => redb.decrement_edge(from, to),
+        }
+    }
+
     // =========================================================================
     // COMPOSITION
     // =========================================================================

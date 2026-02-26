@@ -11,7 +11,7 @@ use axum::http::HeaderValue;
 use axum_test::TestServer;
 use kremis::api::{
     AppState, ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest,
-    QueryResponse, StageResponse, StatusResponse, create_router,
+    QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse, create_router,
 };
 use kremis_core::Session;
 use serde_json::json;
@@ -39,7 +39,7 @@ impl Drop for TestGuard {
 /// Create a test server with a fresh in-memory session.
 /// Returns a guard that must be kept alive during the test.
 fn create_test_server() -> (TestServer, TestGuard) {
-    let guard = AUTH_TEST_MUTEX.lock().unwrap();
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
     // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
     unsafe { std::env::remove_var("KREMIS_API_KEY") };
     let session = Session::new();
@@ -56,7 +56,7 @@ fn create_test_server() -> (TestServer, TestGuard) {
 fn create_populated_test_server() -> (TestServer, TestGuard) {
     use kremis_core::{Attribute, EntityId, Signal, Value};
 
-    let guard = AUTH_TEST_MUTEX.lock().unwrap();
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
     // SAFETY: Tests run sequentially under AUTH_TEST_MUTEX, so no concurrent env access.
     unsafe { std::env::remove_var("KREMIS_API_KEY") };
 
@@ -1087,4 +1087,147 @@ async fn test_metrics_contains_labels() {
         body.contains("# TYPE"),
         "Metrics must contain Prometheus TYPE annotations"
     );
+}
+
+// =============================================================================
+// RETRACT TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_retract_reduces_edge_weight() {
+    use kremis_core::{Attribute, EntityId, Signal, Value};
+
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
+
+    let mut session = Session::new();
+    // Ingest a sequence — this creates an edge from entity 1 to entity 2
+    let signals = vec![
+        Signal::new(EntityId(1), Attribute::new("type"), Value::new("word")),
+        Signal::new(EntityId(2), Attribute::new("type"), Value::new("word")),
+    ];
+    session.ingest_sequence(&signals).unwrap();
+
+    // Ingest again to bump weight to 2
+    session.ingest_sequence(&signals).unwrap();
+
+    let state = AppState::new(session);
+    let router = create_router(state);
+    let server = TestServer::new(router).unwrap();
+    let _guard = TestGuard { _guard: guard };
+
+    let request = RetractRequest {
+        from_entity: 1,
+        to_entity: 2,
+    };
+    let response = server.post("/signal/retract").json(&request).await;
+
+    response.assert_status_ok();
+    let result: RetractResponse = response.json();
+    assert!(result.success);
+    assert_eq!(result.new_weight, Some(1));
+    assert!(result.error.is_none());
+}
+
+#[tokio::test]
+async fn test_retract_from_entity_not_found_returns_404() {
+    let (server, _guard) = create_test_server();
+
+    let request = RetractRequest {
+        from_entity: 99999,
+        to_entity: 1,
+    };
+    let response = server.post("/signal/retract").json(&request).await;
+
+    response.assert_status(axum::http::StatusCode::NOT_FOUND);
+    let result: RetractResponse = response.json();
+    assert!(!result.success);
+    assert!(result.error.is_some());
+}
+
+#[tokio::test]
+async fn test_retract_to_entity_not_found_returns_404() {
+    let (server, _guard) = create_populated_test_server();
+
+    let request = RetractRequest {
+        from_entity: 1,
+        to_entity: 99999,
+    };
+    let response = server.post("/signal/retract").json(&request).await;
+
+    response.assert_status(axum::http::StatusCode::NOT_FOUND);
+    let result: RetractResponse = response.json();
+    assert!(!result.success);
+    assert!(result.error.is_some());
+}
+
+#[tokio::test]
+async fn test_retract_edge_not_found_returns_404() {
+    use kremis_core::{Attribute, EntityId, Signal, Value};
+
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
+
+    let mut session = Session::new();
+    // Ingest two unrelated signals to create entities but no edge between them
+    let signals = vec![
+        Signal::new(EntityId(1), Attribute::new("type"), Value::new("word")),
+        Signal::new(EntityId(2), Attribute::new("type"), Value::new("word")),
+    ];
+    session.ingest_sequence(&signals).unwrap();
+
+    let state = AppState::new(session);
+    let router = create_router(state);
+    let server = TestServer::new(router).unwrap();
+    let _guard = TestGuard { _guard: guard };
+
+    // Entities 1 and 2 exist but there is no direct edge from 2 to 1
+    let request = RetractRequest {
+        from_entity: 2,
+        to_entity: 1,
+    };
+    let response = server.post("/signal/retract").json(&request).await;
+
+    response.assert_status(axum::http::StatusCode::NOT_FOUND);
+    let result: RetractResponse = response.json();
+    assert!(!result.success);
+    assert!(result.error.is_some());
+}
+
+#[tokio::test]
+async fn test_retract_multiple_times_floors_at_zero() {
+    use kremis_core::{Attribute, EntityId, Signal, Value};
+
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
+
+    let mut session = Session::new();
+    let signals = vec![
+        Signal::new(EntityId(10), Attribute::new("type"), Value::new("a")),
+        Signal::new(EntityId(11), Attribute::new("type"), Value::new("b")),
+    ];
+    // One ingest → edge weight = 1
+    session.ingest_sequence(&signals).unwrap();
+
+    let state = AppState::new(session);
+    let router = create_router(state);
+    let server = TestServer::new(router).unwrap();
+    let _guard = TestGuard { _guard: guard };
+
+    let request = RetractRequest {
+        from_entity: 10,
+        to_entity: 11,
+    };
+
+    // First retract: 1 → 0
+    let response = server.post("/signal/retract").json(&request).await;
+    response.assert_status_ok();
+    let result: RetractResponse = response.json();
+    assert_eq!(result.new_weight, Some(0));
+
+    // Second retract: stays at 0 (no negative weights)
+    let response = server.post("/signal/retract").json(&request).await;
+    response.assert_status_ok();
+    let result: RetractResponse = response.json();
+    assert_eq!(result.new_weight, Some(0));
 }

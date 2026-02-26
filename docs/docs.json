@@ -89,7 +89,8 @@
           {
             "group": "Signals",
             "pages": [
-              "api/signal"
+              "api/signal",
+              "api/signal-retract"
             ]
           },
           {

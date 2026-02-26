@@ -31,12 +31,12 @@ pub use middleware::{create_rate_limiter, get_rate_limit_from_env};
 #[allow(unused_imports)]
 pub use handlers::{
     export_handler, hash_handler, health_handler, ingest_handler, metrics_handler, query_handler,
-    stage_handler, status_handler,
+    retract_handler, stage_handler, status_handler,
 };
 #[allow(unused_imports)]
 pub use types::{
     EdgeJson, ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest,
-    QueryResponse, StageResponse, StatusResponse,
+    QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse,
 };
 
 use axum::{
@@ -195,6 +195,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/status", get(handlers::status_handler))
         .route("/stage", get(handlers::stage_handler))
         .route("/signal", post(handlers::ingest_handler))
+        .route("/signal/retract", post(handlers::retract_handler))
         .route("/query", post(handlers::query_handler))
         .route("/export", post(handlers::export_handler))
         .route("/hash", get(handlers::hash_handler))

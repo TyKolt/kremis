@@ -6,7 +6,7 @@ use super::{
     AppState,
     types::{
         ExportResponse, HealthResponse, IngestRequest, IngestResponse, PropertyJson, QueryRequest,
-        QueryResponse, StageResponse, StatusResponse,
+        QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse,
     },
 };
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
@@ -93,6 +93,57 @@ pub async fn ingest_handler(
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(IngestResponse::error(format!("Ingest failed: {}", e))),
+        ),
+    }
+}
+
+// =============================================================================
+// RETRACT HANDLER
+// =============================================================================
+
+/// Retract a signal — decrement the weight of an edge between two entities.
+///
+/// Returns 404 if either entity or the edge does not exist.
+pub async fn retract_handler(
+    State(state): State<AppState>,
+    Json(request): Json<RetractRequest>,
+) -> impl IntoResponse {
+    let mut session = state.session.write().await;
+
+    let from_node = match session.lookup_entity(EntityId(request.from_entity)) {
+        Some(n) => n,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(RetractResponse::error("from_entity not found")),
+            );
+        }
+    };
+    let to_node = match session.lookup_entity(EntityId(request.to_entity)) {
+        Some(n) => n,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(RetractResponse::error("to_entity not found")),
+            );
+        }
+    };
+
+    match session.decrement_edge(from_node, to_node) {
+        Ok(()) => {
+            let new_weight = session
+                .get_edge(from_node, to_node)
+                .map(|w| w.value())
+                .unwrap_or(0);
+            (StatusCode::OK, Json(RetractResponse::success(new_weight)))
+        }
+        Err(KremisError::EdgeNotFound(_, _)) => (
+            StatusCode::NOT_FOUND,
+            Json(RetractResponse::error("edge not found")),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(RetractResponse::error(format!("retract failed: {}", e))),
         ),
     }
 }

@@ -507,6 +507,30 @@ impl GraphStore for RedbGraph {
         Ok(())
     }
 
+    fn decrement_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        let current = self
+            .get_edge(from, to)?
+            .ok_or(KremisError::EdgeNotFound(from, to))?;
+        let new_weight = current.decrement();
+
+        let write_txn = self
+            .db
+            .begin_write()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        {
+            let mut edges_table = write_txn
+                .open_table(EDGES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            edges_table
+                .insert((from.0, to.0), new_weight.value())
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+        }
+        write_txn
+            .commit()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        Ok(())
+    }
+
     fn lookup(&self, id: NodeId) -> Result<Option<Node>, KremisError> {
         let read_txn = self
             .db
