@@ -131,4 +131,24 @@ impl KremisClient {
         let resp = self.send(req).await?;
         self.handle_response(resp).await
     }
+
+    /// POST /signal/retract → decrement edge weight between two entities.
+    pub async fn retract(&self, from_entity: u64, to_entity: u64) -> Result<Value, ClientError> {
+        let body = serde_json::json!({
+            "from_entity": from_entity,
+            "to_entity": to_entity,
+        });
+        let req = self
+            .request(reqwest::Method::POST, "/signal/retract")
+            .json(&body);
+        let resp = self.send(req).await?;
+        self.handle_response(resp).await
+    }
+
+    /// GET /hash → canonical BLAKE3 hash of the graph.
+    pub async fn hash(&self) -> Result<Value, ClientError> {
+        let req = self.request(reqwest::Method::GET, "/hash");
+        let resp = self.send(req).await?;
+        self.handle_response(resp).await
+    }
 }

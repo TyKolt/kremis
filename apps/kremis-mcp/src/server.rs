@@ -1,6 +1,6 @@
 //! # Kremis MCP Server
 //!
-//! Implements `ServerHandler` with 7 MCP tools that proxy to the Kremis HTTP API.
+//! Implements `ServerHandler` with 9 MCP tools that proxy to the Kremis HTTP API.
 
 use crate::client::KremisClient;
 use rmcp::{
@@ -79,6 +79,16 @@ pub struct PropertiesParams {
     /// The node ID to get properties for.
     #[schemars(description = "The node ID to get properties for")]
     pub node_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RetractParams {
+    /// Source entity ID (the edge origin).
+    #[schemars(description = "Source entity ID (the edge origin)")]
+    pub from_entity: u64,
+    /// Target entity ID (the edge destination).
+    #[schemars(description = "Target entity ID (the edge destination)")]
+    pub to_entity: u64,
 }
 
 // =============================================================================
@@ -230,6 +240,53 @@ impl KremisMcp {
             Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
         }
     }
+
+    #[tool(
+        description = "Decrement the weight of an edge between two entities (edge invalidation / signal retraction)"
+    )]
+    async fn kremis_retract(
+        &self,
+        params: Parameters<RetractParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let RetractParams {
+            from_entity,
+            to_entity,
+        } = params.0;
+        match self.client.retract(from_entity, to_entity).await {
+            Ok(resp) => {
+                let text = if resp
+                    .get("retracted")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                {
+                    let from_node = resp.get("from_node").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let to_node = resp.get("to_node").and_then(|v| v.as_u64()).unwrap_or(0);
+                    format!("Edge decremented. Nodes: {from_node} -> {to_node}")
+                } else if let Some(err) = resp.get("error").and_then(|v| v.as_str()) {
+                    format!("Retract failed: {err}")
+                } else {
+                    format!("Retract response: {resp}")
+                };
+                Ok(CallToolResult::success(vec![Content::text(text)]))
+            }
+            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+        }
+    }
+
+    #[tool(description = "Get the canonical BLAKE3 hash of the current graph state")]
+    async fn kremis_hash(&self) -> Result<CallToolResult, McpError> {
+        match self.client.hash().await {
+            Ok(resp) => {
+                let text = if let Some(hash) = resp.get("hash").and_then(|v| v.as_str()) {
+                    format!("Graph hash (BLAKE3): {hash}")
+                } else {
+                    format!("Hash response: {resp}")
+                };
+                Ok(CallToolResult::success(vec![Content::text(text)]))
+            }
+            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+        }
+    }
 }
 
 // =============================================================================
@@ -242,7 +299,8 @@ impl ServerHandler for KremisMcp {
         ServerInfo {
             instructions: Some(
                 "Kremis knowledge graph server. Use tools to ingest entities, \
-                 query relationships, traverse the graph, and inspect properties."
+                 query relationships, traverse the graph, inspect properties, \
+                 retract edges, and verify graph integrity via BLAKE3 hash."
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
@@ -263,7 +321,12 @@ fn format_query_response(resp: &serde_json::Value) -> String {
             .get("grounding")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-        return format!("Not found.\nGrounding: {grounding}");
+        let base = format!("Not found.\nGrounding: {grounding}");
+        return if let Some(diag) = resp.get("diagnostic").and_then(|v| v.as_str()) {
+            format!("{base}\nReason: {diag}")
+        } else {
+            base
+        };
     }
 
     let mut parts = Vec::new();

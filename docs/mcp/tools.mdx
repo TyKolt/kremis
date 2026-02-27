@@ -4,7 +4,7 @@ description: "Available MCP tools for AI assistant integration."
 icon: "wrench"
 ---
 
-The MCP server exposes 7 tools that map directly to Kremis HTTP API endpoints.
+The MCP server exposes 9 tools that map directly to Kremis HTTP API endpoints.
 
 | Tool | HTTP Equivalent | Description |
 |------|----------------|-------------|
@@ -15,6 +15,8 @@ The MCP server exposes 7 tools that map directly to Kremis HTTP API endpoints.
 | `kremis_intersect` | `POST /query` (intersect) | Find nodes connected to all input nodes |
 | `kremis_status` | `GET /status` | Get graph statistics |
 | `kremis_properties` | `POST /query` (properties) | Get properties of a node |
+| `kremis_retract` | `POST /signal/retract` | Decrement edge weight between two entities |
+| `kremis_hash` | `GET /hash` | Get the canonical BLAKE3 hash of the graph |
 
 ## Tool Details
 
@@ -85,3 +87,20 @@ Get all properties of a node.
   "node_id": 0
 }
 ```
+
+### kremis_retract
+
+Decrement the weight of an edge between two entities. If the edge does not exist, returns an error.
+The weight decrements by 1, floored at 0 (never negative).
+
+```json
+{
+  "from_entity": 1,
+  "to_entity": 2
+}
+```
+
+### kremis_hash
+
+No parameters required. Returns the canonical BLAKE3 hash of the current graph state.
+Use to verify graph integrity or detect state changes between sessions.
