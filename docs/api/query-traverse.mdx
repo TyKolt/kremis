@@ -37,9 +37,14 @@ Include only edges above a minimum weight:
   "type": "traverse_filtered",
   "node_id": 0,
   "depth": 3,
-  "min_weight": 5
+  "min_weight": 10
 }
 ```
+
+<Tip>
+  Use `min_weight: 10` to traverse only **stable edges** — connections reinforced by at least 10 independent signals.
+  This aligns with the stability threshold used by [Developmental Stages](/concepts/stages).
+</Tip>
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -87,8 +92,8 @@ curl -X POST http://localhost:8080/query \
      -H "Content-Type: application/json" \
      -d '{"type": "traverse", "node_id": 0, "depth": 3}'
 
-# Filtered traverse (weight >= 5 only)
+# Filtered traverse (stable edges only, weight >= 10)
 curl -X POST http://localhost:8080/query \
      -H "Content-Type: application/json" \
-     -d '{"type": "traverse_filtered", "node_id": 0, "depth": 3, "min_weight": 5}'
+     -d '{"type": "traverse_filtered", "node_id": 0, "depth": 3, "min_weight": 10}'
 ```

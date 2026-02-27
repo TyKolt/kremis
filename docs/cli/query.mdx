@@ -42,8 +42,8 @@ kremis query -t lookup --entity 1
 # Traverse from node 0, depth 3
 kremis query -t traverse -s 0 -d 3
 
-# Filtered traverse (weight >= 5)
-kremis query -t traverse -s 0 -d 3 --min-weight 5
+# Filtered traverse (stable edges only, weight >= 10)
+kremis query -t traverse -s 0 -d 3 --min-weight 10
 
 # Strongest path between nodes
 kremis query -t path -s 0 -e 5
