@@ -2,12 +2,22 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.9.0] - 2026-02-27
+
+### Features
+
+- MCP parity — add `kremis_retract` and `kremis_hash` tools (9 total); fix `format_query_response` to expose `diagnostic` reason on not-found responses ([`e265e69`](https://github.com/TyKolt/kremis/commit/e265e69d8b358f5dcc11ffef398bda55b70dfdbb))
+
+### Documentation
+
+- Fix stale example values and cross-page inconsistency in openapi.yml, query-traverse.mdx, cli/query.mdx ([`be692dc`](https://github.com/TyKolt/kremis/commit/be692dc4dc432aeb02b8291d0a922114f2c88432))
+
 ## [0.8.0] - 2026-02-26
 
 ### Documentation
 
 - Add CHANGELOG.md with git-cliff and update release workflow ([`da5b949`](https://github.com/TyKolt/kremis/commit/da5b94906f0f8d7c9efa398a329e61ea6bab1b86))
-- Regenerate CHANGELOG for v0.8.0 ([`b6f41f6`](https://github.com/TyKolt/kremis/commit/b6f41f6025dc43dff7cb5ce309ac486f4b94200e))
+- Regenerate CHANGELOG for v0.8.0 ([`99822bd`](https://github.com/TyKolt/kremis/commit/99822bdd93c7da226419d250222e0d8052aff866))
 
 ### Features
 
