@@ -94,6 +94,7 @@ fn build_cors_layer() -> CorsLayer {
         Some("*") => {
             // Explicit wildcard - warn about security implications
             tracing::warn!(
+                event = "cors_insecure",
                 "CORS: Allowing ALL origins (KREMIS_CORS_ORIGINS=*). This is insecure for production!"
             );
             CorsLayer::permissive()
@@ -235,7 +236,12 @@ pub async fn run_server(addr: &str, session: Session) -> Result<(), KremisError>
         .await
         .map_err(|e| KremisError::IoError(format!("Bind failed: {}", e)))?;
 
-    tracing::info!("Kremis HTTP server listening on {}", addr);
+    tracing::info!(
+        event = "server_start",
+        addr = addr,
+        "Kremis HTTP server listening on {}",
+        addr
+    );
 
     axum::serve(listener, router)
         .await

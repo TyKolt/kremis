@@ -51,14 +51,26 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "kremis=info,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Initialize tracing — KREMIS_LOG_FORMAT=json enables machine-parseable output.
+    let log_format = std::env::var("KREMIS_LOG_FORMAT").unwrap_or_else(|_| "text".to_string());
+
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "kremis=info,tower_http=debug".into());
+
+    match log_format.as_str() {
+        "json" => {
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_subscriber::fmt::layer().json())
+                .init();
+        }
+        _ => {
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_subscriber::fmt::layer())
+                .init();
+        }
+    }
 
     // Parse CLI arguments
     let cli = cli::Cli::parse();

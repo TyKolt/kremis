@@ -67,7 +67,7 @@ pub async fn rate_limit_middleware(
     match limiter.check() {
         Ok(_) => Ok(next.run(request).await),
         Err(_) => {
-            tracing::warn!("Rate limit exceeded");
+            tracing::warn!(event = "rate_limit_exceeded", "Rate limit exceeded");
             Err((StatusCode::TOO_MANY_REQUESTS, "Too Many Requests"))
         }
     }

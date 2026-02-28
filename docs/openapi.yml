@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.9.0
+  version: 0.10.0
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.9.0"
+                version: "0.10.0"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -554,7 +554,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.9.0"
+          example: "0.10.0"
 
     # -------------------------------------------------------------------------
     # Graph state

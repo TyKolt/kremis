@@ -19,10 +19,24 @@ use server::KremisMcp;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Logging to stderr only — stdout is reserved for MCP stdio transport.
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_ansi(false)
-        .init();
+    // KREMIS_LOG_FORMAT=json enables machine-parseable output.
+    let log_format = std::env::var("KREMIS_LOG_FORMAT").unwrap_or_else(|_| "text".to_string());
+
+    match log_format.as_str() {
+        "json" => {
+            tracing_subscriber::fmt()
+                .with_writer(std::io::stderr)
+                .with_ansi(false)
+                .json()
+                .init();
+        }
+        _ => {
+            tracing_subscriber::fmt()
+                .with_writer(std::io::stderr)
+                .with_ansi(false)
+                .init();
+        }
+    }
 
     let url = std::env::var("KREMIS_URL").unwrap_or_else(|_| "http://localhost:8080".into());
     let api_key = std::env::var("KREMIS_API_KEY").ok();

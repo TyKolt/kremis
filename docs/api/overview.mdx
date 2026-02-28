@@ -5,7 +5,7 @@ icon: "code"
 ---
 
 **Base URL:** `http://localhost:8080`
-**Version:** 0.9.0
+**Version:** 0.10.0
 **License:** Apache 2.0
 
 ## Endpoints
@@ -47,6 +47,28 @@ The `/health` endpoint is always accessible without authentication.
 - **Default:** 100 requests per second (global, not per-client)
 - **Configure:** `KREMIS_RATE_LIMIT=200`
 - **Exceeded:** returns `429 Too Many Requests`
+
+## Log Format
+
+Control the server log output format with `KREMIS_LOG_FORMAT`:
+
+| Value | Description |
+|-------|-------------|
+| `text` (default) | Human-readable log lines |
+| `json` | Machine-parseable JSON — one object per line, compatible with Loki, Datadog, etc. |
+
+```bash
+KREMIS_LOG_FORMAT=json kremis server
+```
+
+Structured log fields (present in both modes, separately filterable in JSON):
+
+| Field | Events |
+|-------|--------|
+| `event="server_start"` | Server bind success |
+| `event="cors_insecure"` | `KREMIS_CORS_ORIGINS=*` detected |
+| `event="auth_failure"` | Invalid or missing API key |
+| `event="rate_limit_exceeded"` | Request rejected by rate limiter |
 
 ## Input Validation
 

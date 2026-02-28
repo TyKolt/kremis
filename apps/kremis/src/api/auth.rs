@@ -88,12 +88,20 @@ pub async fn api_key_auth_middleware(
             if is_valid {
                 Ok(next.run(request).await)
             } else {
-                tracing::warn!("Authentication failed: invalid API key");
+                tracing::warn!(
+                    event = "auth_failure",
+                    reason = "invalid_api_key",
+                    "Authentication failed: invalid API key"
+                );
                 Err((StatusCode::UNAUTHORIZED, "Unauthorized"))
             }
         }
         None => {
-            tracing::warn!("Missing Authorization header");
+            tracing::warn!(
+                event = "auth_failure",
+                reason = "missing_authorization_header",
+                "Missing Authorization header"
+            );
             Err((StatusCode::UNAUTHORIZED, "Unauthorized"))
         }
     }
