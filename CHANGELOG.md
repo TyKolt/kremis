@@ -2,15 +2,28 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [0.9.0] - 2026-02-27
-
-### Features
-
-- MCP parity — add `kremis_retract` and `kremis_hash` tools (9 total); fix `format_query_response` to expose `diagnostic` reason on not-found responses ([`e265e69`](https://github.com/TyKolt/kremis/commit/e265e69d8b358f5dcc11ffef398bda55b70dfdbb))
+## [0.10.0] - 2026-02-28
 
 ### Documentation
 
-- Fix stale example values and cross-page inconsistency in openapi.yml, query-traverse.mdx, cli/query.mdx ([`be692dc`](https://github.com/TyKolt/kremis/commit/be692dc4dc432aeb02b8291d0a922114f2c88432))
+- Update README MCP tool count 7 → 9 (kremis_retract, kremis_hash) ([`fb45f5a`](https://github.com/TyKolt/kremis/commit/fb45f5a62dd380ae2f533c0e0919fedd8acabe8a))
+- Fix stale version examples in health.mdx and openapi.yml ([`5c60794`](https://github.com/TyKolt/kremis/commit/5c60794c34fc3e46378ba0ec78295b4febb108ec))
+
+### Features
+
+- Structured JSON logging (KREMIS_LOG_FORMAT=json), v0.10.0 ([`f2895c5`](https://github.com/TyKolt/kremis/commit/f2895c5f74cfbd3b82547b557373d5037ebb9d2d))
+
+## [0.9.0] - 2026-02-27
+
+### Documentation
+
+- Docs: fix stale example values and cross-page inconsistency                                                                                                                                                                          - openapi.yml: update GET /health example response version 0.5.0 -> 0.8.0                                                   (inline example and HealthResponse schema example were not updated on release)                                          - query-traverse.mdx: align min_weight example with stable edge threshold (5 -> 10)                                         and add Tip linking to Developmental Stages for semantic context                                                        - cli/query.mdx: same alignment (--min-weight 5 -> 10)
+  Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com> ([`be692dc`](https://github.com/TyKolt/kremis/commit/be692dc4dc432aeb02b8291d0a922114f2c88432))
+- Regenerate CHANGELOG for v0.9.0 ([`816555c`](https://github.com/TyKolt/kremis/commit/816555cc434a39a3cced4a3c3a28ca801e079dc7))
+
+### Features
+
+- MCP parity — kremis_retract + kremis_hash tools, v0.9.0 ([`e265e69`](https://github.com/TyKolt/kremis/commit/e265e69d8b358f5dcc11ffef398bda55b70dfdbb))
 
 ## [0.8.0] - 2026-02-26
 
