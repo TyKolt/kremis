@@ -23,12 +23,12 @@ fn test_health_response_default() {
 fn test_health_response_serialization() {
     let health = HealthResponse {
         status: "ok".to_string(),
-        version: "0.10.0".to_string(),
+        version: "0.11.0".to_string(),
     };
 
     let json = serde_json::to_string(&health).unwrap();
     assert!(json.contains("\"status\":\"ok\""));
-    assert!(json.contains("\"version\":\"0.10.0\""));
+    assert!(json.contains("\"version\":\"0.11.0\""));
 }
 
 #[test]
@@ -220,11 +220,35 @@ fn test_query_request_traverse_filtered_serialization() {
         node_id: 1,
         depth: 2,
         min_weight: 50,
+        top_k: None,
     };
     let json = serde_json::to_string(&request).unwrap();
 
     assert!(json.contains("\"type\":\"traverse_filtered\""));
     assert!(json.contains("\"min_weight\":50"));
+}
+
+#[test]
+fn test_query_request_traverse_filtered_top_k_serialization() {
+    // top_k present: serialized in JSON
+    let request = QueryRequest::TraverseFiltered {
+        node_id: 42,
+        depth: 3,
+        min_weight: 0,
+        top_k: Some(5),
+    };
+    let json = serde_json::to_string(&request).unwrap();
+    assert!(json.contains("\"top_k\":5"));
+
+    // top_k absent in old JSON: deserializes as None (backward compat)
+    let old_json = r#"{"type":"traverse_filtered","node_id":1,"depth":2,"min_weight":0}"#;
+    let parsed: QueryRequest = serde_json::from_str(old_json).unwrap();
+    match parsed {
+        QueryRequest::TraverseFiltered { top_k, .. } => {
+            assert!(top_k.is_none(), "Missing top_k must deserialize as None");
+        }
+        _ => panic!("Expected TraverseFiltered"),
+    }
 }
 
 #[test]
@@ -466,6 +490,7 @@ fn test_query_request_all_variants_roundtrip() {
             node_id: 4,
             depth: 5,
             min_weight: 10,
+            top_k: None,
         },
         QueryRequest::StrongestPath { start: 6, end: 7 },
         QueryRequest::Intersect {

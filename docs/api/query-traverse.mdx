@@ -30,14 +30,15 @@ BFS traversal from a starting node. Optionally filter by minimum edge weight.
 
 ## Filtered Traverse
 
-Include only edges above a minimum weight:
+Include only edges above a minimum weight, and optionally limit to the K highest-weight results:
 
 ```json
 {
   "type": "traverse_filtered",
   "node_id": 0,
   "depth": 3,
-  "min_weight": 10
+  "min_weight": 10,
+  "top_k": 5
 }
 ```
 
@@ -49,6 +50,7 @@ Include only edges above a minimum weight:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `min_weight` | integer (i64) | Yes | Minimum edge weight to include. |
+| `top_k` | integer | No | If set and > 0, return only the K highest-weight edges. Edges are sorted by weight descending before truncation. Omit or set to `0` for no limit. |
 
 ## Response
 
@@ -96,4 +98,9 @@ curl -X POST http://localhost:8080/query \
 curl -X POST http://localhost:8080/query \
      -H "Content-Type: application/json" \
      -d '{"type": "traverse_filtered", "node_id": 0, "depth": 3, "min_weight": 10}'
+
+# Filtered traverse with top_k — limit to 5 highest-weight edges
+curl -X POST http://localhost:8080/query \
+     -H "Content-Type: application/json" \
+     -d '{"type": "traverse_filtered", "node_id": 0, "depth": 3, "min_weight": 0, "top_k": 5}'
 ```

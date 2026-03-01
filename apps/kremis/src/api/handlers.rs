@@ -11,11 +11,12 @@ use super::{
 };
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use kremis_core::{
-    EdgeWeight, EntityId, KremisError, NodeId, Session,
+    Artifact, EdgeWeight, EntityId, KremisError, NodeId, Session,
     export::{canonical_checksum, canonical_crypto_hash, export_canonical},
     primitives::{MAX_INTERSECT_NODES, MAX_TRAVERSAL_DEPTH},
     system::{GraphMetrics, Stage, StageAssessor},
 };
+use std::collections::BTreeSet;
 
 // =============================================================================
 // HEALTH HANDLER
@@ -175,6 +176,40 @@ fn validate_depth(depth: usize) -> Result<(), KremisError> {
     Ok(())
 }
 
+/// Apply top-K filtering to an artifact: keep only the K highest-weight edges.
+///
+/// Ordering is deterministic: weight descending, then `from` ascending, then `to` ascending.
+/// The path is rebuilt to include only nodes that appear in the top-K edges, plus the
+/// original start node (first element of the original path) if it was present.
+fn apply_top_k(mut artifact: Artifact, top_k: Option<usize>) -> Artifact {
+    let k = match top_k {
+        None | Some(0) => return artifact,
+        Some(k) => k,
+    };
+    let mut edges = match artifact.subgraph.take() {
+        None => return artifact,
+        Some(e) => e,
+    };
+    edges.sort_by(|a, b| {
+        b.2.value()
+            .cmp(&a.2.value())
+            .then_with(|| a.0.cmp(&b.0))
+            .then_with(|| a.1.cmp(&b.1))
+    });
+    edges.truncate(k);
+    let in_edges: BTreeSet<NodeId> = edges.iter().flat_map(|(f, t, _)| [*f, *t]).collect();
+    let start = artifact.path.first().copied();
+    let path: Vec<NodeId> = artifact
+        .path
+        .into_iter()
+        .filter(|n| in_edges.contains(n) || Some(*n) == start)
+        .collect();
+    Artifact {
+        path,
+        subgraph: Some(edges),
+    }
+}
+
 /// Classify grounding based on query type and whether data was found.
 fn classify_grounding(request: &QueryRequest, found: bool) -> &'static str {
     if !found {
@@ -219,12 +254,16 @@ fn execute_query_inner(
             node_id,
             depth,
             min_weight,
+            top_k,
         } => {
             // Validate depth to prevent DoS
             validate_depth(*depth)?;
             match session.traverse_filtered(NodeId(*node_id), *depth, EdgeWeight::new(*min_weight))
             {
-                Some(artifact) => Ok(QueryResponse::with_artifact(&artifact)),
+                Some(artifact) => {
+                    let artifact = apply_top_k(artifact, *top_k);
+                    Ok(QueryResponse::with_artifact(&artifact))
+                }
                 None => Ok(QueryResponse::not_found().with_diagnostic("node_not_found")),
             }
         }

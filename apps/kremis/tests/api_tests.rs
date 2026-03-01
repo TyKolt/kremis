@@ -348,6 +348,7 @@ async fn test_query_traverse_filtered() {
         node_id,
         depth: 2,
         min_weight: 0,
+        top_k: None,
     };
     let response = server.post("/query").json(&request).await;
 
@@ -369,6 +370,7 @@ async fn test_query_traverse_filtered() {
         node_id,
         depth: 2,
         min_weight: 1000,
+        top_k: None,
     };
     let high_response = server.post("/query").json(&high_filter).await;
     let high_result: QueryResponse = high_response.json();
@@ -532,6 +534,147 @@ async fn test_query_related_nonexistent_node() {
         "Path should be empty for nonexistent node"
     );
     assert_eq!(result.grounding, "unknown");
+}
+
+// =============================================================================
+// TOP_K TESTS
+// =============================================================================
+
+/// Helper: build a server with a dense star graph (one hub, many spokes).
+fn create_star_graph_server() -> (TestServer, TestGuard) {
+    use kremis_core::{Attribute, EntityId, Signal, Value};
+
+    let guard = AUTH_TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("KREMIS_API_KEY") };
+
+    let mut session = Session::new();
+    // Ingest 6 co-occurrence sequences: entity 1 appears with entities 2..7
+    // Each sequence creates edges between consecutive entities.
+    for spoke in 2u64..=7 {
+        let signals = vec![
+            Signal::new(
+                EntityId(1),
+                Attribute::new("hub"),
+                Value::new(format!("v{spoke}")),
+            ),
+            Signal::new(
+                EntityId(spoke),
+                Attribute::new("hub"),
+                Value::new(format!("v{spoke}")),
+            ),
+        ];
+        // Ingest multiple times to vary weights
+        for _ in 0..spoke {
+            session.ingest_sequence(&signals).unwrap();
+        }
+    }
+
+    let state = AppState::new(session);
+    let router = create_router(state);
+    (
+        TestServer::new(router).unwrap(),
+        TestGuard { _guard: guard },
+    )
+}
+
+#[tokio::test]
+async fn test_traverse_filtered_top_k_limits_result_count() {
+    let (server, _guard) = create_star_graph_server();
+
+    // Lookup hub node
+    let lookup = QueryRequest::Lookup { entity_id: 1 };
+    let resp = server.post("/query").json(&lookup).await;
+    let result: QueryResponse = resp.json();
+    assert!(result.found, "Hub entity 1 must exist");
+    let hub = result.path[0];
+
+    let top_k_val: usize = 3;
+    let request = QueryRequest::TraverseFiltered {
+        node_id: hub,
+        depth: 2,
+        min_weight: 0,
+        top_k: Some(top_k_val),
+    };
+    let response = server.post("/query").json(&request).await;
+    response.assert_status_ok();
+    let result: QueryResponse = response.json();
+    assert!(result.success);
+    assert!(
+        result.edges.len() <= top_k_val,
+        "With top_k={top_k_val}, got {} edges — expected ≤ {top_k_val}",
+        result.edges.len()
+    );
+}
+
+#[tokio::test]
+async fn test_traverse_filtered_top_k_returns_highest_weights() {
+    let (server, _guard) = create_star_graph_server();
+
+    let lookup = QueryRequest::Lookup { entity_id: 1 };
+    let resp = server.post("/query").json(&lookup).await;
+    let result: QueryResponse = resp.json();
+    assert!(result.found);
+    let hub = result.path[0];
+
+    let top_k_val: usize = 2;
+    let request = QueryRequest::TraverseFiltered {
+        node_id: hub,
+        depth: 2,
+        min_weight: 0,
+        top_k: Some(top_k_val),
+    };
+    let response = server.post("/query").json(&request).await;
+    response.assert_status_ok();
+    let result: QueryResponse = response.json();
+    assert!(result.success);
+
+    if result.edges.len() >= 2 {
+        // Edges must be ordered by weight descending
+        for window in result.edges.windows(2) {
+            assert!(
+                window[0].weight >= window[1].weight,
+                "Edges must be ordered weight desc: {} >= {} failed",
+                window[0].weight,
+                window[1].weight
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_traverse_filtered_top_k_none_returns_all() {
+    let (server, _guard) = create_star_graph_server();
+
+    let lookup = QueryRequest::Lookup { entity_id: 1 };
+    let resp = server.post("/query").json(&lookup).await;
+    let result: QueryResponse = resp.json();
+    assert!(result.found);
+    let hub = result.path[0];
+
+    // Without top_k
+    let req_no_limit = QueryRequest::TraverseFiltered {
+        node_id: hub,
+        depth: 2,
+        min_weight: 0,
+        top_k: None,
+    };
+    let resp_no_limit: QueryResponse = server.post("/query").json(&req_no_limit).await.json();
+    assert!(resp_no_limit.success);
+    let total_edges = resp_no_limit.edges.len();
+
+    // With top_k=0 (treated as no limit)
+    let req_zero = QueryRequest::TraverseFiltered {
+        node_id: hub,
+        depth: 2,
+        min_weight: 0,
+        top_k: Some(0),
+    };
+    let resp_zero: QueryResponse = server.post("/query").json(&req_zero).await.json();
+    assert_eq!(
+        resp_zero.edges.len(),
+        total_edges,
+        "top_k=0 must behave as no limit"
+    );
 }
 
 // =============================================================================

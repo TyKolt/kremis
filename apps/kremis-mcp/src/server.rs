@@ -55,6 +55,9 @@ pub struct TraverseParams {
     /// Traversal depth (default: 2, max: 10).
     #[schemars(description = "Traversal depth (default: 2, max: 10)")]
     pub depth: Option<u64>,
+    /// Return only the K highest-weight edges (optional).
+    #[schemars(description = "Return only the K highest-weight edges (optional)")]
+    pub top_k: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -154,9 +157,11 @@ impl KremisMcp {
     ) -> Result<CallToolResult, McpError> {
         let depth = params.0.depth.unwrap_or(2);
         let query = serde_json::json!({
-            "type": "traverse",
+            "type": "traverse_filtered",
             "node_id": params.0.node_id,
             "depth": depth,
+            "min_weight": 0,
+            "top_k": params.0.top_k,
         });
         match self.client.query(query).await {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(

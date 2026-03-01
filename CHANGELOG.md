@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [Unreleased]
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.10.0 ([`c509522`](https://github.com/TyKolt/kremis/commit/c50952225c18636071a996220117b2017e2a3290))
+
 ## [0.10.0] - 2026-02-28
 
 ### Documentation

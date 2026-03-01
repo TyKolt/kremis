@@ -10,7 +10,7 @@ The MCP server exposes 9 tools that map directly to Kremis HTTP API endpoints.
 |------|----------------|-------------|
 | `kremis_ingest` | `POST /signal` | Ingest a signal (entity, attribute, value) |
 | `kremis_lookup` | `POST /query` (lookup) | Look up an entity by ID |
-| `kremis_traverse` | `POST /query` (traverse) | Traverse graph from a node |
+| `kremis_traverse` | `POST /query` (traverse_filtered) | Traverse graph from a node; optional `top_k` limit |
 | `kremis_path` | `POST /query` (strongest_path) | Find the strongest path between two nodes |
 | `kremis_intersect` | `POST /query` (intersect) | Find nodes connected to all input nodes |
 | `kremis_status` | `GET /status` | Get graph statistics |
@@ -44,14 +44,17 @@ Look up a node by entity ID.
 
 ### kremis_traverse
 
-Traverse the graph from a starting node.
+Traverse the graph from a starting node. Optionally limit results to the K highest-weight edges.
 
 ```json
 {
   "node_id": 0,
-  "depth": 3
+  "depth": 3,
+  "top_k": 10
 }
 ```
+
+`top_k` is optional. When provided and greater than 0, only the K highest-weight edges are returned (sorted by weight descending). Omit for no limit.
 
 ### kremis_path
 

@@ -193,6 +193,8 @@ pub enum QueryRequest {
         node_id: u64,
         depth: usize,
         min_weight: i64,
+        #[serde(default)]
+        top_k: Option<usize>,
     },
     StrongestPath {
         start: u64,
