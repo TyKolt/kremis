@@ -22,6 +22,8 @@ use std::path::PathBuf;
 
 pub use commands::*;
 
+use crate::config::AppConfig;
+
 // =============================================================================
 // CLI STRUCTURE
 // =============================================================================
@@ -158,14 +160,14 @@ pub enum Commands {
 // COMMAND EXECUTION
 // =============================================================================
 
-/// Execute the CLI with parsed arguments.
-pub async fn execute(cli: Cli) -> Result<(), KremisError> {
+/// Execute the CLI with parsed arguments and loaded configuration.
+pub async fn execute(cli: Cli, config: AppConfig) -> Result<(), KremisError> {
     let backend = cli.backend.as_str();
     let json_mode = cli.json_mode;
 
     match cli.command {
         Some(Commands::Server { host, port }) => {
-            cmd_server(&cli.database, backend, &host, port).await
+            cmd_server(&cli.database, backend, &host, port, config).await
         }
         Some(Commands::Status) => cmd_status(&cli.database, backend, json_mode),
         Some(Commands::Stage { detailed }) => {

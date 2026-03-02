@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.11.0"
+version = "0.12.0"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/TyKolt/kremis"
@@ -70,6 +70,8 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 base64 = "0.22"
 governor = "0.10"
 subtle = "2.6"
+
+toml = { version = "0.8", default-features = false, features = ["parse"] }
 
 # DEV / TESTS
 proptest = "1.9"

@@ -48,6 +48,7 @@ pub fn create_rate_limiter(requests_per_second: u32) -> GlobalRateLimiter {
 /// Get rate limit from environment variable.
 ///
 /// Returns the value of `KREMIS_RATE_LIMIT` or 100 if not set.
+#[allow(dead_code)]
 pub fn get_rate_limit_from_env() -> u32 {
     std::env::var("KREMIS_RATE_LIMIT")
         .ok()

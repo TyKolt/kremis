@@ -1,0 +1,22 @@
+# kremis.toml — Kremis configuration file
+#
+# Environment variables override these values (useful for Docker/CI).
+# Priority: env var > kremis.toml > compiled-in defaults.
+#
+# All fields are optional. Uncomment and edit only what you need.
+
+[logging]
+format = "text"                          # "text" | "json"  (KREMIS_LOG_FORMAT)
+level  = "kremis=info,tower_http=debug"  # tracing filter   (RUST_LOG)
+
+[api]
+rate_limit = 100   # req/sec, 0 = disabled  (KREMIS_RATE_LIMIT)
+
+[security]
+# api_key = ""     # Bearer token; prefer env var for secrets  (KREMIS_API_KEY)
+
+[cors]
+origins = []       # [] = localhost only; ["*"] = all; ["https://app.example.com"]  (KREMIS_CORS_ORIGINS)
+
+[mcp]
+url = "http://localhost:8080"   # Kremis server URL for the MCP bridge  (KREMIS_URL)

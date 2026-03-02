@@ -2,27 +2,31 @@
 //!
 //! Entry point for the MCP (Model Context Protocol) bridge to Kremis.
 //!
-//! Reads configuration from environment variables:
-//! - `KREMIS_URL` — Kremis server URL (default: `http://localhost:8080`)
-//! - `KREMIS_API_KEY` — Optional Bearer token for authentication
+//! Configuration is loaded from `kremis.toml` (if present), with environment
+//! variables as overrides:
+//! - `KREMIS_URL`        — Kremis server URL (default: `http://localhost:8080`)
+//! - `KREMIS_API_KEY`    — Optional Bearer token for authentication
+//! - `KREMIS_LOG_FORMAT` — Log format: `"text"` (default) or `"json"`
 //!
 //! Communicates with AI clients (Claude, GPT) via MCP over stdio,
 //! and forwards requests to the Kremis HTTP API.
 
 mod client;
+mod config;
 mod server;
 
 use client::KremisClient;
+use config::McpAppConfig;
 use rmcp::{ServiceExt, transport::stdio};
 use server::KremisMcp;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Logging to stderr only — stdout is reserved for MCP stdio transport.
-    // KREMIS_LOG_FORMAT=json enables machine-parseable output.
-    let log_format = std::env::var("KREMIS_LOG_FORMAT").unwrap_or_else(|_| "text".to_string());
+    // Load configuration: kremis.toml → env var overrides → defaults.
+    let cfg = McpAppConfig::load();
 
-    match log_format.as_str() {
+    // Logging to stderr only — stdout is reserved for MCP stdio transport.
+    match cfg.logging.format.as_str() {
         "json" => {
             tracing_subscriber::fmt()
                 .with_writer(std::io::stderr)
@@ -38,12 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let url = std::env::var("KREMIS_URL").unwrap_or_else(|_| "http://localhost:8080".into());
-    let api_key = std::env::var("KREMIS_API_KEY").ok();
+    tracing::info!("Kremis MCP server starting, target: {}", cfg.mcp.url);
 
-    tracing::info!("Kremis MCP server starting, target: {}", url);
-
-    let client = KremisClient::new(url, api_key);
+    let client = KremisClient::new(cfg.mcp.url, cfg.security.api_key);
     let mcp = KremisMcp::new(client);
 
     let service = mcp.serve(stdio()).await.inspect_err(|e| {

@@ -63,7 +63,8 @@
           {
             "group": "Architecture",
             "pages": [
-              "architecture"
+              "architecture",
+              "configuration"
             ]
           }
         ]

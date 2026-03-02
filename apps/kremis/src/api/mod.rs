@@ -13,20 +13,16 @@
 //! - `GET /hash` - BLAKE3 cryptographic hash of graph
 //! - `GET /metrics` - Prometheus metrics
 //!
-//! ## Security Configuration (Environment Variables)
+//! ## Security Configuration
 //!
-//! - `KREMIS_CORS_ORIGINS`: Comma-separated list of allowed origins, or "*" for all (default: localhost only)
-//! - `KREMIS_RATE_LIMIT`: Requests per second (default: 100, 0 to disable)
-//! - `KREMIS_API_KEY`: If set, requires Bearer token authentication
+//! Security settings are loaded from `kremis.toml` or environment variables
+//! (see [`crate::config::AppConfig`]).
 
 mod auth;
 mod handlers;
 mod middleware;
 mod types;
 
-// Re-exports for external use
-pub use auth::get_api_key_from_env;
-pub use middleware::{create_rate_limiter, get_rate_limit_from_env};
 // Re-export handlers and types for integration tests (via `kremis::api::*`)
 #[allow(unused_imports)]
 pub use handlers::{
@@ -51,23 +47,40 @@ use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
+use crate::config::AppConfig;
+use middleware::create_rate_limiter;
+
 // =============================================================================
 // SERVER STATE
 // =============================================================================
 
-/// Shared server state containing the graph session.
+/// Shared server state containing the graph session and security config.
 #[derive(Clone)]
 pub struct AppState {
     /// The session containing the graph.
     pub session: Arc<RwLock<Session>>,
+    /// API key for Bearer token authentication. `None` disables auth.
+    pub api_key: Option<String>,
 }
 
 impl AppState {
-    /// Create new app state with a session.
+    /// Create new app state with a session (no authentication).
+    /// Used by integration tests.
     #[must_use]
+    #[allow(dead_code)]
     pub fn new(session: Session) -> Self {
         Self {
             session: Arc::new(RwLock::new(session)),
+            api_key: None,
+        }
+    }
+
+    /// Create new app state with a session and optional API key.
+    #[must_use]
+    pub fn with_api_key(session: Session, api_key: Option<String>) -> Self {
+        Self {
+            session: Arc::new(RwLock::new(session)),
+            api_key,
         }
     }
 }
@@ -76,65 +89,49 @@ impl AppState {
 // CORS CONFIGURATION
 // =============================================================================
 
-/// Build CORS layer from environment configuration.
+/// Build CORS layer from the provided origins list.
 ///
-/// Reads `KREMIS_CORS_ORIGINS` environment variable:
-/// - If "*": allows all origins (development mode - use with caution!)
-/// - If not set: defaults to localhost only (restrictive default)
-/// - Otherwise: parses comma-separated list of allowed origins
-///
-/// # Security Note
-///
-/// The default is restrictive (localhost only). Set `KREMIS_CORS_ORIGINS=*`
-/// explicitly only for development or if you understand the security implications.
-fn build_cors_layer() -> CorsLayer {
-    let origins_env = std::env::var("KREMIS_CORS_ORIGINS").ok();
+/// - `["*"]` or a list containing `"*"` enables permissive CORS (dev only).
+/// - Empty list defaults to localhost only (restrictive default).
+/// - Otherwise parses each entry as an allowed origin.
+fn build_cors_layer(origins: &[String]) -> CorsLayer {
+    // Single wildcard entry → permissive
+    if origins.iter().any(|o| o == "*") {
+        tracing::warn!(
+            event = "cors_insecure",
+            "CORS: Allowing ALL origins. This is insecure for production!"
+        );
+        return CorsLayer::permissive();
+    }
 
-    match origins_env.as_deref() {
-        Some("*") => {
-            // Explicit wildcard - warn about security implications
-            tracing::warn!(
-                event = "cors_insecure",
-                "CORS: Allowing ALL origins (KREMIS_CORS_ORIGINS=*). This is insecure for production!"
-            );
-            CorsLayer::permissive()
-        }
-        Some(origins) => {
-            // Parse comma-separated origins
-            let allowed_origins: Vec<HeaderValue> = origins
-                .split(',')
-                .filter_map(|s| {
-                    let trimmed = s.trim();
-                    match trimmed.parse::<HeaderValue>() {
-                        Ok(hv) => {
-                            tracing::info!("CORS: Allowing origin: {}", trimmed);
-                            Some(hv)
-                        }
-                        Err(e) => {
-                            tracing::warn!("CORS: Invalid origin '{}': {}", trimmed, e);
-                            None
-                        }
-                    }
-                })
-                .collect();
+    if origins.is_empty() {
+        tracing::info!("CORS: No origins configured, defaulting to localhost only");
+        return build_localhost_cors();
+    }
 
-            if allowed_origins.is_empty() {
-                tracing::warn!(
-                    "CORS: No valid origins in KREMIS_CORS_ORIGINS, defaulting to localhost only"
-                );
-                build_localhost_cors()
-            } else {
-                CorsLayer::new()
-                    .allow_origin(allowed_origins)
-                    .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-                    .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+    // Parse each entry as a HeaderValue
+    let allowed_origins: Vec<HeaderValue> = origins
+        .iter()
+        .filter_map(|s| match s.parse::<HeaderValue>() {
+            Ok(hv) => {
+                tracing::info!("CORS: Allowing origin: {}", s);
+                Some(hv)
             }
-        }
-        None => {
-            // No configuration - default to localhost only (restrictive)
-            tracing::info!("CORS: No KREMIS_CORS_ORIGINS set, defaulting to localhost only");
-            build_localhost_cors()
-        }
+            Err(e) => {
+                tracing::warn!("CORS: Invalid origin '{}': {}", s, e);
+                None
+            }
+        })
+        .collect();
+
+    if allowed_origins.is_empty() {
+        tracing::warn!("CORS: No valid origins parsed, defaulting to localhost only");
+        build_localhost_cors()
+    } else {
+        CorsLayer::new()
+            .allow_origin(allowed_origins)
+            .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+            .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
     }
 }
 
@@ -160,16 +157,35 @@ fn build_localhost_cors() -> CorsLayer {
 
 /// Create the axum router with all endpoints and middleware.
 ///
+/// Loads configuration via [`AppConfig::load`] so env var overrides work.
 /// Middleware stack (outer to inner):
 /// 1. CORS - handles preflight requests
 /// 2. Tracing - logs all requests
 /// 3. Rate Limiting - protects against DoS (if enabled)
 /// 4. Authentication - validates API key (if configured)
+///
+/// Used by integration tests.
+#[allow(dead_code)]
 pub fn create_router(state: AppState) -> Router {
-    let cors = build_cors_layer();
+    let config = AppConfig::load();
+    // Merge api_key from state (explicitly set) with config (env/file).
+    // State takes priority if already populated; otherwise use config.
+    let merged_key = state
+        .api_key
+        .clone()
+        .or_else(|| config.security.api_key.clone());
+    let merged_state = AppState {
+        session: state.session.clone(),
+        api_key: merged_key,
+    };
+    create_router_with_config(merged_state, &config)
+}
 
-    // Check if rate limiting is enabled
-    let rate_limit = get_rate_limit_from_env();
+/// Create the axum router using an explicit [`AppConfig`].
+pub fn create_router_with_config(state: AppState, config: &AppConfig) -> Router {
+    let cors = build_cors_layer(&config.cors.origins);
+
+    let rate_limit = config.api.rate_limit;
     let rate_limiter = if rate_limit > 0 {
         tracing::info!("Rate limiting enabled: {} requests/second", rate_limit);
         Some(create_rate_limiter(rate_limit))
@@ -178,19 +194,16 @@ pub fn create_router(state: AppState) -> Router {
         None
     };
 
-    // Check if authentication is enabled (M6 FIX: explicit warning for disabled auth)
-    let has_auth = get_api_key_from_env().is_some();
+    let has_auth = state.api_key.is_some();
     if has_auth {
         tracing::info!("API key authentication enabled");
     } else {
-        // M6 FIX: Warn users about disabled authentication
         tracing::warn!(
-            "⚠️  API key authentication DISABLED - all endpoints are publicly accessible! \
-             Set KREMIS_API_KEY environment variable to enable authentication."
+            "API key authentication DISABLED - all endpoints are publicly accessible! \
+             Set KREMIS_API_KEY environment variable or kremis.toml [security] api_key to enable."
         );
     }
 
-    // Build base router with routes
     let mut router = Router::new()
         .route("/health", get(handlers::health_handler))
         .route("/status", get(handlers::status_handler))
@@ -202,12 +215,13 @@ pub fn create_router(state: AppState) -> Router {
         .route("/hash", get(handlers::hash_handler))
         .route("/metrics", get(handlers::metrics_handler));
 
-    // Apply authentication middleware (innermost - runs last on request)
     if has_auth {
-        router = router.layer(axum_middleware::from_fn(auth::api_key_auth_middleware));
+        router = router.layer(axum_middleware::from_fn_with_state(
+            state.api_key.clone(),
+            auth::api_key_auth_middleware,
+        ));
     }
 
-    // Apply rate limiting middleware
     if let Some(limiter) = rate_limiter {
         router = router.layer(axum_middleware::from_fn_with_state(
             limiter,
@@ -215,7 +229,6 @@ pub fn create_router(state: AppState) -> Router {
         ));
     }
 
-    // Apply CORS, body limit, and tracing (outermost layers)
     router
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(cors)
@@ -227,10 +240,14 @@ pub fn create_router(state: AppState) -> Router {
 // SERVER STARTUP
 // =============================================================================
 
-/// Start the HTTP server.
-pub async fn run_server(addr: &str, session: Session) -> Result<(), KremisError> {
-    let state = AppState::new(session);
-    let router = create_router(state);
+/// Start the HTTP server using the provided [`AppConfig`].
+pub async fn run_server(
+    addr: &str,
+    session: Session,
+    config: &AppConfig,
+) -> Result<(), KremisError> {
+    let state = AppState::with_api_key(session, config.security.api_key.clone());
+    let router = create_router_with_config(state, config);
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
