@@ -41,6 +41,7 @@
 
 mod api;
 mod cli;
+mod config;
 
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -51,13 +52,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing — KREMIS_LOG_FORMAT=json enables machine-parseable output.
-    let log_format = std::env::var("KREMIS_LOG_FORMAT").unwrap_or_else(|_| "text".to_string());
+    // Load configuration: kremis.toml → env var overrides → defaults.
+    let cfg = config::AppConfig::load();
 
-    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "kremis=info,tower_http=debug".into());
+    let filter = tracing_subscriber::EnvFilter::new(&cfg.logging.level);
 
-    match log_format.as_str() {
+    match cfg.logging.format.as_str() {
         "json" => {
             tracing_subscriber::registry()
                 .with(filter)
@@ -81,7 +81,7 @@ async fn main() {
     }
 
     // Execute command
-    if let Err(e) = cli::execute(cli).await {
+    if let Err(e) = cli::execute(cli, cfg).await {
         tracing::error!("Error: {}", e);
         std::process::exit(1);
     }

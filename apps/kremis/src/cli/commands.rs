@@ -3,6 +3,7 @@
 //! This module contains the actual implementations of CLI commands.
 
 use crate::api;
+use crate::config::AppConfig;
 use kremis_core::{
     Graph, KremisError, NodeId, Session,
     export::{canonical_checksum, export_canonical, import_canonical},
@@ -110,6 +111,7 @@ pub async fn cmd_server(
     backend: &str,
     host: &str,
     port: u16,
+    config: AppConfig,
 ) -> Result<(), KremisError> {
     let session = load_or_create_session(db_path, backend)?;
 
@@ -133,7 +135,7 @@ pub async fn cmd_server(
     println!();
 
     let addr = format!("{}:{}", host, port);
-    api::run_server(&addr, session).await
+    api::run_server(&addr, session, &config).await
 }
 
 // =============================================================================

@@ -4,18 +4,19 @@
 //!
 //! ## Configuration
 //!
-//! Authentication is configured via environment variable:
-//! - `KREMIS_API_KEY`: If set, all requests (except /health) require this key
+//! Authentication is configured via `kremis.toml` (`[security] api_key`) or the
+//! `KREMIS_API_KEY` environment variable. If set, all requests (except `/health`)
+//! require the key as a Bearer token.
 //!
 //! ## Usage
 //!
-//! Send the API key in the Authorization header:
 //! ```text
 //! Authorization: Bearer <your-api-key>
 //! ```
 
 use axum::{
     body::Body,
+    extract::State,
     http::{Request, StatusCode, header},
     middleware::Next,
     response::Response,
@@ -23,32 +24,38 @@ use axum::{
 use subtle::ConstantTimeEq;
 
 // =============================================================================
-// API KEY AUTHENTICATION
+// LEGACY HELPER (kept for backward compatibility with existing tests)
 // =============================================================================
 
-/// Get API key from environment variable.
+/// Get API key from the `KREMIS_API_KEY` environment variable.
 ///
-/// Returns `Some(key)` if `KREMIS_API_KEY` is set and non-empty,
-/// `None` otherwise (disabling authentication).
+/// Returns `Some(key)` if set and non-empty, `None` otherwise.
+///
+/// Prefer injecting the key via [`AppConfig`][crate::config::AppConfig] and
+/// [`AppState`][crate::api::AppState] instead of calling this directly.
+#[allow(dead_code)]
 pub fn get_api_key_from_env() -> Option<String> {
     std::env::var("KREMIS_API_KEY")
         .ok()
         .filter(|k| !k.is_empty())
 }
 
+// =============================================================================
+// API KEY AUTHENTICATION MIDDLEWARE
+// =============================================================================
+
 /// API key authentication middleware.
 ///
-/// If `KREMIS_API_KEY` is set:
-/// - `/health` endpoint is always allowed (for load balancer health checks)
-/// - All other endpoints require `Authorization: Bearer <key>` header
+/// Receives the expected key as axum `State<Option<String>>`.
 ///
-/// If `KREMIS_API_KEY` is not set, all requests are allowed.
+/// - If `state` is `None`, all requests pass through (auth disabled).
+/// - `/health` is always allowed even when auth is enabled.
+/// - All other endpoints require `Authorization: Bearer <key>`.
 pub async fn api_key_auth_middleware(
+    State(expected_key): State<Option<String>>,
     request: Request<Body>,
     next: Next,
 ) -> Result<Response, (StatusCode, &'static str)> {
-    let expected_key = get_api_key_from_env();
-
     // If no API key configured, allow all requests
     let Some(expected) = expected_key else {
         return Ok(next.run(request).await);

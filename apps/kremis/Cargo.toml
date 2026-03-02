@@ -51,6 +51,7 @@ tower-http = { workspace = true }
 base64 = { workspace = true }
 governor = { workspace = true }
 subtle = { workspace = true }  # Constant-time comparison for API key auth (H1 fix)
+toml = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -1,0 +1,125 @@
+---
+title: "Configuration"
+description: "Three-layer configuration system for Kremis: env vars, kremis.toml, and compiled defaults."
+icon: "sliders"
+---
+
+Kremis loads configuration at startup using a **3-layer priority chain**:
+
+```
+env var  >  kremis.toml  >  compiled defaults
+```
+
+Higher-priority layers override lower ones, field by field. You can mix all three — for example, set stable values in `kremis.toml` and override secrets via env vars in CI.
+
+## kremis.toml
+
+Place `kremis.toml` in the directory where you run `kremis server` or `kremis-mcp`.
+All fields are optional; omit any section you don't need.
+
+```toml
+[logging]
+format = "text"                          # "text" | "json"
+level  = "kremis=info,tower_http=debug"  # tracing filter (same as RUST_LOG)
+
+[api]
+rate_limit = 100   # requests per second — 0 disables rate limiting
+
+[security]
+# api_key = ""     # Bearer token — prefer env var for secrets (see below)
+
+[cors]
+origins = []       # [] = localhost only | ["*"] = all | ["https://app.example.com"]
+
+[mcp]
+url = "http://localhost:8080"   # Kremis server URL used by the MCP bridge
+```
+
+Generate the template file with:
+
+```bash
+kremis init
+```
+
+## Environment Variables
+
+Environment variables take precedence over `kremis.toml`. They are the recommended
+way to pass secrets and override settings in containerised environments.
+
+| Variable | Overrides | Default |
+|----------|-----------|---------|
+| `KREMIS_LOG_FORMAT` | `[logging] format` | `text` |
+| `RUST_LOG` | `[logging] level` | `kremis=info,tower_http=debug` |
+| `KREMIS_RATE_LIMIT` | `[api] rate_limit` | `100` |
+| `KREMIS_API_KEY` | `[security] api_key` | _(none — auth disabled)_ |
+| `KREMIS_CORS_ORIGINS` | `[cors] origins` | _(none — localhost only)_ |
+| `KREMIS_URL` | `[mcp] url` | `http://localhost:8080` |
+
+Setting `KREMIS_API_KEY` to an empty string explicitly **disables** authentication,
+even if `api_key` is set in `kremis.toml`.
+
+## Docker Example
+
+```dockerfile
+ENV KREMIS_LOG_FORMAT=json
+ENV KREMIS_RATE_LIMIT=500
+ENV KREMIS_API_KEY=<your-secret>
+ENV KREMIS_CORS_ORIGINS=https://app.example.com
+```
+
+Or pass at runtime:
+
+```bash
+docker run \
+  -e KREMIS_API_KEY=secret \
+  -e KREMIS_LOG_FORMAT=json \
+  kremis server
+```
+
+## CI / GitHub Actions
+
+```yaml
+env:
+  KREMIS_API_KEY: ${{ secrets.KREMIS_API_KEY }}
+  KREMIS_LOG_FORMAT: json
+```
+
+## Sections Reference
+
+### `[logging]`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `format` | string | `"text"` | `"text"` for human-readable output, `"json"` for structured logs (Loki, Datadog, etc.) |
+| `level` | string | `"kremis=info,tower_http=debug"` | `tracing_subscriber` filter — same syntax as `RUST_LOG` |
+
+### `[api]`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `rate_limit` | u32 | `100` | Global request rate in req/s. `0` disables the limiter entirely. |
+
+### `[security]`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `api_key` | string | _(none)_ | Bearer token. When set, all endpoints except `/health` require `Authorization: Bearer <key>`. |
+
+<Warning>
+  Never store `api_key` in `kremis.toml` in a shared repository. Use `KREMIS_API_KEY` or a secrets manager instead.
+</Warning>
+
+### `[cors]`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `origins` | string[] | `[]` | Allowed CORS origins. Empty list restricts to localhost. `["*"]` permits all origins. |
+
+### `[mcp]`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `url` | string | `"http://localhost:8080"` | URL of the Kremis HTTP server. Used by `kremis-mcp` when proxying tool calls. |
+
+This section is read by **both** `kremis` (for the MCP bridge URL reference) and `kremis-mcp`
+(to know which server to proxy requests to).
