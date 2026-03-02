@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.12.0] - 2026-03-02
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.11.0, fix stale version in openapi.yml example ([`d873311`](https://github.com/TyKolt/kremis/commit/d87331185d2255be17b436bdac87ba2528954f64))
+
+### Features
+
+- Add AppConfig TOML-based configuration system, v0.12.0 ([`f39b14d`](https://github.com/TyKolt/kremis/commit/f39b14d494baefa1c176c3c7a93d76f0d27b7fc0))
+
 ## [0.11.0] - 2026-03-01
 
 ### Documentation
