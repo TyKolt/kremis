@@ -25,6 +25,7 @@ venv/
 .env
 .env.*
 !.env.example
+kremis.toml
 
 # OS
 .DS_Store

@@ -1,4 +1,5 @@
-# kremis.toml — Kremis configuration file
+# kremis.example.toml — Kremis configuration template
+# Copy to kremis.toml (gitignored) and edit as needed.
 #
 # Environment variables override these values (useful for Docker/CI).
 # Priority: env var > kremis.toml > compiled-in defaults.

@@ -35,11 +35,13 @@ origins = []       # [] = localhost only | ["*"] = all | ["https://app.example.c
 url = "http://localhost:8080"   # Kremis server URL used by the MCP bridge
 ```
 
-Generate the template file with:
+Copy the example template to get started:
 
 ```bash
-kremis init
+cp kremis.example.toml kremis.toml
 ```
+
+`kremis.toml` is gitignored — your local configuration stays out of version control.
 
 ## Environment Variables
 
