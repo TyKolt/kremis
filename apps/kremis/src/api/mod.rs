@@ -167,7 +167,7 @@ fn build_localhost_cors() -> CorsLayer {
 /// Used by integration tests.
 #[allow(dead_code)]
 pub fn create_router(state: AppState) -> Router {
-    let config = AppConfig::load();
+    let (config, _) = AppConfig::load();
     // Merge api_key from state (explicitly set) with config (env/file).
     // State takes priority if already populated; otherwise use config.
     let merged_key = state

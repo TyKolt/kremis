@@ -53,7 +53,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 #[tokio::main]
 async fn main() {
     // Load configuration: kremis.toml → env var overrides → defaults.
-    let cfg = config::AppConfig::load();
+    let (cfg, config_report) = config::AppConfig::load();
 
     let filter = tracing_subscriber::EnvFilter::new(&cfg.logging.level);
 
@@ -71,6 +71,12 @@ async fn main() {
                 .init();
         }
     }
+
+    tracing::info!(
+        toml = config_report.toml_loaded,
+        env_overrides = ?config_report.env_overrides,
+        "configuration loaded"
+    );
 
     // Parse CLI arguments
     let cli = cli::Cli::parse();

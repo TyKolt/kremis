@@ -23,7 +23,7 @@ use server::KremisMcp;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration: kremis.toml → env var overrides → defaults.
-    let cfg = McpAppConfig::load();
+    let (cfg, config_report) = McpAppConfig::load();
 
     // Logging to stderr only — stdout is reserved for MCP stdio transport.
     match cfg.logging.format.as_str() {
@@ -41,6 +41,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .init();
         }
     }
+
+    tracing::info!(
+        toml = config_report.toml_loaded,
+        env_overrides = ?config_report.env_overrides,
+        "configuration loaded"
+    );
 
     tracing::info!("Kremis MCP server starting, target: {}", cfg.mcp.url);
 

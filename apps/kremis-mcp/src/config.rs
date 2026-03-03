@@ -69,6 +69,23 @@ impl Default for McpConfig {
 }
 
 // =============================================================================
+// CONFIG REPORT
+// =============================================================================
+
+/// Provenance report produced by [`McpAppConfig::load`].
+///
+/// Reports *which* configuration sources were active, never the values.
+/// Sensitive fields (e.g. `api_key`) are only reported as present/absent.
+#[derive(Debug, Clone)]
+pub struct ConfigReport {
+    /// `true` if `kremis.toml` was found and parsed successfully.
+    pub toml_loaded: bool,
+    /// Names of environment variables that overrode a config value.
+    /// Values are NEVER included.
+    pub env_overrides: Vec<&'static str>,
+}
+
+// =============================================================================
 // ROOT CONFIG
 // =============================================================================
 
@@ -92,15 +109,23 @@ pub struct McpAppConfig {
 
 impl McpAppConfig {
     /// Load configuration with priority: env vars > `kremis.toml` > defaults.
+    ///
+    /// Returns the loaded config together with a [`ConfigReport`] that records
+    /// which sources were active (file present, env overrides applied).
     #[must_use]
-    pub fn load() -> Self {
+    pub fn load() -> (Self, ConfigReport) {
         let mut config = Self::default();
+        let mut report = ConfigReport {
+            toml_loaded: false,
+            env_overrides: vec![],
+        };
 
         // Layer 1: kremis.toml (if present)
         if let Ok(raw) = std::fs::read_to_string("kremis.toml") {
             match toml::from_str::<McpAppConfig>(&raw) {
                 Ok(file_cfg) => {
                     config = file_cfg;
+                    report.toml_loaded = true;
                 }
                 Err(e) => {
                     eprintln!("kremis.toml parse error (using defaults): {e}");
@@ -108,11 +133,12 @@ impl McpAppConfig {
             }
         }
 
-        // Layer 2: environment variable overrides
+        // Layer 2: environment variable overrides (track each applied override)
         if let Ok(v) = std::env::var("KREMIS_LOG_FORMAT")
             && !v.is_empty()
         {
             config.logging.format = v;
+            report.env_overrides.push("KREMIS_LOG_FORMAT");
         }
         if let Ok(v) = std::env::var("KREMIS_API_KEY") {
             if !v.is_empty() {
@@ -120,13 +146,15 @@ impl McpAppConfig {
             } else {
                 config.security.api_key = None;
             }
+            report.env_overrides.push("KREMIS_API_KEY");
         }
         if let Ok(v) = std::env::var("KREMIS_URL")
             && !v.is_empty()
         {
             config.mcp.url = v;
+            report.env_overrides.push("KREMIS_URL");
         }
 
-        config
+        (config, report)
     }
 }
