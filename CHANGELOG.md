@@ -2,15 +2,21 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [0.12.0] - 2026-03-02
+## [0.13.0] - 2026-03-03
+
+### Dependencies
+
+- Bump tempfile in the rust-minor-patch group (#6) ([`fe9ddf6`](https://github.com/TyKolt/kremis/commit/fe9ddf6805bfcb8af448d8ec28ef41d4c9aca4da))
 
 ### Documentation
 
 - Regenerate CHANGELOG for v0.11.0, fix stale version in openapi.yml example ([`d873311`](https://github.com/TyKolt/kremis/commit/d87331185d2255be17b436bdac87ba2528954f64))
+- Regenerate CHANGELOG for v0.12.0 ([`89a333e`](https://github.com/TyKolt/kremis/commit/89a333e4a8cd6413e3a4e332bd49e0c67cf603ba))
 
 ### Features
 
-- Add AppConfig TOML-based configuration system, v0.12.0 ([`f39b14d`](https://github.com/TyKolt/kremis/commit/f39b14d494baefa1c176c3c7a93d76f0d27b7fc0))
+- Add AppConfig TOML-based configuration system, v0.12.0 ([`ff6e827`](https://github.com/TyKolt/kremis/commit/ff6e8272f377fdbd20f0692591dac1ad02d4c375))
+- Add config provenance log (ConfigReport), v0.13.0 ([`ae18428`](https://github.com/TyKolt/kremis/commit/ae18428cad0462d06a14b9f879c65c4973500df5))
 
 ## [0.11.0] - 2026-03-01
 
