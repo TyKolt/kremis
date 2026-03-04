@@ -61,13 +61,17 @@ async fn main() {
         "json" => {
             tracing_subscriber::registry()
                 .with(filter)
-                .with(tracing_subscriber::fmt::layer().json())
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .json()
+                        .with_writer(std::io::stderr),
+                )
                 .init();
         }
         _ => {
             tracing_subscriber::registry()
                 .with(filter)
-                .with(tracing_subscriber::fmt::layer())
+                .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
                 .init();
         }
     }
@@ -81,8 +85,8 @@ async fn main() {
     // Parse CLI arguments
     let cli = cli::Cli::parse();
 
-    // Display startup banner
-    if !cli.quiet {
+    // Display startup banner (suppressed in json_mode for machine-readable output)
+    if !cli.quiet && !cli.json_mode {
         print_banner();
     }
 
