@@ -17,7 +17,7 @@ The hash is deterministic: the same graph state always produces the same 64-char
 |--------|-------|-------------|---------|
 | `--json-mode` | - | Output as JSON | false |
 | `--database` | `-d` | Path to database file | `kremis.db` |
-| `--backend` | `-B` | Storage backend (`memory` or `file`) | `memory` |
+| `--backend` | `-B` | Storage backend (`file` or `redb`) | `redb` |
 
 ## Output
 
@@ -41,7 +41,7 @@ Checksum (XOR): 14823901234567890
 ## Examples
 
 ```bash
-# Hash in-memory graph (empty)
+# Hash default database (redb, empty)
 kremis hash
 
 # Hash persistent graph

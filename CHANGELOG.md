@@ -2,6 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+
+- Redirect tracing logs to stderr, suppress banner in --json-mode (v0.13.1) ([`8db6eb0`](https://github.com/TyKolt/kremis/commit/8db6eb05868cb75afbdc9f8823958173262fc2a7))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.13.0 ([`76e610c`](https://github.com/TyKolt/kremis/commit/76e610ca756a329a9233ee80b69031304320e9e1))
+- Add missing env vars to installation and mcp/setup pages ([`118f612`](https://github.com/TyKolt/kremis/commit/118f6123d3d2d9dbf6cfcb2a7bc763b4f44098c4))
+
 ## [0.13.0] - 2026-03-03
 
 ### Dependencies
