@@ -1,0 +1,127 @@
+---
+title: "POST /signals"
+description: "Ingest a sequence of signals, creating edges between co-occurring entities."
+icon: "upload"
+---
+
+<ParamField path="method" type="POST">
+  `/signals`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Ingests an ordered sequence of entity–attribute–value triples.
+
+Unlike `POST /signal`, this endpoint calls `ingest_sequence()` internally,
+which analyses co-occurrence across adjacent signals: two entities that share
+the same attribute value in consecutive signals will have an **edge created**
+(or incremented) between them.
+
+<Note>
+  Use this endpoint when you need a connected graph via HTTP. `POST /signal`
+  inserts isolated nodes — it never creates edges.
+</Note>
+
+## Why this endpoint exists
+
+`POST /signal` calls `ingest()` — a single-signal path that stores nodes but
+never creates edges. Edges are the backbone of queries like `strongest_path`,
+`intersect`, and `retract`. If you ingest signals one-by-one via HTTP, these
+queries will always return `found: false`.
+
+`POST /signals` fixes this by accepting a batch and delegating to
+`ingest_sequence()`, the same function used by the CLI `kremis ingest` command.
+
+## Request Body
+
+```json
+{
+  "signals": [
+    { "entity_id": 1, "attribute": "name", "value": "Alice" },
+    { "entity_id": 2, "attribute": "name", "value": "Bob" }
+  ]
+}
+```
+
+| Field | Type | Required | Constraints | Description |
+|-------|------|----------|-------------|-------------|
+| `signals` | array | Yes | Max 10,000 items | Ordered list of signals. |
+| `signals[].entity_id` | integer (u64) | Yes | — | Entity identifier. |
+| `signals[].attribute` | string | Yes | Max 256 bytes, non-empty | Attribute name. |
+| `signals[].value` | string | Yes | Max 64 KB, non-empty | Attribute value. |
+
+An empty array `{"signals": []}` is a valid no-op.
+
+## Response
+
+<CodeGroup>
+
+```json 200 OK — Success
+{
+  "success": true,
+  "ingested": 2,
+  "node_ids": [9876543210, 1234567890],
+  "error": null
+}
+```
+
+```json 400 Bad Request — Validation Error
+{
+  "success": false,
+  "ingested": 0,
+  "node_ids": [],
+  "error": "Invalid signal: attribute is empty"
+}
+```
+
+</CodeGroup>
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether all signals were ingested. |
+| `ingested` | integer | Number of signals processed. |
+| `node_ids` | array of integer | Node IDs assigned to each entity, in order. |
+| `error` | string or null | Error message (if failed). |
+
+<Warning>
+  If any signal in the batch is invalid (empty attribute, oversized value),
+  the entire request is rejected with `400`. No signals are ingested.
+</Warning>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/signals \
+     -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "signals": [
+         {"entity_id": 1, "attribute": "name", "value": "Alice"},
+         {"entity_id": 2, "attribute": "name", "value": "Bob"}
+       ]
+     }'
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "ingested": 2,
+  "node_ids": [0, 1],
+  "error": null
+}
+```
+
+After this call, `GET /status` will show `edge_count >= 1`, and
+`POST /query` with `strongest_path` from Alice's node to Bob's node will
+return `found: true`.
+
+## Limits
+
+| Constraint | Value |
+|------------|-------|
+| Max signals per request | 10,000 (`MAX_SEQUENCE_LENGTH`) |
+| Max request body | 2 MB |
+| Max attribute length | 256 bytes |
+| Max value length | 64 KB (65,536 bytes) |

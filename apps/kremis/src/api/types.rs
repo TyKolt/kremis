@@ -138,6 +138,46 @@ impl IngestResponse {
 }
 
 // =============================================================================
+// BATCH INGEST REQUEST/RESPONSE
+// =============================================================================
+
+/// Batch signal ingest request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchIngestRequest {
+    pub signals: Vec<IngestRequest>,
+}
+
+/// Batch signal ingest response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchIngestResponse {
+    pub success: bool,
+    pub ingested: usize,
+    pub node_ids: Vec<u64>,
+    pub error: Option<String>,
+}
+
+impl BatchIngestResponse {
+    pub fn success(node_ids: Vec<NodeId>) -> Self {
+        let count = node_ids.len();
+        Self {
+            success: true,
+            ingested: count,
+            node_ids: node_ids.iter().map(|n| n.0).collect(),
+            error: None,
+        }
+    }
+
+    pub fn error(msg: String) -> Self {
+        Self {
+            success: false,
+            ingested: 0,
+            node_ids: vec![],
+            error: Some(msg),
+        }
+    }
+}
+
+// =============================================================================
 // RETRACT REQUEST/RESPONSE
 // =============================================================================
 

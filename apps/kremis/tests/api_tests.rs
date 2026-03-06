@@ -10,8 +10,9 @@
 use axum::http::HeaderValue;
 use axum_test::TestServer;
 use kremis::api::{
-    AppState, ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest,
-    QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse, create_router,
+    AppState, BatchIngestRequest, BatchIngestResponse, ExportResponse, HealthResponse,
+    IngestRequest, IngestResponse, QueryRequest, QueryResponse, RetractRequest, RetractResponse,
+    StageResponse, StatusResponse, create_router,
 };
 use kremis_core::Session;
 use serde_json::json;
@@ -1373,4 +1374,127 @@ async fn test_retract_multiple_times_floors_at_zero() {
     response.assert_status_ok();
     let result: RetractResponse = response.json();
     assert_eq!(result.new_weight, Some(0));
+}
+
+// =============================================================================
+// BATCH INGEST ENDPOINT TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_batch_ingest_creates_edges() {
+    let (server, _guard) = create_test_server();
+
+    let request = BatchIngestRequest {
+        signals: vec![
+            IngestRequest {
+                entity_id: 1,
+                attribute: "name".to_string(),
+                value: "Alice".to_string(),
+            },
+            IngestRequest {
+                entity_id: 2,
+                attribute: "name".to_string(),
+                value: "Bob".to_string(),
+            },
+        ],
+    };
+
+    let response = server.post("/signals").json(&request).await;
+    response.assert_status_ok();
+    let result: BatchIngestResponse = response.json();
+    assert!(result.success);
+    assert_eq!(result.ingested, 2);
+    assert_eq!(result.node_ids.len(), 2);
+    assert!(result.error.is_none());
+
+    // Edge must have been created between the two entities
+    let status_response = server.get("/status").await;
+    status_response.assert_status_ok();
+    let status: StatusResponse = status_response.json();
+    assert!(status.edge_count > 0, "Batch ingest must create edges");
+}
+
+#[tokio::test]
+async fn test_batch_ingest_invalid_signal_returns_400() {
+    let (server, _guard) = create_test_server();
+
+    let request = BatchIngestRequest {
+        signals: vec![
+            IngestRequest {
+                entity_id: 1,
+                attribute: "name".to_string(),
+                value: "Alice".to_string(),
+            },
+            IngestRequest {
+                entity_id: 2,
+                attribute: "".to_string(), // empty attribute — invalid
+                value: "Bob".to_string(),
+            },
+        ],
+    };
+
+    let response = server.post("/signals").json(&request).await;
+    assert_eq!(
+        response.status_code().as_u16(),
+        400,
+        "Invalid signal in batch should return 400"
+    );
+    let result: BatchIngestResponse = response.json();
+    assert!(!result.success);
+    assert!(result.error.is_some());
+}
+
+#[tokio::test]
+async fn test_batch_ingest_enables_strongest_path() {
+    let (server, _guard) = create_test_server();
+
+    // Ingest Alice and Bob as a sequence — creates an edge
+    let request = BatchIngestRequest {
+        signals: vec![
+            IngestRequest {
+                entity_id: 10,
+                attribute: "role".to_string(),
+                value: "analyst".to_string(),
+            },
+            IngestRequest {
+                entity_id: 20,
+                attribute: "role".to_string(),
+                value: "analyst".to_string(),
+            },
+        ],
+    };
+    let ingest_response: BatchIngestResponse = server.post("/signals").json(&request).await.json();
+    assert!(ingest_response.success);
+
+    // Resolve actual node IDs via lookup
+    let lookup10: QueryResponse = server
+        .post("/query")
+        .json(&QueryRequest::Lookup { entity_id: 10 })
+        .await
+        .json();
+    let lookup20: QueryResponse = server
+        .post("/query")
+        .json(&QueryRequest::Lookup { entity_id: 20 })
+        .await
+        .json();
+    assert!(lookup10.found, "Entity 10 should exist after batch ingest");
+    assert!(lookup20.found, "Entity 20 should exist after batch ingest");
+
+    let node10 = lookup10.path[0];
+    let node20 = lookup20.path[0];
+
+    // strongest_path must succeed because the edge was created
+    let path_response: QueryResponse = server
+        .post("/query")
+        .json(&QueryRequest::StrongestPath {
+            start: node10,
+            end: node20,
+        })
+        .await
+        .json();
+    assert!(path_response.success, "strongest_path query should succeed");
+    assert!(
+        path_response.found,
+        "strongest_path must find a path after batch ingest creates edges"
+    );
 }

@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.13.1
+  version: 0.14.0
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.13.1"
+                version: "0.14.0"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -265,6 +265,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RetractResponse"
+
+  /signals:
+    post:
+      operationId: batchIngestSignals
+      summary: Ingest a sequence of signals
+      description: |
+        Ingests an ordered sequence of entity–attribute–value triples, creating
+        edges between entities that share values in adjacent signals.
+
+        Unlike `POST /signal`, this endpoint uses `ingest_sequence()` internally
+        which analyses co-occurrence across the full array. Two entities that
+        share the same attribute value in consecutive signals will have an edge
+        created (or incremented) between them.
+
+        **Use this endpoint** when you want to build a connected graph via HTTP.
+
+        **Limits** (enforced server-side):
+        - Each signal: `attribute` 1–256 bytes, `value` 1–65536 bytes
+        - Sequence: max 10,000 signals (`MAX_SEQUENCE_LENGTH`)
+        - Request body: 2 MB maximum
+
+        An empty array `{"signals": []}` is a valid no-op and returns
+        `{"success": true, "ingested": 0, "node_ids": []}`.
+      tags: [signals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchIngestRequest"
+            examples:
+              two_entities:
+                summary: Ingest two entities and create an edge
+                value:
+                  signals:
+                    - entity_id: 1
+                      attribute: name
+                      value: Alice
+                    - entity_id: 2
+                      attribute: name
+                      value: Bob
+              empty_batch:
+                summary: Empty batch (no-op)
+                value:
+                  signals: []
+      responses:
+        "200":
+          description: Sequence ingested successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchIngestResponse"
+              examples:
+                success:
+                  summary: Two signals ingested
+                  value:
+                    success: true
+                    ingested: 2
+                    node_ids: [9876543210, 1234567890]
+                    error: null
+                empty:
+                  summary: Empty batch (no-op)
+                  value:
+                    success: true
+                    ingested: 0
+                    node_ids: []
+                    error: null
+        "400":
+          description: Malformed request body or validation failure in any signal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchIngestResponse"
+              example:
+                success: false
+                ingested: 0
+                node_ids: []
+                error: "Invalid signal: attribute is empty"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /query:
     post:
@@ -554,7 +636,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.13.1"
+          example: "0.14.0"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -680,6 +762,49 @@ components:
           minimum: 0
           description: Internal node ID assigned to the entity, if successful.
           example: 9876543210
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null
+
+    # -------------------------------------------------------------------------
+    # Batch Ingest
+    # -------------------------------------------------------------------------
+
+    BatchIngestRequest:
+      type: object
+      description: Ordered sequence of signals to ingest, creating edges between co-occurring entities.
+      required: [signals]
+      properties:
+        signals:
+          type: array
+          description: Array of signals to ingest as a sequence. Max 10,000 items.
+          maxItems: 10000
+          items:
+            $ref: "#/components/schemas/IngestRequest"
+
+    BatchIngestResponse:
+      type: object
+      description: Result of a batch signal ingestion.
+      required: [success, ingested, node_ids]
+      properties:
+        success:
+          type: boolean
+          description: Whether all signals were ingested successfully.
+          example: true
+        ingested:
+          type: integer
+          minimum: 0
+          description: Number of signals successfully ingested.
+          example: 2
+        node_ids:
+          type: array
+          description: Internal node IDs assigned to each ingested entity, in order.
+          items:
+            type: integer
+            format: uint64
+            minimum: 0
+          example: [9876543210, 1234567890]
         error:
           type: ["string", "null"]
           description: Error message, present only when `success` is `false`.

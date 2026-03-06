@@ -5,6 +5,7 @@
 //! ## Endpoints
 //!
 //! - `POST /signal` - Ingest a new signal
+//! - `POST /signals` - Ingest a sequence of signals (creates edges)
 //! - `POST /query` - Execute a query
 //! - `GET /status` - Get graph status
 //! - `GET /stage` - Get current developmental stage
@@ -26,13 +27,14 @@ mod types;
 // Re-export handlers and types for integration tests (via `kremis::api::*`)
 #[allow(unused_imports)]
 pub use handlers::{
-    export_handler, hash_handler, health_handler, ingest_handler, metrics_handler, query_handler,
-    retract_handler, stage_handler, status_handler,
+    batch_ingest_handler, export_handler, hash_handler, health_handler, ingest_handler,
+    metrics_handler, query_handler, retract_handler, stage_handler, status_handler,
 };
 #[allow(unused_imports)]
 pub use types::{
-    EdgeJson, ExportResponse, HealthResponse, IngestRequest, IngestResponse, QueryRequest,
-    QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse,
+    BatchIngestRequest, BatchIngestResponse, EdgeJson, ExportResponse, HealthResponse,
+    IngestRequest, IngestResponse, QueryRequest, QueryResponse, RetractRequest, RetractResponse,
+    StageResponse, StatusResponse,
 };
 
 use axum::{
@@ -210,6 +212,7 @@ pub fn create_router_with_config(state: AppState, config: &AppConfig) -> Router 
         .route("/stage", get(handlers::stage_handler))
         .route("/signal", post(handlers::ingest_handler))
         .route("/signal/retract", post(handlers::retract_handler))
+        .route("/signals", post(handlers::batch_ingest_handler))
         .route("/query", post(handlers::query_handler))
         .route("/export", post(handlers::export_handler))
         .route("/hash", get(handlers::hash_handler))

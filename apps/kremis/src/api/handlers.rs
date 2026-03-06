@@ -5,8 +5,9 @@
 use super::{
     AppState,
     types::{
-        ExportResponse, HealthResponse, IngestRequest, IngestResponse, PropertyJson, QueryRequest,
-        QueryResponse, RetractRequest, RetractResponse, StageResponse, StatusResponse,
+        BatchIngestRequest, BatchIngestResponse, ExportResponse, HealthResponse, IngestRequest,
+        IngestResponse, PropertyJson, QueryRequest, QueryResponse, RetractRequest, RetractResponse,
+        StageResponse, StatusResponse,
     },
 };
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
@@ -94,6 +95,39 @@ pub async fn ingest_handler(
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(IngestResponse::error(format!("Ingest failed: {}", e))),
+        ),
+    }
+}
+
+// =============================================================================
+// BATCH INGEST HANDLER
+// =============================================================================
+
+/// Ingest a sequence of signals, creating edges between adjacent entities.
+pub async fn batch_ingest_handler(
+    State(state): State<AppState>,
+    Json(request): Json<BatchIngestRequest>,
+) -> impl IntoResponse {
+    // Validate all signals before touching the session
+    let mut signals = Vec::with_capacity(request.signals.len());
+    for req in &request.signals {
+        match req.to_signal() {
+            Ok(s) => signals.push(s),
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(BatchIngestResponse::error(format!("Invalid signal: {}", e))),
+                );
+            }
+        }
+    }
+
+    let mut session = state.session.write().await;
+    match session.ingest_sequence(&signals) {
+        Ok(node_ids) => (StatusCode::OK, Json(BatchIngestResponse::success(node_ids))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(BatchIngestResponse::error(format!("Ingest failed: {}", e))),
         ),
     }
 }

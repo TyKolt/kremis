@@ -91,6 +91,7 @@
             "group": "Signals",
             "pages": [
               "api/signal",
+              "api/signal-batch",
               "api/signal-retract"
             ]
           },
