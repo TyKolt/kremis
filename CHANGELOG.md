@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.14.0] - 2026-03-06
+
+### Documentation
+
+- Update CHANGELOG — close [Unreleased] → [0.13.1] ([`50e7641`](https://github.com/TyKolt/kremis/commit/50e7641814d6507fa28885f2c9d3ee780ef61bf8))
+
+### Features
+
+- Add POST /signals batch ingest endpoint — creates edges via HTTP (v0.14.0) ([`36abd70`](https://github.com/TyKolt/kremis/commit/36abd703b215fb67653e2f0503060a7cc7705052))
+
 ## [0.13.1] - 2026-03-04
 
 ### Bug Fixes
