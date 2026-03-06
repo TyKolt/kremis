@@ -14,7 +14,7 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use kremis_core::{
     Artifact, EdgeWeight, EntityId, KremisError, NodeId, Session,
     export::{canonical_checksum, canonical_crypto_hash, export_canonical},
-    primitives::{MAX_INTERSECT_NODES, MAX_TRAVERSAL_DEPTH},
+    primitives::{MAX_INTERSECT_NODES, MAX_SEQUENCE_LENGTH, MAX_TRAVERSAL_DEPTH},
     system::{GraphMetrics, Stage, StageAssessor},
 };
 use std::collections::BTreeSet;
@@ -108,6 +108,18 @@ pub async fn batch_ingest_handler(
     State(state): State<AppState>,
     Json(request): Json<BatchIngestRequest>,
 ) -> impl IntoResponse {
+    // Reject oversized batches before any allocation (DoS guard — CWE-770).
+    if request.signals.len() > MAX_SEQUENCE_LENGTH {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(BatchIngestResponse::error(format!(
+                "Batch too large: {} signals (max {})",
+                request.signals.len(),
+                MAX_SEQUENCE_LENGTH
+            ))),
+        );
+    }
+
     // Validate all signals before touching the session
     let mut signals = Vec::with_capacity(request.signals.len());
     for req in &request.signals {
