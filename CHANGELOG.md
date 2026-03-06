@@ -2,11 +2,18 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.14.1] - 2026-03-06
+
+### Bug Fixes
+
+- Guard POST /signals against uncontrolled allocation (CWE-770) — v0.14.1 ([`56801cd`](https://github.com/TyKolt/kremis/commit/56801cddfb81f1a55ce36d74937ff172accb9e32))
+
 ## [0.14.0] - 2026-03-06
 
 ### Documentation
 
 - Update CHANGELOG — close [Unreleased] → [0.13.1] ([`50e7641`](https://github.com/TyKolt/kremis/commit/50e7641814d6507fa28885f2c9d3ee780ef61bf8))
+- Regenerate CHANGELOG for v0.14.0 [skip ci] ([`c46d109`](https://github.com/TyKolt/kremis/commit/c46d109009076846b9ce09ac23acf03cf1b2cc01))
 
 ### Features
 
