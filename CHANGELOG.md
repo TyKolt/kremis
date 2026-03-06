@@ -2,7 +2,7 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [Unreleased]
+## [0.13.1] - 2026-03-04
 
 ### Bug Fixes
 
@@ -12,6 +12,7 @@ All notable changes to Kremis are documented in this file.
 
 - Regenerate CHANGELOG for v0.13.0 ([`76e610c`](https://github.com/TyKolt/kremis/commit/76e610ca756a329a9233ee80b69031304320e9e1))
 - Add missing env vars to installation and mcp/setup pages ([`118f612`](https://github.com/TyKolt/kremis/commit/118f6123d3d2d9dbf6cfcb2a7bc763b4f44098c4))
+- Regenerate CHANGELOG for v0.13.1, fix hash.mdx backend docs ([`d7bc142`](https://github.com/TyKolt/kremis/commit/d7bc14292e47a35fb98e8f9a5b39b04e51c16152))
 
 ## [0.13.0] - 2026-03-03
 
