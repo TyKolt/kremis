@@ -8,7 +8,7 @@ Thank you for your interest in Kremis. This document explains how to contribute 
 
 ## Prerequisites
 
-- **Rust 1.85+** (stable, edition 2024)
+- **Rust 1.89+** (stable, edition 2024)
 - **Git** with signed commits (GPG recommended)
 - Familiarity with graph data structures and Rust's type system
 
