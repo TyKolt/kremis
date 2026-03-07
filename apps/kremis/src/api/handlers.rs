@@ -121,7 +121,7 @@ pub async fn batch_ingest_handler(
     }
 
     // Validate all signals before touching the session
-    let mut signals = Vec::with_capacity(request.signals.len());
+    let mut signals = Vec::with_capacity(request.signals.len().min(MAX_SEQUENCE_LENGTH));
     for req in &request.signals {
         match req.to_signal() {
             Ok(s) => signals.push(s),
