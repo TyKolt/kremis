@@ -1,0 +1,119 @@
+---
+title: "Design Philosophy"
+description: "Why Kremis is built the way it is."
+icon: "compass"
+---
+
+This page explains the reasoning behind Kremis's design constraints. Not what Kremis does —
+but why it does it that way.
+
+## The Problem
+
+Hallucination in AI is a structural problem, not an accuracy problem.
+
+Large language models fuse communication and knowledge storage into the same probabilistic
+system. Given a question, they generate a plausible-sounding answer by interpolating across
+their training data — whether or not the specific fact exists. The problem is not that the
+model is "wrong sometimes." The problem is that the model *cannot distinguish between what
+it knows and what it is constructing on the fly.*
+
+Improving accuracy (more parameters, more RLHF, better prompting) reduces hallucination rate.
+It does not eliminate the structural ambiguity between fact and fabrication. A system that
+hallucinates 0.1% of the time and a system that hallucinates 10% of the time share the same
+architecture: one where Truth and Intelligence are intertwined.
+
+## The Insight
+
+The solution is architectural: separate Truth from Intelligence.
+
+Instead of asking a model to "remember" facts, keep facts in a deterministic graph store
+where every piece of data traces back to a real ingested signal. The graph either contains
+a connection or it does not. There are no probabilities, no weights, no interpolation.
+
+An intelligent layer (an LLM, a query engine, an application) then operates *above* this
+grounded substrate. Its outputs are constrained by what the graph actually contains. If the
+graph has no path supporting a claim, the system does not guess — it returns nothing.
+
+This separation is the founding principle of Kremis.
+
+## What Kremis Is Not
+
+<Note>
+  The system does not *understand*. It contains only the structure of the signals it has
+  processed. The initial graph is completely empty. All structure emerges exclusively from
+  ingested signals.
+</Note>
+
+Kremis is deliberately not:
+
+- **A learning system** — the graph does not self-modify based on inference. Data is added
+  explicitly through ingest. There is no weight update, no latent adaptation.
+- **A generative AI** — Kremis does not produce text, complete prompts, or generate answers.
+  It stores and retrieves structural relationships.
+- **An optimizer or planner** — the core has no goals. It reacts to signals and queries.
+  It does not decide, prioritize, or strategize.
+- **A chatbot or natural language processor** — natural language understanding happens outside
+  the core, in the application layer that calls Kremis APIs.
+- **An approximation engine** — if a traversal targets a missing node or edge, the result
+  is `None`. The system does not fill gaps, complete paths, or return "close enough" answers.
+
+These are not current limitations to be lifted in future versions. They are permanent design
+constraints. Expanding the core beyond this scope would define a different project.
+
+## The 4 Laws as Design Consequences
+
+The four laws that govern Kremis's codebase follow directly from the architectural separation
+above. Each law exists because violating it would reintroduce the structural ambiguity that
+Kremis is designed to eliminate.
+
+**1. Determinism** — Same input, same output, every time.
+
+If two runs of the same query on the same graph produce different results, the system cannot
+be trusted as a source of truth. Non-determinism at the core level — randomness, hash-map
+ordering, floating-point arithmetic — would make the graph unreliable as a verification
+substrate. `BTreeMap` everywhere, no `HashMap`, integer arithmetic only, no timestamps in
+core logic.
+
+**2. Precision** — Every response is a Fact, an Inference, or "not found." Nothing else.
+
+Honest output means the system never silently fills gaps. A missing edge returns `None`.
+No `todo!()`, no `unimplemented!()`, no internal assumptions that bypass the graph. If the
+information is not in the graph, the caller receives an explicit "not found" — not a default,
+not a guess.
+
+**3. Security** — The substrate of truth must itself be safe.
+
+A grounded system is only valuable if it cannot be corrupted. Constant-time authentication
+prevents timing attacks on API keys. Input validation and path traversal protection prevent
+malformed signals from poisoning the graph. Rate limiting prevents the substrate from being
+overwhelmed. No `.unwrap()`, no `panic!()` in core logic — all errors are recoverable and
+explicit.
+
+**4. Separation** — kremis-core is pure; I/O happens in the application layer.
+
+The codebase enforces the architectural separation in code. `kremis-core` has no async, no
+network, no I/O. It is a deterministic library. The HTTP server, CLI, and MCP bridge live
+in separate crates that call into the core. This boundary ensures the core cannot be
+contaminated by non-deterministic runtime concerns, and that the core can be tested and
+verified in isolation.
+
+See [CONTRIBUTING.md](https://github.com/TyKolt/kremis/blob/main/CONTRIBUTING.md) for the
+complete engineering rules derived from these four laws.
+
+## Honest Intelligence
+
+A system is honest when it can say "I don't know" as reliably as it can say "I know."
+
+Most AI systems are optimized to produce an answer — any answer. Kremis is optimized for
+the opposite: to produce *no* answer when the supporting structure is absent. An empty graph
+returns nothing. A graph with three signals returns exactly what those three signals imply,
+no more.
+
+The result is a substrate that an intelligent layer can trust unconditionally. When Kremis
+says a relationship exists, it exists — because a real signal created it. When Kremis returns
+`None`, no fabrication has occurred. The downstream application can treat every response as
+a hard fact or a hard absence, not as a probability.
+
+This is what "Honest Intelligence" means in the context of Kremis: not a system that is
+honest about its limitations in a disclaimer, but a system whose architecture makes
+dishonesty structurally impossible.

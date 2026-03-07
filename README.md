@@ -30,6 +30,8 @@ It functions solely as a mechanism to **record**, **associate**, and **retrieve*
 | **Non-determinism** | Same input, same output. No randomness, no floating-point arithmetic in core |
 | **Data loss** | ACID transactions via `redb` embedded database. Crash-safe by design |
 
+→ [Design Philosophy](https://kremis.mintlify.app/philosophy) — why these constraints exist.
+
 ---
 
 ## Quick Start
