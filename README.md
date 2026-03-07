@@ -7,7 +7,7 @@
 [![CI](https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/TyKolt/kremis/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-mintlify-0D9373.svg)](https://kremis.mintlify.app)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org/)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
 > **Work in Progress** — Features incomplete. Breaking changes expected.
@@ -34,7 +34,7 @@ It functions solely as a mechanism to **record**, **associate**, and **retrieve*
 
 ## Quick Start
 
-Requires **Rust 1.85+** (stable, edition 2024) and Cargo.
+Requires **Rust 1.89+** (stable, edition 2024) and Cargo.
 
 ```bash
 git clone https://github.com/TyKolt/kremis.git
@@ -195,6 +195,8 @@ cargo run -p kremis -- import -i graph.bin -B file
 | `/status` | GET | Graph statistics |
 | `/stage` | GET | Developmental stage |
 | `/signal` | POST | Ingest a signal |
+| `/signals` | POST | Ingest a sequence of signals (creates edges) |
+| `/signal/retract` | POST | Retract a signal (decrement edge weight) |
 | `/query` | POST | Execute a query |
 | `/export` | POST | Export graph |
 | `/hash` | GET | BLAKE3 cryptographic hash |
