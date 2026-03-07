@@ -74,12 +74,12 @@ ordering, floating-point arithmetic — would make the graph unreliable as a ver
 substrate. `BTreeMap` everywhere, no `HashMap`, integer arithmetic only, no timestamps in
 core logic.
 
-**2. Precision** — Every response is a Fact, an Inference, or "not found." Nothing else.
+**2. Precision** — Every response is a Fact, an Inference, or "unknown." Nothing else.
 
 Honest output means the system never silently fills gaps. A missing edge returns `None`.
 No `todo!()`, no `unimplemented!()`, no internal assumptions that bypass the graph. If the
-information is not in the graph, the caller receives an explicit "not found" — not a default,
-not a guess.
+information is not in the graph, the caller receives an explicit `"unknown"` grounding — not a
+default, not a guess.
 
 **3. Security** — The substrate of truth must itself be safe.
 
