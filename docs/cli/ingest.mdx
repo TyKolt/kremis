@@ -1,25 +1,28 @@
 ---
 title: "ingest"
-description: "Ingest signals from a file."
+description: "Ingest signals from a file or stdin."
 icon: "upload"
 ---
 
 ```bash
-kremis ingest -f <FILE> [-t <FORMAT>]
+kremis ingest [-f <FILE>] [-t <FORMAT>] [--from-stdin]
 ```
 
-Read signals from a file and ingest them into the graph.
+Read signals from a file or stdin and ingest them into the graph.
+
+`--file` and `--from-stdin` are mutually exclusive. One must be provided.
 
 ## Options
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
-| `--file <path>` | `-f` | Path to the input file | (required) |
-| `--format <fmt>` | `-t` | Input format: `json` or `text` | `json` |
+| `--file <path>` | `-f` | Path to the input file | (required without `--from-stdin`) |
+| `--format <fmt>` | `-t` | Input format: `json` or `text` (file only) | `json` |
+| `--from-stdin` | | Read signals from stdin as JSON Lines | `false` |
 
 ## Input Formats
 
-### JSON
+### JSON (file)
 
 Array of signal objects:
 
@@ -30,7 +33,7 @@ Array of signal objects:
 ]
 ```
 
-### Text
+### Text (file)
 
 Colon-separated `entity_id:attribute:value` per line:
 
@@ -39,12 +42,39 @@ Colon-separated `entity_id:attribute:value` per line:
 2:name:Bob
 ```
 
+### JSON Lines (stdin)
+
+One signal object per line. No array wrapper. `--format` is ignored when using `--from-stdin`.
+
+```
+{"entity_id": 1, "attribute": "name", "value": "Alice"}
+{"entity_id": 2, "attribute": "name", "value": "Bob"}
+```
+
+## Limits
+
+| Limit | Value |
+|-------|-------|
+| Maximum signals per ingestion | 10,000 |
+
 ## Examples
 
 ```bash
-# Ingest JSON signals
+# Ingest JSON signals from file
 kremis ingest -f examples/sample_signals.json -t json
 
-# Ingest text signals
+# Ingest text signals from file
 kremis ingest -f examples/sample_signals.txt -t text
+
+# Pipe a single signal from another command
+echo '{"entity_id": 1, "attribute": "name", "value": "Alice"}' | kremis ingest --from-stdin
+
+# Pipe multiple signals (JSON Lines)
+generate-signals | kremis ingest --from-stdin
+
+# Heredoc (useful for scripting)
+kremis ingest --from-stdin <<EOF
+{"entity_id": 1, "attribute": "name", "value": "Alice"}
+{"entity_id": 2, "attribute": "name", "value": "Bob"}
+EOF
 ```
