@@ -2,6 +2,24 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.15.0] - 2026-03-08
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.14.3 [skip ci] ([`0875cf6`](https://github.com/TyKolt/kremis/commit/0875cf61a18103dbfc17337b181f97ab99e04877))
+- Fix MSRV badge and Quick Start text from 1.85 to 1.89 ([`9d06bb7`](https://github.com/TyKolt/kremis/commit/9d06bb7488ec26a33216d65609c50dd4e1ea5563))
+- Fix MSRV in CONTRIBUTING.md and quickstart.mdx from 1.85 to 1.89 ([`21b3e22`](https://github.com/TyKolt/kremis/commit/21b3e22e97efe74781cdaa24f1db7e59dc1ce2ef))
+- Fix MSRV in installation.mdx from 1.85 to 1.89 ([`c39fede`](https://github.com/TyKolt/kremis/commit/c39fede523fb1a77543d6a52f5676439f54d5bb6))
+- Add design philosophy page ([`9db4d85`](https://github.com/TyKolt/kremis/commit/9db4d85628e4d5ab0c148eb151cc81c281cf736d))
+- Align Precision law wording with grounding field value ([`e3ee921`](https://github.com/TyKolt/kremis/commit/e3ee921d0ca356db077bde9bd55a81c13d8df50f))
+- Add CODE_OF_CONDUCT ([`0f96e56`](https://github.com/TyKolt/kremis/commit/0f96e560148871bd8d9b7853a52e2fb2fc021955))
+- Add Kremis project name to CODE_OF_CONDUCT ([`825f254`](https://github.com/TyKolt/kremis/commit/825f2541324155f9bfecddfb535aa8960a537e23))
+- Document --from-stdin flag in kremis ingest CLI reference ([`f147524`](https://github.com/TyKolt/kremis/commit/f1475243b065be474037371ecc8508b26b45d18a))
+
+### Features
+
+- Add --from-stdin flag to kremis ingest (v0.15.0) ([`d31cd3a`](https://github.com/TyKolt/kremis/commit/d31cd3a04008f67b595af2e545cecef120244c3f))
+
 ## [0.14.3] - 2026-03-07
 
 ### Bug Fixes
