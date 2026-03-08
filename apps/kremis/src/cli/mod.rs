@@ -85,13 +85,17 @@ pub enum Commands {
         detailed: bool,
     },
 
-    /// Ingest signals from a file
+    /// Ingest signals from a file or stdin
     Ingest {
-        /// Path to the input file (JSON or text)
+        /// Path to the input file (JSON or text). Mutually exclusive with --from-stdin.
         #[arg(short, long)]
-        file: PathBuf,
+        file: Option<PathBuf>,
 
-        /// Input format (json, text)
+        /// Read signals from stdin as JSON Lines (one Signal per line).
+        #[arg(long)]
+        from_stdin: bool,
+
+        /// Input format for --file mode (json, text)
         #[arg(short = 't', long, default_value = "json")]
         format: String,
     },
@@ -173,9 +177,18 @@ pub async fn execute(cli: Cli, config: AppConfig) -> Result<(), KremisError> {
         Some(Commands::Stage { detailed }) => {
             cmd_stage(&cli.database, backend, json_mode, detailed)
         }
-        Some(Commands::Ingest { file, format }) => {
-            cmd_ingest(&cli.database, backend, json_mode, &file, &format)
-        }
+        Some(Commands::Ingest {
+            file,
+            format,
+            from_stdin,
+        }) => cmd_ingest(
+            &cli.database,
+            backend,
+            json_mode,
+            file.as_ref(),
+            &format,
+            from_stdin,
+        ),
         Some(Commands::Query {
             query_type,
             start,

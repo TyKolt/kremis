@@ -255,103 +255,156 @@ pub fn cmd_stage(
 // INGEST COMMAND
 // =============================================================================
 
-/// Ingest signals from a file.
+/// Ingest signals from a file or stdin.
 pub fn cmd_ingest(
     db_path: &PathBuf,
     backend: &str,
     _json_mode: bool,
-    file: &PathBuf,
+    file: Option<&PathBuf>,
     format: &str,
+    from_stdin: bool,
 ) -> Result<(), KremisError> {
     use kremis_core::{Attribute, EntityId, Signal, Value};
 
-    tracing::info!("Ingesting from {:?} (format: {})", file, format);
-
     let mut session = load_or_create_session(db_path, backend)?;
 
-    // L1 FIX: Validate file path for security (prevents path traversal)
-    let validated_path = validate_file_path(file)?;
+    let signals = if from_stdin {
+        if file.is_some() {
+            return Err(KremisError::SerializationError(
+                "use --file or --from-stdin, not both".to_string(),
+            ));
+        }
+        use std::io::BufRead;
 
-    // Validate file size before reading to prevent DoS
-    validate_file_size(&validated_path, MAX_INGEST_FILE_SIZE)?;
+        tracing::info!("Ingesting from stdin (JSON Lines)");
 
-    // Read file contents
-    let contents = std::fs::read(&validated_path)
-        .map_err(|e| KremisError::SerializationError(format!("Read file: {}", e)))?;
+        let stdin = std::io::stdin();
+        let mut signals = Vec::new();
+        for line in stdin.lock().lines() {
+            let line = line.map_err(|e| KremisError::IoError(format!("Read stdin: {}", e)))?;
+            let line = line.trim().to_owned();
+            if line.is_empty() {
+                continue;
+            }
+            let val: serde_json::Value =
+                serde_json::from_str(&line).map_err(|_| KremisError::InvalidSignal)?;
+            let entity_id = val["entity_id"]
+                .as_u64()
+                .ok_or(KremisError::InvalidSignal)?;
+            let attribute = val["attribute"]
+                .as_str()
+                .ok_or(KremisError::InvalidSignal)?;
+            let value = val["value"].as_str().ok_or(KremisError::InvalidSignal)?;
 
-    // Parse signals based on format
-    let signals = match format {
-        "json" => {
-            let json_values: Vec<serde_json::Value> =
-                serde_json::from_slice(&contents).map_err(|_| KremisError::InvalidSignal)?;
+            if attribute.is_empty() || value.is_empty() {
+                return Err(KremisError::InvalidSignal);
+            }
 
-            // Validate signal count to prevent DoS
-            if json_values.len() > MAX_SEQUENCE_LENGTH {
+            signals.push(Signal::new(
+                EntityId(entity_id),
+                Attribute::new(attribute),
+                Value::new(value),
+            ));
+
+            if signals.len() > MAX_SEQUENCE_LENGTH {
                 return Err(KremisError::SerializationError(format!(
-                    "Signal count {} exceeds maximum allowed {}",
-                    json_values.len(),
+                    "Signal count exceeds maximum allowed {}",
                     MAX_SEQUENCE_LENGTH
                 )));
             }
+        }
+        signals
+    } else {
+        let file = file.ok_or_else(|| {
+            KremisError::SerializationError("provide --file or --from-stdin".to_string())
+        })?;
 
-            let mut signals = Vec::new();
-            for val in json_values {
-                let entity_id = val["entity_id"]
-                    .as_u64()
-                    .ok_or(KremisError::InvalidSignal)?;
-                let attribute = val["attribute"]
-                    .as_str()
-                    .ok_or(KremisError::InvalidSignal)?;
-                let value = val["value"].as_str().ok_or(KremisError::InvalidSignal)?;
+        tracing::info!("Ingesting from {:?} (format: {})", file, format);
 
-                if attribute.is_empty() || value.is_empty() {
-                    return Err(KremisError::InvalidSignal);
+        // L1 FIX: Validate file path for security (prevents path traversal)
+        let validated_path = validate_file_path(file)?;
+
+        // Validate file size before reading to prevent DoS
+        validate_file_size(&validated_path, MAX_INGEST_FILE_SIZE)?;
+
+        // Read file contents
+        let contents = std::fs::read(&validated_path)
+            .map_err(|e| KremisError::SerializationError(format!("Read file: {}", e)))?;
+
+        // Parse signals based on format
+        match format {
+            "json" => {
+                let json_values: Vec<serde_json::Value> =
+                    serde_json::from_slice(&contents).map_err(|_| KremisError::InvalidSignal)?;
+
+                // Validate signal count to prevent DoS
+                if json_values.len() > MAX_SEQUENCE_LENGTH {
+                    return Err(KremisError::SerializationError(format!(
+                        "Signal count {} exceeds maximum allowed {}",
+                        json_values.len(),
+                        MAX_SEQUENCE_LENGTH
+                    )));
                 }
 
-                signals.push(Signal::new(
-                    EntityId(entity_id),
-                    Attribute::new(attribute),
-                    Value::new(value),
-                ));
-            }
-            signals
-        }
-        "text" => {
-            let text = String::from_utf8_lossy(&contents);
-            let mut signals = Vec::new();
-
-            for line in text.lines() {
-                let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() >= 3 {
-                    let entity_id: u64 = parts[0]
-                        .trim()
-                        .parse()
-                        .map_err(|_| KremisError::InvalidSignal)?;
-                    let attribute = parts[1].trim();
-                    let value = parts[2..].join(":");
+                let mut signals = Vec::new();
+                for val in json_values {
+                    let entity_id = val["entity_id"]
+                        .as_u64()
+                        .ok_or(KremisError::InvalidSignal)?;
+                    let attribute = val["attribute"]
+                        .as_str()
+                        .ok_or(KremisError::InvalidSignal)?;
+                    let value = val["value"].as_str().ok_or(KremisError::InvalidSignal)?;
 
                     if attribute.is_empty() || value.is_empty() {
-                        continue;
+                        return Err(KremisError::InvalidSignal);
                     }
 
                     signals.push(Signal::new(
                         EntityId(entity_id),
                         Attribute::new(attribute),
-                        Value::new(value.trim()),
+                        Value::new(value),
                     ));
                 }
+                signals
             }
-            signals
-        }
-        _ => {
-            return Err(KremisError::SerializationError(format!(
-                "Unknown format: {}",
-                format
-            )));
+            "text" => {
+                let text = String::from_utf8_lossy(&contents);
+                let mut signals = Vec::new();
+
+                for line in text.lines() {
+                    let parts: Vec<&str> = line.split(':').collect();
+                    if parts.len() >= 3 {
+                        let entity_id: u64 = parts[0]
+                            .trim()
+                            .parse()
+                            .map_err(|_| KremisError::InvalidSignal)?;
+                        let attribute = parts[1].trim();
+                        let value = parts[2..].join(":");
+
+                        if attribute.is_empty() || value.is_empty() {
+                            continue;
+                        }
+
+                        signals.push(Signal::new(
+                            EntityId(entity_id),
+                            Attribute::new(attribute),
+                            Value::new(value.trim()),
+                        ));
+                    }
+                }
+                signals
+            }
+            _ => {
+                return Err(KremisError::SerializationError(format!(
+                    "Unknown format: {}",
+                    format
+                )));
+            }
         }
     };
 
-    // Validate signal count
+    // Validate signal count (file branch — stdin checks inline above)
     if signals.len() > kremis_core::primitives::MAX_SEQUENCE_LENGTH {
         return Err(KremisError::SerializationError(format!(
             "Signal count {} exceeds maximum {}",
