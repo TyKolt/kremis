@@ -240,7 +240,14 @@ fn test_ingest_invalid_format() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    let result = cmd_ingest(&db_path, "file", false, Some(&signals_file), "unknown", false);
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "unknown",
+        false,
+    );
     assert!(result.is_err());
 }
 
