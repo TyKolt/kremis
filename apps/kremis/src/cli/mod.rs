@@ -102,7 +102,7 @@ pub enum Commands {
 
     /// Execute a query on the graph
     Query {
-        /// Query type (lookup, traverse, path, intersect)
+        /// Query type (lookup, traverse, path, intersect, related, properties)
         #[arg(short = 't', long)]
         query_type: String,
 

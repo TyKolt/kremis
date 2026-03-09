@@ -16,7 +16,7 @@ The hash is deterministic: the same graph state always produces the same 64-char
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
 | `--json-mode` | - | Output as JSON | false |
-| `--database` | `-d` | Path to database file | `kremis.db` |
+| `--database` | `-D` | Path to database file | `kremis.db` |
 | `--backend` | `-B` | Storage backend (`file` or `redb`) | `redb` |
 
 ## Output
@@ -45,14 +45,14 @@ Checksum (XOR): 14823901234567890
 kremis hash
 
 # Hash persistent graph
-kremis hash -d kremis.db -B file
+kremis hash -D kremis.db -B file
 
 # JSON output for scripting
-kremis --json-mode hash -d kremis.db -B file
+kremis --json-mode hash -D kremis.db -B file
 
 # Compare hashes before and after ingestion
-H1=$(kremis --json-mode hash -d kremis.db -B file | jq -r '.hash')
-kremis ingest --file signals.json -d kremis.db -B file
-H2=$(kremis --json-mode hash -d kremis.db -B file | jq -r '.hash')
+H1=$(kremis --json-mode hash -D kremis.db -B file | jq -r '.hash')
+kremis ingest --file signals.json -D kremis.db -B file
+H2=$(kremis --json-mode hash -D kremis.db -B file | jq -r '.hash')
 [ "$H1" != "$H2" ] && echo "Graph changed"
 ```
