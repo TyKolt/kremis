@@ -14,7 +14,7 @@ Ingests an ordered sequence of entity–attribute–value triples.
 
 Unlike `POST /signal`, this endpoint calls `ingest_sequence()` internally,
 which analyses co-occurrence across adjacent signals: two entities that share
-the same attribute value in consecutive signals will have an **edge created**
+the same attribute value in consecutive signals get an **edge created**
 (or incremented) between them.
 
 <Note>
@@ -27,7 +27,7 @@ the same attribute value in consecutive signals will have an **edge created**
 `POST /signal` calls `ingest()` — a single-signal path that stores nodes but
 never creates edges. Edges are the backbone of queries like `strongest_path`,
 `intersect`, and `retract`. If you ingest signals one-by-one via HTTP, these
-queries will always return `found: false`.
+queries always return `found: false`.
 
 `POST /signals` fixes this by accepting a batch and delegating to
 `ingest_sequence()`, the same function used by the CLI `kremis ingest` command.
@@ -113,9 +113,9 @@ Expected response:
 }
 ```
 
-After this call, `GET /status` will show `edge_count >= 1`, and
-`POST /query` with `strongest_path` from Alice's node to Bob's node will
-return `found: true`.
+After this call, `GET /status` shows `edge_count >= 1`, and
+`POST /query` with `strongest_path` from Alice's node to Bob's node
+returns `found: true`.
 
 ## Limits
 
