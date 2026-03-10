@@ -35,7 +35,7 @@ use std::path::Path;
 /// Uses stderr logging for CORE (no external dependencies).
 /// The app layer should configure proper tracing if needed.
 #[inline]
-fn log_and_convert<T>(result: Result<T, KremisError>, context: &str) -> Option<T> {
+fn warn_and_to_option<T>(result: Result<T, KremisError>, context: &str) -> Option<T> {
     match result {
         Ok(v) => Some(v),
         Err(e) => {
@@ -313,7 +313,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.traverse(start, depth),
             StorageBackend::Persistent(redb) => redb.traverse(start, depth),
         };
-        log_and_convert(result, "compose").flatten()
+        warn_and_to_option(result, "compose").flatten()
     }
 
     /// Compose from an active context node.
@@ -330,7 +330,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
             StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
         };
-        let path = log_and_convert(path_result, "extract_path").flatten()?;
+        let path = warn_and_to_option(path_result, "extract_path").flatten()?;
 
         // Collect edges along the path for the artifact
         let mut subgraph = Vec::new();
@@ -408,7 +408,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.get_edge(from, to),
             StorageBackend::Persistent(redb) => redb.get_edge(from, to),
         };
-        log_and_convert(result, "get_edge").flatten()
+        warn_and_to_option(result, "get_edge").flatten()
     }
 
     // =========================================================================
@@ -441,7 +441,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.traverse(start, depth),
             StorageBackend::Persistent(redb) => redb.traverse(start, depth),
         };
-        log_and_convert(result, "traverse").flatten()
+        warn_and_to_option(result, "traverse").flatten()
     }
 
     /// Traverse with minimum weight filter.
@@ -455,7 +455,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.traverse_filtered(start, depth, min_weight),
             StorageBackend::Persistent(redb) => redb.traverse_filtered(start, depth, min_weight),
         };
-        log_and_convert(result, "traverse_filtered").flatten()
+        warn_and_to_option(result, "traverse_filtered").flatten()
     }
 
     /// Find strongest path between two nodes.
@@ -464,7 +464,7 @@ impl Session {
             StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
             StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
         };
-        log_and_convert(result, "strongest_path").flatten()
+        warn_and_to_option(result, "strongest_path").flatten()
     }
 
     /// Find intersection of nodes.
