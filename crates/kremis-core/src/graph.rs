@@ -136,6 +136,12 @@ impl Graph {
         Self::default()
     }
 
+    /// Returns true if the graph contains zero nodes.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
     /// Reconstruct a graph from a canonical representation, preserving original NodeIds.
     #[must_use]
     pub fn from_canonical(canonical: &crate::export::CanonicalGraph) -> Self {
