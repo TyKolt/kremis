@@ -415,6 +415,26 @@ impl Session {
     // METRICS (for stage assessment)
     // =========================================================================
 
+    /// Get a JSON summary of the graph metrics.
+    pub fn metrics_json(&self) -> String {
+        let node_count = self.node_count();
+        let edge_count = self.edge_count();
+        let json = serde_json::json!({
+            "nodes": node_count,
+            "edges": edge_count,
+        });
+        serde_json::to_string(&json).unwrap_or_default()
+    }
+
+    /// Lookup a node, silently converting errors to None.
+    pub fn silent_lookup(&self, entity: EntityId) -> Option<NodeId> {
+        let result = match &self.backend {
+            StorageBackend::InMemory(graph) => Ok(graph.get_node_by_entity(entity)),
+            StorageBackend::Persistent(redb) => Ok(redb.get_node_by_entity(entity)),
+        };
+        result.ok().flatten()
+    }
+
     /// Get the node count.
     #[must_use]
     pub fn node_count(&self) -> usize {
