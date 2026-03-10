@@ -38,7 +38,7 @@ pub async fn status_handler(State(state): State<AppState>) -> impl IntoResponse 
     let metrics = GraphMetrics::from_session(&session);
 
     let response = StatusResponse {
-        node_count: metrics.node_count,
+        total_nodes: metrics.node_count,
         edge_count: metrics.edge_count,
         stable_edges: metrics.stable_edge_count,
         density_millionths: metrics.density_millionths,

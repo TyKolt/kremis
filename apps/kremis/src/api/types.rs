@@ -35,7 +35,7 @@ impl Default for HealthResponse {
 /// Graph status response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusResponse {
-    pub node_count: usize,
+    pub total_nodes: usize,
     pub edge_count: usize,
     pub stable_edges: usize,
     pub density_millionths: u64,
