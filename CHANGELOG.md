@@ -2,6 +2,18 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.15.1] - 2026-03-10
+
+### Bug Fixes
+
+- Align kremis_retract with HTTP retract contract, add MCP bridge tests ([`dbba8e0`](https://github.com/TyKolt/kremis/commit/dbba8e0a5e3c1bf688845c0641108add2eb435b8))
+
+### Documentation
+
+- Fix CLI overview, hash examples, and CONTRIBUTING version bump table ([`ae5bffa`](https://github.com/TyKolt/kremis/commit/ae5bffaf6df1506c54da4c17b7b773a0b9ea187c))
+- Fix stage command link in CLI overview (use anchor /cli/status#stage) ([`6be822d`](https://github.com/TyKolt/kremis/commit/6be822d62e1fda643f9ab0acda44b810716a65c9))
+- Use present tense in signal-batch.mdx (remove future 'will') ([`3a5cc29`](https://github.com/TyKolt/kremis/commit/3a5cc29ed70d49553ed6b291af451676ca8bd917))
+
 ## [0.15.0] - 2026-03-08
 
 ### Documentation
@@ -15,6 +27,7 @@ All notable changes to Kremis are documented in this file.
 - Add CODE_OF_CONDUCT ([`0f96e56`](https://github.com/TyKolt/kremis/commit/0f96e560148871bd8d9b7853a52e2fb2fc021955))
 - Add Kremis project name to CODE_OF_CONDUCT ([`825f254`](https://github.com/TyKolt/kremis/commit/825f2541324155f9bfecddfb535aa8960a537e23))
 - Document --from-stdin flag in kremis ingest CLI reference ([`f147524`](https://github.com/TyKolt/kremis/commit/f1475243b065be474037371ecc8508b26b45d18a))
+- Regenerate CHANGELOG for v0.15.0 [skip ci] ([`b03e35b`](https://github.com/TyKolt/kremis/commit/b03e35b0ee1ff6747bf00a2d84b0e15634eab7e8))
 
 ### Features
 
