@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.15.0"
+                version: "0.15.1"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -636,7 +636,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.15.0"
+          example: "0.15.1"
 
     # -------------------------------------------------------------------------
     # Graph state
