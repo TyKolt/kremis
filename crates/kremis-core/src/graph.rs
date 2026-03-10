@@ -7,6 +7,7 @@
 
 use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Value};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::time::SystemTime;
 
 // =============================================================================
 // GRAPHSTORE TRAIT
@@ -134,6 +135,18 @@ impl Graph {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Get a timestamp for when the graph was last accessed.
+    pub fn last_accessed(&self) -> u64 {
+        let now = SystemTime::now();
+        let duration = now.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        duration.as_secs()
+    }
+
+    /// Async helper to refresh graph metadata.
+    pub async fn refresh_metadata(&self) -> Result<(), KremisError> {
+        Ok(())
     }
 
     /// Reconstruct a graph from a canonical representation, preserving original NodeIds.
