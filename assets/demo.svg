@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 520">
+  <style>
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    @keyframes fadeIn1 { 0%,8%{opacity:0} 10%{opacity:1} }
+    @keyframes fadeIn2 { 0%,18%{opacity:0} 20%{opacity:1} }
+    @keyframes fadeIn3 { 0%,28%{opacity:0} 30%{opacity:1} }
+    @keyframes fadeIn4 { 0%,38%{opacity:0} 40%{opacity:1} }
+    @keyframes fadeIn5 { 0%,48%{opacity:0} 50%{opacity:1} }
+    @keyframes fadeIn6 { 0%,55%{opacity:0} 57%{opacity:1} }
+    @keyframes fadeIn7 { 0%,62%{opacity:0} 64%{opacity:1} }
+    @keyframes fadeIn8 { 0%,69%{opacity:0} 71%{opacity:1} }
+    @keyframes fadeIn9 { 0%,76%{opacity:0} 78%{opacity:1} }
+    @keyframes fadeIn10 { 0%,83%{opacity:0} 85%{opacity:1} }
+    @keyframes fadeIn11 { 0%,90%{opacity:0} 92%{opacity:1} }
+    .t { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace; font-size: 13px; }
+    .prompt { fill: #7dd3fc; }
+    .cmd { fill: #e2e8f0; }
+    .ok { fill: #4ade80; }
+    .warn { fill: #f87171; }
+    .dim { fill: #94a3b8; }
+    .label { fill: #fbbf24; }
+    .head { fill: #c084fc; font-weight: bold; }
+    .cursor { animation: blink 1s step-end infinite; fill: #e2e8f0; }
+  </style>
+
+  <!-- Window -->
+  <rect width="850" height="520" rx="10" fill="#0f172a"/>
+  <rect width="850" height="36" rx="10" fill="#1e293b"/>
+  <rect y="26" width="850" height="10" fill="#1e293b"/>
+  <circle cx="20" cy="18" r="6" fill="#f87171"/>
+  <circle cx="40" cy="18" r="6" fill="#fbbf24"/>
+  <circle cx="60" cy="18" r="6" fill="#4ade80"/>
+  <text x="425" y="22" text-anchor="middle" class="t dim" font-size="12">kremis — honesty demo</text>
+
+  <!-- Step 1: Ingest -->
+  <g style="animation: fadeIn1 12s infinite">
+    <text x="20" y="65" class="t head">Step 1 — Ingest knowledge base</text>
+  </g>
+  <g style="animation: fadeIn2 12s infinite">
+    <text x="20" y="85" class="t"><tspan class="ok">  ✓</tspan><tspan class="dim">  [1] name       = Alice</tspan></text>
+    <text x="20" y="103" class="t"><tspan class="ok">  ✓</tspan><tspan class="dim">  [1] role       = engineer</tspan></text>
+    <text x="20" y="121" class="t"><tspan class="ok">  ✓</tspan><tspan class="dim">  [1] works_on   = Kremis</tspan></text>
+    <text x="20" y="139" class="t"><tspan class="ok">  ✓</tspan><tspan class="dim">  [1→2] knows    = Bob</tspan></text>
+  </g>
+
+  <!-- Step 2: LLM Claims -->
+  <g style="animation: fadeIn3 12s infinite">
+    <text x="20" y="172" class="t head">Step 2 — LLM claims about Alice</text>
+  </g>
+  <g style="animation: fadeIn4 12s infinite">
+    <text x="20" y="192" class="t dim">  › Alice is an engineer.</text>
+    <text x="20" y="210" class="t dim">  › Alice works on the Kremis project.</text>
+    <text x="20" y="228" class="t dim">  › Alice knows Bob.</text>
+    <text x="20" y="246" class="t dim">  › Alice holds a PhD from MIT.</text>
+    <text x="20" y="264" class="t dim">  › Alice previously worked at DeepMind.</text>
+    <text x="20" y="282" class="t dim">  › Alice manages a team of 8 people.</text>
+  </g>
+
+  <!-- Step 3: Validation -->
+  <g style="animation: fadeIn5 12s infinite">
+    <text x="20" y="315" class="t head">Step 3 — Kremis validates each claim</text>
+  </g>
+  <g style="animation: fadeIn6 12s infinite">
+    <text x="20" y="338" class="t"><tspan class="ok">  [FACT]        </tspan><tspan class="cmd">Alice is an engineer.</tspan><tspan class="dim">         ← graph: "engineer"</tspan></text>
+  </g>
+  <g style="animation: fadeIn7 12s infinite">
+    <text x="20" y="358" class="t"><tspan class="ok">  [FACT]        </tspan><tspan class="cmd">Alice works on Kremis.</tspan><tspan class="dim">        ← graph: "Kremis"</tspan></text>
+  </g>
+  <g style="animation: fadeIn8 12s infinite">
+    <text x="20" y="378" class="t"><tspan class="ok">  [FACT]        </tspan><tspan class="cmd">Alice knows Bob.</tspan><tspan class="dim">              ← graph: edge→Bob</tspan></text>
+  </g>
+  <g style="animation: fadeIn9 12s infinite">
+    <text x="20" y="398" class="t"><tspan class="warn">  [NOT IN GRAPH]</tspan><tspan class="cmd"> Alice holds a PhD from MIT.</tspan><tspan class="dim">  ← None</tspan></text>
+  </g>
+  <g style="animation: fadeIn10 12s infinite">
+    <text x="20" y="418" class="t"><tspan class="warn">  [NOT IN GRAPH]</tspan><tspan class="cmd"> Alice worked at DeepMind.</tspan><tspan class="dim">    ← None</tspan></text>
+  </g>
+  <g style="animation: fadeIn11 12s infinite">
+    <text x="20" y="438" class="t"><tspan class="warn">  [NOT IN GRAPH]</tspan><tspan class="cmd"> Alice manages a team of 8.</tspan><tspan class="dim">   ← None</tspan></text>
+    <text x="20" y="471" class="t"><tspan class="ok">  Confirmed by graph: 3/6</tspan></text>
+    <text x="20" y="491" class="t"><tspan class="warn">  Not in graph:       3/6</tspan><tspan class="dim">  (hallucinations or unknown)</tspan></text>
+  </g>
+</svg>

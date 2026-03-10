@@ -14,6 +14,10 @@
 
 **Kremis** is a minimal, deterministic, graph-based cognitive substrate implemented in Rust.
 
+<p align="center">
+  <img src="assets/demo.svg" alt="Kremis Honesty Demo" width="800">
+</p>
+
 It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
 
 > **The system does not *understand*.** It contains only the structure of the signals it has processed.
