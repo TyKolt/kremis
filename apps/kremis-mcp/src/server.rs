@@ -258,22 +258,9 @@ impl KremisMcp {
             to_entity,
         } = params.0;
         match self.client.retract(from_entity, to_entity).await {
-            Ok(resp) => {
-                let text = if resp
-                    .get("retracted")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    let from_node = resp.get("from_node").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let to_node = resp.get("to_node").and_then(|v| v.as_u64()).unwrap_or(0);
-                    format!("Edge decremented. Nodes: {from_node} -> {to_node}")
-                } else if let Some(err) = resp.get("error").and_then(|v| v.as_str()) {
-                    format!("Retract failed: {err}")
-                } else {
-                    format!("Retract response: {resp}")
-                };
-                Ok(CallToolResult::success(vec![Content::text(text)]))
-            }
+            Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
+                format_retract_response(&resp),
+            )])),
             Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
         }
     }
@@ -317,6 +304,24 @@ impl ServerHandler for KremisMcp {
 // =============================================================================
 // RESPONSE FORMATTING
 // =============================================================================
+
+/// Format a retract response JSON into human-readable text.
+///
+/// The HTTP `POST /signal/retract` endpoint returns `{ success, new_weight, error }`.
+fn format_retract_response(resp: &serde_json::Value) -> String {
+    if resp
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        let new_weight = resp.get("new_weight").and_then(|v| v.as_i64()).unwrap_or(0);
+        format!("Edge decremented. New weight: {new_weight}")
+    } else if let Some(err) = resp.get("error").and_then(|v| v.as_str()) {
+        format!("Retract failed: {err}")
+    } else {
+        format!("Retract response: {resp}")
+    }
+}
 
 /// Format a query response JSON into human-readable text.
 fn format_query_response(resp: &serde_json::Value) -> String {
@@ -383,5 +388,82 @@ fn format_query_response(resp: &serde_json::Value) -> String {
         "Found (no details).".to_string()
     } else {
         parts.join("\n")
+    }
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{format_query_response, format_retract_response};
+    use serde_json::json;
+
+    // --- format_retract_response ---
+
+    #[test]
+    fn retract_success_shows_new_weight() {
+        let resp = json!({ "success": true, "new_weight": 3, "error": null });
+        assert_eq!(
+            format_retract_response(&resp),
+            "Edge decremented. New weight: 3"
+        );
+    }
+
+    #[test]
+    fn retract_success_zero_weight() {
+        let resp = json!({ "success": true, "new_weight": 0, "error": null });
+        assert_eq!(
+            format_retract_response(&resp),
+            "Edge decremented. New weight: 0"
+        );
+    }
+
+    #[test]
+    fn retract_error_shows_message() {
+        let resp = json!({ "success": false, "new_weight": null, "error": "edge not found" });
+        assert_eq!(
+            format_retract_response(&resp),
+            "Retract failed: edge not found"
+        );
+    }
+
+    #[test]
+    fn retract_unknown_response_fallback() {
+        let resp = json!({ "unexpected": "field" });
+        let text = format_retract_response(&resp);
+        assert!(text.starts_with("Retract response:"));
+    }
+
+    // --- format_query_response ---
+
+    #[test]
+    fn query_not_found_shows_grounding() {
+        let resp = json!({ "found": false, "grounding": "inferred" });
+        let text = format_query_response(&resp);
+        assert!(text.contains("Not found"));
+        assert!(text.contains("inferred"));
+    }
+
+    #[test]
+    fn query_not_found_with_diagnostic() {
+        let resp =
+            json!({ "found": false, "grounding": "unknown", "diagnostic": "no such entity" });
+        let text = format_query_response(&resp);
+        assert!(text.contains("no such entity"));
+    }
+
+    #[test]
+    fn query_found_with_edges() {
+        let resp = json!({
+            "found": true,
+            "edges": [{ "from": 1, "to": 2, "weight": 5 }],
+            "grounding": "fact"
+        });
+        let text = format_query_response(&resp);
+        assert!(text.contains("1 --"));
+        assert!(text.contains("2"));
+        assert!(text.contains("fact"));
     }
 }
