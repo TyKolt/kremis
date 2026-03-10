@@ -1,0 +1,57 @@
+{
+  "strictness": 3,
+  "commentTypes": ["logic", "security", "syntax", "performance"],
+  "ignorePatterns": ".claude/**\n.agents/**",
+  "includeBranches": ["main"],
+  "statusCheck": true,
+  "statusCommentsEnabled": true,
+  "summarySection": {
+    "included": true,
+    "collapsible": false,
+    "defaultOpen": true
+  },
+  "confidenceScoreSection": {
+    "included": true,
+    "collapsible": false,
+    "defaultOpen": true
+  },
+  "sequenceDiagramSection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "customContext": {
+    "rules": [
+      {
+        "scope": ["crates/kremis-core/**"],
+        "rule": "kremis-core must remain PURE (Separation Law): no async, no network, no I/O. Reject any import of tokio, reqwest, std::net, or other async/network crates. Flag any use of: unwrap(), expect(), panic!() (clippy::deny in this project); f32/f64 arithmetic (float_arithmetic is deny); Randomness, timestamps, or non-deterministic logic (Determinism Law); Silent error conversion to None/default without caller visibility (Precision Law). For edge mutations (insert_edge, increment_edge): verify that node-existence checks are consistent across Graph (in-memory) and RedbGraph (persistent) backends. increment_edge must not create edges for non-existent nodes. For property storage (store_property): verify that repeated ingestion of the same signal does not silently accumulate duplicate (attribute, value) pairs."
+      },
+      {
+        "scope": ["apps/kremis-mcp/src/**"],
+        "rule": "The MCP bridge must mirror the HTTP API contract exactly. When parsing JSON responses, field names must match the actual HTTP response structs defined in apps/kremis/src/api/types.rs. RetractResponse fields are: success (bool), new_weight (i64|null), error (string|null). The fields retracted, from_node, to_node do NOT exist in the HTTP response. Flag any JSON field lookup that does not correspond to a field in the matching HTTP response type. Missing tests for MCP tool handlers must be flagged."
+      },
+      {
+        "scope": ["apps/kremis/src/cli/**"],
+        "rule": "Verify that json_mode: bool parameters are actually used to produce JSON output. Parameters prefixed with _ (e.g. _json_mode) are silently ignored — flag them. Serialization errors must NOT be silenced with unwrap_or_default()."
+      },
+      {
+        "scope": ["apps/kremis/src/config.rs"],
+        "rule": "Multi-value environment variables (e.g. KREMIS_CORS_ORIGINS) must be parsed as comma-separated values, not wrapped as a single-element Vec."
+      },
+      {
+        "scope": ["Cargo.toml"],
+        "rule": "Every feat: commit requires a MINOR version bump; every fix: commit requires a PATCH bump on line 10 (the workspace version field). Verify consistency with: docs/api/overview.mdx, apps/kremis/tests/types_tests.rs, docs/openapi.yml."
+      },
+      {
+        "scope": ["docs/**"],
+        "rule": "CLI flag names must match apps/kremis/src/cli/mod.rs exactly. API docs must be consistent with docs/openapi.yml. Do not reference private directories: .claude/, _archive/, social/."
+      }
+    ],
+    "other": [
+      {
+        "scope": ["**/*.rs"],
+        "content": "Kremis is a deterministic knowledge graph engine written in Rust. The project follows 4 Fundamental Laws: Determinism (no randomness, no timestamps in core), Precision (no silent error swallowing), Security (no unwrap/expect/panic), and Separation (core crate is pure sync with no I/O). The workspace has three crates: kremis-core (pure logic), kremis (HTTP API server), kremis-mcp (MCP bridge to the API)."
+      }
+    ]
+  }
+}
