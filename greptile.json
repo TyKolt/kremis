@@ -47,6 +47,13 @@
         "rule": "CLI flag names must match apps/kremis/src/cli/mod.rs exactly. API docs must be consistent with docs/openapi.yml. Do not reference private directories: .claude/, _archive/, social/."
       }
     ],
+    "files": [
+      {
+        "scope": ["**/*.rs"],
+        "path": "CONTRIBUTING.md",
+        "description": "Project structure, 4 Fundamental Laws, development workflow, and commit conventions"
+      }
+    ],
     "other": [
       {
         "scope": ["**/*.rs"],
