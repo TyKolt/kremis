@@ -18,6 +18,25 @@
   <img src="assets/demo.svg" alt="Kremis Honesty Demo" width="800">
 </p>
 
+---
+
+<details>
+<summary><strong>📚 Table of Contents</strong></summary>
+
+- [Quick Start](#quick-start)
+- [Why Kremis](#why-kremis)
+- [Usage](#usage)
+  - [CLI](#cli)
+  - [HTTP API](#http-api)
+  - [MCP Server](#mcp-server)
+  - [Rust API](#rust-api)
+- [Architecture](#architecture)
+- [Testing](#testing)
+- [License](#license)
+- [Contributing](#contributing)
+
+</details>
+
 It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
 
 > **The system does not *understand*.** It contains only the structure of the signals it has processed.
