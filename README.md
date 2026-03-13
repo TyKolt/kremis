@@ -20,6 +20,12 @@
 
 ---
 
+It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
+
+> **The system does not *understand*.** It contains only the structure of the signals it has processed.
+
+---
+
 <details>
 <summary><strong>📚 Table of Contents</strong></summary>
 
@@ -36,12 +42,6 @@
 - [Contributing](#contributing)
 
 </details>
-
-It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
-
-> **The system does not *understand*.** It contains only the structure of the signals it has processed.
-
----
 
 ## Why Kremis
 
