@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.15.3] - 2026-03-13
+
+### Bug Fixes
+
+- Enforce set semantics for duplicate (attribute, value) properties ([`8259541`](https://github.com/TyKolt/kremis/commit/8259541d8aeba4feceacfc0fa6acb2d1ad661c32))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.15.2 [skip ci] ([`f641a9f`](https://github.com/TyKolt/kremis/commit/f641a9ff1de68df48802b5f331b2b81445ec5e55))
+
 ## [0.15.2] - 2026-03-13
 
 ### Bug Fixes
