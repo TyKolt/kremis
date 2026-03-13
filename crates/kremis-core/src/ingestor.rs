@@ -64,6 +64,12 @@ impl Ingestor {
     ///
     /// The signal's attribute and value are stored as properties of the node,
     /// preserving the full signal data for later retrieval.
+    ///
+    /// ## Idempotence
+    ///
+    /// Ingesting the same signal more than once is safe and idempotent:
+    /// - The entity node is reused (not duplicated).
+    /// - The `(attribute, value)` pair is stored at most once per node (set semantics).
     pub fn ingest_signal<G: GraphStore>(
         graph: &mut G,
         signal: &Signal,
@@ -225,6 +231,30 @@ mod tests {
         assert_eq!(props.len(), 1);
         assert_eq!(props[0].0.as_str(), "name");
         assert_eq!(props[0].1.as_str(), "Alice");
+    }
+
+    #[test]
+    fn repeated_ingest_same_signal_does_not_duplicate_properties() {
+        use crate::graph::GraphStore;
+
+        let mut graph = Graph::new();
+        let signal = make_signal(1, "name", "Alice");
+
+        // Ingest the same signal twice
+        Ingestor::ingest_signal(&mut graph, &signal).expect("first ingest");
+        Ingestor::ingest_signal(&mut graph, &signal).expect("second ingest");
+
+        // Still exactly one node
+        assert_eq!(graph.node_count().expect("count"), 1);
+
+        // Still exactly one property entry — set semantics, not multiset
+        let node_id = graph.get_node_by_entity(signal.entity).expect("node");
+        let props = graph.get_properties(node_id).expect("get properties");
+        assert_eq!(
+            props.len(),
+            1,
+            "expected 1 property after repeated ingestion, got: {props:?}"
+        );
     }
 
     #[test]

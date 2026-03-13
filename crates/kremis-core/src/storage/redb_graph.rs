@@ -259,7 +259,10 @@ impl RedbGraph {
                             .unwrap_or_default()
                     })
                     .unwrap_or_default();
-                values.push(signal.value.clone());
+                // Set semantics: identical (attribute, value) pairs are idempotent.
+                if !values.contains(&signal.value) {
+                    values.push(signal.value.clone());
+                }
 
                 let prop_bytes = postcard::to_allocvec(&(signal.attribute.clone(), values))
                     .map_err(|e| KremisError::SerializationError(e.to_string()))?;
@@ -850,9 +853,11 @@ impl GraphStore for RedbGraph {
                 })
                 .unwrap_or_default();
 
-            // Append new value
+            // Set semantics: identical (attribute, value) pairs are idempotent.
             let mut values = existing;
-            values.push(value);
+            if !values.contains(&value) {
+                values.push(value);
+            }
 
             // Serialize and store
             let prop_bytes = postcard::to_allocvec(&(attribute, values))

@@ -88,7 +88,16 @@ pub trait GraphStore {
     /// Store a property (attribute, value) for a node.
     ///
     /// This persists the full signal data beyond just the entity.
-    /// Multiple values can be stored for the same attribute.
+    ///
+    /// ## Property semantics
+    ///
+    /// Properties follow **set semantics** at the `(attribute, value)` level:
+    /// - Storing the same `(attribute, value)` pair multiple times is idempotent.
+    /// - Different values for the same attribute are accumulated as separate entries
+    ///   (e.g. `("knows", "Bob")` and `("knows", "Charlie")` both persist).
+    ///
+    /// This ensures that repeated ingestion of the same signal does not grow the
+    /// property list unboundedly.
     fn store_property(
         &mut self,
         node: NodeId,
@@ -515,12 +524,16 @@ impl GraphStore for Graph {
         if !self.nodes.contains_key(&node) {
             return Err(KremisError::NodeNotFound(node));
         }
-        self.properties
+        let values = self
+            .properties
             .entry(node)
             .or_default()
             .entry(attribute)
-            .or_default()
-            .push(value);
+            .or_default();
+        // Set semantics: identical (attribute, value) pairs are idempotent.
+        if !values.contains(&value) {
+            values.push(value);
+        }
         Ok(())
     }
 
