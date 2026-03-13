@@ -2,6 +2,18 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.15.2] - 2026-03-13
+
+### Bug Fixes
+
+- Resolve CLI/config inconsistencies in json_mode, CORS origins, and error handling ([`1b0ae3c`](https://github.com/TyKolt/kremis/commit/1b0ae3c50bd4328f59769fd51167c848fcb827e8))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.15.1 [skip ci] ([`13d6f01`](https://github.com/TyKolt/kremis/commit/13d6f01fec57e552f3cb69f95568bb838ff4a823))
+- Align OpenAPI health version with v0.15.1 ([`f6119f2`](https://github.com/TyKolt/kremis/commit/f6119f24194c2d2cb17b08f61e9d93c351c3bef1))
+- Add collapsible table of contents to README ([`9a4c8a7`](https://github.com/TyKolt/kremis/commit/9a4c8a7c17b12e8f4ab77579081fbb876f5904f1))
+
 ## [0.15.1] - 2026-03-10
 
 ### Bug Fixes
