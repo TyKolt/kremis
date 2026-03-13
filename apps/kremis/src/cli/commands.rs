@@ -159,7 +159,8 @@ pub fn cmd_status(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(
         });
         println!(
             "{}",
-            serde_json::to_string_pretty(&output).unwrap_or_default()
+            serde_json::to_string_pretty(&output)
+                .map_err(|e| KremisError::SerializationError(e.to_string()))?
         );
         return Ok(());
     }
@@ -213,7 +214,8 @@ pub fn cmd_stage(
         });
         println!(
             "{}",
-            serde_json::to_string_pretty(&output).unwrap_or_default()
+            serde_json::to_string_pretty(&output)
+                .map_err(|e| KremisError::SerializationError(e.to_string()))?
         );
         return Ok(());
     }
@@ -439,7 +441,7 @@ pub fn cmd_ingest(
 pub fn cmd_query(
     db_path: &PathBuf,
     backend: &str,
-    _json_mode: bool,
+    json_mode: bool,
     query_type: &str,
     start: Option<u64>,
     end: Option<u64>,
@@ -456,12 +458,24 @@ pub fn cmd_query(
     match query_type {
         "lookup" => {
             let entity_id = entity.ok_or(KremisError::InvalidSignal)?;
+            let node_id = session.lookup_entity(EntityId(entity_id));
 
-            match session.lookup_entity(EntityId(entity_id)) {
-                Some(node_id) => {
-                    println!("Entity {} -> Node {}", entity_id, node_id.0);
+            if json_mode {
+                let output = serde_json::json!({
+                    "query_type": "lookup",
+                    "entity_id": entity_id,
+                    "node_id": node_id.map(|n| n.0)
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                );
+            } else {
+                match node_id {
+                    Some(n) => println!("Entity {} -> Node {}", entity_id, n.0),
+                    None => println!("Entity {} not found", entity_id),
                 }
-                None => println!("Entity {} not found", entity_id),
             }
         }
 
@@ -474,24 +488,52 @@ pub fn cmd_query(
                 session.traverse(NodeId(start_id), depth)
             };
 
-            match artifact {
-                Some(a) => {
-                    println!("Traversal from node {} (depth {}):", start_id, depth);
-                    println!(
-                        "  Path: {:?}",
-                        a.path.iter().map(|n| n.0).collect::<Vec<_>>()
-                    );
-                    if let Some(ref sg) = a.subgraph {
-                        println!("  Edges: {}", sg.len());
-                        for (from, to, weight) in sg.iter().take(10) {
-                            println!("    {} -> {} (weight: {})", from.0, to.0, weight.value());
-                        }
-                        if sg.len() > 10 {
-                            println!("    ... and {} more", sg.len() - 10);
+            if json_mode {
+                let output = match &artifact {
+                    Some(a) => serde_json::json!({
+                        "query_type": "traverse",
+                        "start": start_id,
+                        "depth": depth,
+                        "found": true,
+                        "path": a.path.iter().map(|n| n.0).collect::<Vec<_>>(),
+                        "edges": a.subgraph.as_ref().map(|sg| {
+                            sg.iter().map(|(f, t, w)| serde_json::json!({
+                                "from": f.0, "to": t.0, "weight": w.value()
+                            })).collect::<Vec<_>>()
+                        })
+                    }),
+                    None => serde_json::json!({
+                        "query_type": "traverse",
+                        "start": start_id,
+                        "depth": depth,
+                        "found": false
+                    }),
+                };
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                );
+            } else {
+                match artifact {
+                    Some(a) => {
+                        println!("Traversal from node {} (depth {}):", start_id, depth);
+                        println!(
+                            "  Path: {:?}",
+                            a.path.iter().map(|n| n.0).collect::<Vec<_>>()
+                        );
+                        if let Some(ref sg) = a.subgraph {
+                            println!("  Edges: {}", sg.len());
+                            for (from, to, weight) in sg.iter().take(10) {
+                                println!("    {} -> {} (weight: {})", from.0, to.0, weight.value());
+                            }
+                            if sg.len() > 10 {
+                                println!("    ... and {} more", sg.len() - 10);
+                            }
                         }
                     }
+                    None => println!("Node {} not found", start_id),
                 }
-                None => println!("Node {} not found", start_id),
             }
         }
 
@@ -499,12 +541,37 @@ pub fn cmd_query(
             let start_id = start.ok_or(KremisError::InvalidSignal)?;
             let end_id = end.ok_or(KremisError::InvalidSignal)?;
 
-            match session.strongest_path(NodeId(start_id), NodeId(end_id)) {
-                Some(path) => {
-                    println!("Strongest path {} -> {}:", start_id, end_id);
-                    println!("  {:?}", path.iter().map(|n| n.0).collect::<Vec<_>>());
+            let result = session.strongest_path(NodeId(start_id), NodeId(end_id));
+
+            if json_mode {
+                let output = match &result {
+                    Some(path) => serde_json::json!({
+                        "query_type": "path",
+                        "start": start_id,
+                        "end": end_id,
+                        "found": true,
+                        "path": path.iter().map(|n| n.0).collect::<Vec<_>>()
+                    }),
+                    None => serde_json::json!({
+                        "query_type": "path",
+                        "start": start_id,
+                        "end": end_id,
+                        "found": false
+                    }),
+                };
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                );
+            } else {
+                match result {
+                    Some(path) => {
+                        println!("Strongest path {} -> {}:", start_id, end_id);
+                        println!("  {:?}", path.iter().map(|n| n.0).collect::<Vec<_>>());
+                    }
+                    None => println!("No path found from {} to {}", start_id, end_id),
                 }
-                None => println!("No path found from {} to {}", start_id, end_id),
             }
         }
 
@@ -518,37 +585,80 @@ pub fn cmd_query(
 
             let result = session.intersect(&node_ids);
 
-            println!(
-                "Intersection of {:?}:",
-                node_ids.iter().map(|n| n.0).collect::<Vec<_>>()
-            );
-            println!(
-                "  Common neighbors: {:?}",
-                result.iter().map(|n| n.0).collect::<Vec<_>>()
-            );
+            if json_mode {
+                let output = serde_json::json!({
+                    "query_type": "intersect",
+                    "nodes": node_ids.iter().map(|n| n.0).collect::<Vec<_>>(),
+                    "common_neighbors": result.iter().map(|n| n.0).collect::<Vec<_>>()
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                );
+            } else {
+                println!(
+                    "Intersection of {:?}:",
+                    node_ids.iter().map(|n| n.0).collect::<Vec<_>>()
+                );
+                println!(
+                    "  Common neighbors: {:?}",
+                    result.iter().map(|n| n.0).collect::<Vec<_>>()
+                );
+            }
         }
 
         "related" => {
             let start_id = start.ok_or(KremisError::InvalidSignal)?;
 
-            match session.compose(NodeId(start_id), depth) {
-                Some(a) => {
-                    println!("Related to node {} (depth {}):", start_id, depth);
-                    println!(
-                        "  Path: {:?}",
-                        a.path.iter().map(|n| n.0).collect::<Vec<_>>()
-                    );
-                    if let Some(ref sg) = a.subgraph {
-                        println!("  Edges: {}", sg.len());
-                        for (from, to, weight) in sg.iter().take(10) {
-                            println!("    {} -> {} (weight: {})", from.0, to.0, weight.value());
-                        }
-                        if sg.len() > 10 {
-                            println!("    ... and {} more", sg.len() - 10);
+            let artifact = session.compose(NodeId(start_id), depth);
+
+            if json_mode {
+                let output = match &artifact {
+                    Some(a) => serde_json::json!({
+                        "query_type": "related",
+                        "start": start_id,
+                        "depth": depth,
+                        "found": true,
+                        "path": a.path.iter().map(|n| n.0).collect::<Vec<_>>(),
+                        "edges": a.subgraph.as_ref().map(|sg| {
+                            sg.iter().map(|(f, t, w)| serde_json::json!({
+                                "from": f.0, "to": t.0, "weight": w.value()
+                            })).collect::<Vec<_>>()
+                        })
+                    }),
+                    None => serde_json::json!({
+                        "query_type": "related",
+                        "start": start_id,
+                        "depth": depth,
+                        "found": false
+                    }),
+                };
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&output)
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                );
+            } else {
+                match artifact {
+                    Some(a) => {
+                        println!("Related to node {} (depth {}):", start_id, depth);
+                        println!(
+                            "  Path: {:?}",
+                            a.path.iter().map(|n| n.0).collect::<Vec<_>>()
+                        );
+                        if let Some(ref sg) = a.subgraph {
+                            println!("  Edges: {}", sg.len());
+                            for (from, to, weight) in sg.iter().take(10) {
+                                println!("    {} -> {} (weight: {})", from.0, to.0, weight.value());
+                            }
+                            if sg.len() > 10 {
+                                println!("    ... and {} more", sg.len() - 10);
+                            }
                         }
                     }
+                    None => println!("Node {} not found", start_id),
                 }
-                None => println!("Node {} not found", start_id),
             }
         }
 
@@ -557,7 +667,22 @@ pub fn cmd_query(
 
             match session.get_properties(NodeId(node_id)) {
                 Ok(props) => {
-                    if props.is_empty() {
+                    if json_mode {
+                        let output = serde_json::json!({
+                            "query_type": "properties",
+                            "node_id": node_id,
+                            "found": true,
+                            "properties": props.iter().map(|(a, v)| serde_json::json!({
+                                "attribute": a.as_str(),
+                                "value": v.as_str()
+                            })).collect::<Vec<_>>()
+                        });
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&output)
+                                .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                        );
+                    } else if props.is_empty() {
                         println!("Node {} has no properties", node_id);
                     } else {
                         println!("Properties for node {}:", node_id);
@@ -567,7 +692,20 @@ pub fn cmd_query(
                     }
                 }
                 Err(KremisError::NodeNotFound(_)) => {
-                    println!("Node {} not found", node_id);
+                    if json_mode {
+                        let output = serde_json::json!({
+                            "query_type": "properties",
+                            "node_id": node_id,
+                            "found": false
+                        });
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&output)
+                                .map_err(|e| KremisError::SerializationError(e.to_string()))?
+                        );
+                    } else {
+                        println!("Node {} not found", node_id);
+                    }
                 }
                 Err(e) => return Err(e),
             }
@@ -725,7 +863,7 @@ pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(),
             serde_json::to_string_pretty(&serde_json::json!({
                 "hash": hash, "algorithm": "blake3", "checksum": checksum
             }))
-            .unwrap_or_default()
+            .map_err(|e| KremisError::SerializationError(e.to_string()))?
         );
     } else {
         println!("BLAKE3: {}", hash);

@@ -222,7 +222,11 @@ impl AppConfig {
         if let Ok(v) = std::env::var("KREMIS_CORS_ORIGINS")
             && !v.is_empty()
         {
-            config.cors.origins = vec![v];
+            config.cors.origins = v
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
             report.env_overrides.push("KREMIS_CORS_ORIGINS");
         }
         if let Ok(v) = std::env::var("KREMIS_URL")
@@ -266,6 +270,27 @@ format = "json"
         // Unset fields keep their defaults
         assert_eq!(cfg.logging.level, "kremis=info,tower_http=debug");
         assert_eq!(cfg.api.rate_limit, 100);
+    }
+
+    #[test]
+    fn test_cors_origins_csv_parsing() {
+        // Verify that KREMIS_CORS_ORIGINS is split by comma and trimmed.
+        // SAFETY: no other test in this file sets KREMIS_CORS_ORIGINS.
+        unsafe {
+            std::env::set_var(
+                "KREMIS_CORS_ORIGINS",
+                "https://a.example.com, https://b.example.com , https://c.example.com",
+            );
+        }
+        let (cfg, report) = AppConfig::load();
+        unsafe {
+            std::env::remove_var("KREMIS_CORS_ORIGINS");
+        }
+        assert!(report.env_overrides.contains(&"KREMIS_CORS_ORIGINS"));
+        assert_eq!(cfg.cors.origins.len(), 3);
+        assert_eq!(cfg.cors.origins[0], "https://a.example.com");
+        assert_eq!(cfg.cors.origins[1], "https://b.example.com");
+        assert_eq!(cfg.cors.origins[2], "https://c.example.com");
     }
 
     #[test]

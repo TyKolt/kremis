@@ -432,6 +432,106 @@ fn test_query_unknown_type() {
 }
 
 // =============================================================================
+// QUERY JSON MODE TESTS
+// =============================================================================
+
+#[test]
+fn test_query_lookup_json_mode() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let signals_file = create_signals_json(&temp);
+
+    cmd_init(&db_path, "file", false).unwrap();
+    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+
+    let result = cmd_query(
+        &db_path,
+        "file",
+        true,
+        "lookup",
+        None,
+        None,
+        2,
+        Some(1),
+        None,
+        None,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_query_traverse_json_mode() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let signals_file = create_signals_json(&temp);
+
+    cmd_init(&db_path, "file", false).unwrap();
+    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+
+    let result = cmd_query(
+        &db_path,
+        "file",
+        true,
+        "traverse",
+        Some(1),
+        None,
+        3,
+        None,
+        None,
+        None,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_query_intersect_json_mode() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let signals_file = create_signals_json(&temp);
+
+    cmd_init(&db_path, "file", false).unwrap();
+    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+
+    let result = cmd_query(
+        &db_path,
+        "file",
+        true,
+        "intersect",
+        None,
+        None,
+        2,
+        None,
+        Some("1,2".to_string()),
+        None,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_query_properties_json_mode() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let signals_file = create_signals_json(&temp);
+
+    cmd_init(&db_path, "file", false).unwrap();
+    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+
+    let result = cmd_query(
+        &db_path,
+        "file",
+        true,
+        "properties",
+        Some(1),
+        None,
+        2,
+        None,
+        None,
+        None,
+    );
+    assert!(result.is_ok());
+}
+
+// =============================================================================
 // EXPORT COMMAND TESTS
 // =============================================================================
 
