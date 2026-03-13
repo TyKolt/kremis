@@ -2,15 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [0.15.3] - 2026-03-13
+## [0.16.0] - 2026-03-13
 
 ### Bug Fixes
 
 - Enforce set semantics for duplicate (attribute, value) properties ([`8259541`](https://github.com/TyKolt/kremis/commit/8259541d8aeba4feceacfc0fa6acb2d1ad661c32))
+- Propagate storage errors from Session instead of silencing them ([`51473d8`](https://github.com/TyKolt/kremis/commit/51473d81fa3e706e0f4528c4e20dbe9b1eea1e06))
 
 ### Documentation
 
 - Regenerate CHANGELOG for v0.15.2 [skip ci] ([`f641a9f`](https://github.com/TyKolt/kremis/commit/f641a9ff1de68df48802b5f331b2b81445ec5e55))
+- Regenerate CHANGELOG for v0.15.3 [skip ci] ([`2d48bcd`](https://github.com/TyKolt/kremis/commit/2d48bcd4bb2017627a56bf0497fd704c6ab01305))
 
 ## [0.15.2] - 2026-03-13
 
