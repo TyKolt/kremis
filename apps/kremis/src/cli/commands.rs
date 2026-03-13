@@ -425,8 +425,8 @@ pub fn cmd_ingest(
     println!("Ingested {} signals", count);
     println!(
         "Graph now has {} nodes, {} edges",
-        session.node_count(),
-        session.edge_count()
+        session.node_count()?,
+        session.edge_count()?
     );
 
     Ok(())
@@ -483,9 +483,9 @@ pub fn cmd_query(
             let start_id = start.ok_or(KremisError::InvalidSignal)?;
 
             let artifact = if let Some(min_w) = min_weight {
-                session.traverse_filtered(NodeId(start_id), depth, EdgeWeight::new(min_w))
+                session.traverse_filtered(NodeId(start_id), depth, EdgeWeight::new(min_w))?
             } else {
-                session.traverse(NodeId(start_id), depth)
+                session.traverse(NodeId(start_id), depth)?
             };
 
             if json_mode {
@@ -541,7 +541,7 @@ pub fn cmd_query(
             let start_id = start.ok_or(KremisError::InvalidSignal)?;
             let end_id = end.ok_or(KremisError::InvalidSignal)?;
 
-            let result = session.strongest_path(NodeId(start_id), NodeId(end_id));
+            let result = session.strongest_path(NodeId(start_id), NodeId(end_id))?;
 
             if json_mode {
                 let output = match &result {
@@ -583,7 +583,7 @@ pub fn cmd_query(
                 .filter_map(|s: &str| s.trim().parse::<u64>().ok().map(NodeId))
                 .collect();
 
-            let result = session.intersect(&node_ids);
+            let result = session.intersect(&node_ids)?;
 
             if json_mode {
                 let output = serde_json::json!({
@@ -611,7 +611,7 @@ pub fn cmd_query(
         "related" => {
             let start_id = start.ok_or(KremisError::InvalidSignal)?;
 
-            let artifact = session.compose(NodeId(start_id), depth);
+            let artifact = session.compose(NodeId(start_id), depth)?;
 
             if json_mode {
                 let output = match &artifact {
@@ -807,8 +807,8 @@ pub fn cmd_import(
 
     println!(
         "Imported graph: {} nodes, {} edges",
-        session.node_count(),
-        session.edge_count()
+        session.node_count()?,
+        session.edge_count()?
     );
 
     Ok(())

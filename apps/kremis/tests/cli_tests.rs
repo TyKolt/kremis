@@ -104,7 +104,7 @@ fn test_load_nonexistent_creates_new() {
     let session = load_or_create_session(&db_path, "file");
     assert!(session.is_ok());
     let session = session.unwrap();
-    assert_eq!(session.node_count(), 0);
+    assert_eq!(session.node_count().expect("node_count"), 0);
 }
 
 #[test]
@@ -119,13 +119,13 @@ fn test_save_and_load_session() {
         Signal::new(EntityId(2), Attribute::new("name"), Value::new("Bob")),
     ];
     session.ingest_sequence(&signals).unwrap();
-    let node_count = session.node_count();
+    let node_count = session.node_count().expect("node_count");
 
     save_session(&session, &db_path).unwrap();
 
     // Load session back
     let loaded = load_or_create_session(&db_path, "file").unwrap();
-    assert_eq!(loaded.node_count(), node_count);
+    assert_eq!(loaded.node_count().expect("node_count"), node_count);
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn test_ingest_json_format() {
 
     // Verify data was ingested
     let session = load_or_create_session(&db_path, "file").unwrap();
-    assert!(session.node_count() > 0);
+    assert!(session.node_count().expect("node_count") > 0);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn test_ingest_text_format() {
 
     // Verify data was ingested
     let session = load_or_create_session(&db_path, "file").unwrap();
-    assert!(session.node_count() > 0);
+    assert!(session.node_count().expect("node_count") > 0);
 }
 
 #[test]
@@ -605,8 +605,14 @@ fn test_import_canonical() {
     // Verify imported data matches
     let original = load_or_create_session(&db_path, "file").unwrap();
     let imported = load_or_create_session(&import_db_path, "file").unwrap();
-    assert_eq!(original.node_count(), imported.node_count());
-    assert_eq!(original.edge_count(), imported.edge_count());
+    assert_eq!(
+        original.node_count().expect("node_count"),
+        imported.node_count().expect("node_count")
+    );
+    assert_eq!(
+        original.edge_count().expect("edge_count"),
+        imported.edge_count().expect("edge_count")
+    );
 }
 
 #[test]
@@ -651,8 +657,8 @@ fn test_export_import_roundtrip_preserves_data() {
     session.ingest_sequence(&signals).unwrap();
     save_session(&session, &db1_path).unwrap();
 
-    let original_node_count = session.node_count();
-    let original_edge_count = session.edge_count();
+    let original_node_count = session.node_count().expect("node_count");
+    let original_edge_count = session.edge_count().expect("edge_count");
 
     // Export
     cmd_export(&db1_path, "file", &export_path, "canonical").unwrap();
@@ -662,8 +668,14 @@ fn test_export_import_roundtrip_preserves_data() {
 
     // Verify
     let imported = load_or_create_session(&db2_path, "file").unwrap();
-    assert_eq!(imported.node_count(), original_node_count);
-    assert_eq!(imported.edge_count(), original_edge_count);
+    assert_eq!(
+        imported.node_count().expect("node_count"),
+        original_node_count
+    );
+    assert_eq!(
+        imported.edge_count().expect("edge_count"),
+        original_edge_count
+    );
 }
 
 #[test]

@@ -178,10 +178,12 @@ pub async fn retract_handler(
 
     match session.decrement_edge(from_node, to_node) {
         Ok(()) => {
-            let new_weight = session
-                .get_edge(from_node, to_node)
-                .map(|w| w.value())
-                .unwrap_or(0);
+            // Intentional degradation: decrement already succeeded, weight read
+            // is best-effort for the response body only.
+            let new_weight = match session.get_edge(from_node, to_node) {
+                Ok(Some(w)) => w.value(),
+                Ok(None) | Err(_) => 0,
+            };
             (StatusCode::OK, Json(RetractResponse::success(new_weight)))
         }
         Err(KremisError::EdgeNotFound(_, _)) => (
@@ -290,7 +292,7 @@ fn execute_query_inner(
         QueryRequest::Traverse { node_id, depth } => {
             // Validate depth to prevent DoS
             validate_depth(*depth)?;
-            match session.traverse(NodeId(*node_id), *depth) {
+            match session.traverse(NodeId(*node_id), *depth)? {
                 Some(artifact) => Ok(QueryResponse::with_artifact(&artifact)),
                 None => Ok(QueryResponse::not_found().with_diagnostic("node_not_found")),
             }
@@ -304,8 +306,11 @@ fn execute_query_inner(
         } => {
             // Validate depth to prevent DoS
             validate_depth(*depth)?;
-            match session.traverse_filtered(NodeId(*node_id), *depth, EdgeWeight::new(*min_weight))
-            {
+            match session.traverse_filtered(
+                NodeId(*node_id),
+                *depth,
+                EdgeWeight::new(*min_weight),
+            )? {
                 Some(artifact) => {
                     let artifact = apply_top_k(artifact, *top_k);
                     Ok(QueryResponse::with_artifact(&artifact))
@@ -315,12 +320,12 @@ fn execute_query_inner(
         }
 
         QueryRequest::StrongestPath { start, end } => {
-            match session.strongest_path(NodeId(*start), NodeId(*end)) {
+            match session.strongest_path(NodeId(*start), NodeId(*end))? {
                 Some(path) => Ok(QueryResponse::with_path(path)),
                 None => {
-                    let reason = if session.traverse(NodeId(*start), 0).is_none() {
+                    let reason = if session.traverse(NodeId(*start), 0)?.is_none() {
                         "start_not_found"
-                    } else if session.traverse(NodeId(*end), 0).is_none() {
+                    } else if session.traverse(NodeId(*end), 0)?.is_none() {
                         "end_not_found"
                     } else {
                         "no_path"
@@ -336,7 +341,7 @@ fn execute_query_inner(
                 return Err(KremisError::InvalidSignal);
             }
             let node_ids: Vec<NodeId> = nodes.iter().map(|n| NodeId(*n)).collect();
-            let result = session.intersect(&node_ids);
+            let result = session.intersect(&node_ids)?;
             let is_empty = result.is_empty();
             let mut response = QueryResponse::with_path(result);
             if is_empty {
@@ -349,7 +354,7 @@ fn execute_query_inner(
             // Validate depth to prevent DoS
             validate_depth(*depth)?;
             // For Related queries, use compose which handles both backends
-            match session.compose(NodeId(*node_id), *depth) {
+            match session.compose(NodeId(*node_id), *depth)? {
                 Some(artifact) => Ok(QueryResponse::with_artifact(&artifact)),
                 None => Ok(QueryResponse::not_found().with_diagnostic("node_not_found")),
             }

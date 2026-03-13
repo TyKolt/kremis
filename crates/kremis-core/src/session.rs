@@ -21,60 +21,6 @@ use crate::{
 };
 use std::path::Path;
 
-// =============================================================================
-// ERROR LOGGING HELPERS
-// =============================================================================
-
-/// Log an I/O error and convert Result to Option.
-///
-/// This helper ensures that storage errors are logged before being converted
-/// to Option::None, preventing silent error swallowing.
-///
-/// # M2 Fix
-///
-/// Uses stderr logging for CORE (no external dependencies).
-/// The app layer should configure proper tracing if needed.
-#[inline]
-fn log_and_convert<T>(result: Result<T, KremisError>, context: &str) -> Option<T> {
-    match result {
-        Ok(v) => Some(v),
-        Err(e) => {
-            // M2 FIX: Use structured logging format for easier parsing
-            // Note: CORE avoids tracing dependency to stay minimal.
-            // App layer should redirect stderr to tracing if needed.
-            eprintln!(
-                "{{\"level\":\"warn\",\"target\":\"kremis_core::session\",\"message\":\"I/O error in {}: {}\"}}",
-                context, e
-            );
-            None
-        }
-    }
-}
-
-/// Log an I/O error and convert Result<T, E> to default value.
-///
-/// This helper ensures that storage errors are logged before being converted
-/// to a default value, preventing silent error swallowing.
-///
-/// # M2 Fix
-///
-/// Uses stderr logging for CORE (no external dependencies).
-/// The app layer should configure proper tracing if needed.
-#[inline]
-fn log_and_default<T: Default>(result: Result<T, KremisError>, context: &str) -> T {
-    match result {
-        Ok(v) => v,
-        Err(e) => {
-            // M2 FIX: Use structured logging format for easier parsing
-            eprintln!(
-                "{{\"level\":\"warn\",\"target\":\"kremis_core::session\",\"message\":\"I/O error in {}: {}\"}}",
-                context, e
-            );
-            T::default()
-        }
-    }
-}
-
 /// Storage backend for a Session.
 ///
 /// Supports both in-memory and persistent storage.
@@ -308,51 +254,59 @@ impl Session {
     // =========================================================================
 
     /// Compose an artifact from a starting node.
-    pub fn compose(&self, start: NodeId, depth: usize) -> Option<Artifact> {
-        let result = match &self.backend {
+    pub fn compose(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.traverse(start, depth),
             StorageBackend::Persistent(redb) => redb.traverse(start, depth),
-        };
-        log_and_convert(result, "compose").flatten()
+        }
     }
 
     /// Compose from an active context node.
     ///
     /// Uses the first active node if available.
-    pub fn compose_from_active(&self, depth: usize) -> Option<Artifact> {
-        let start = self.buffer.active_nodes.first()?;
+    /// Returns `Ok(None)` if there are no active nodes.
+    pub fn compose_from_active(&self, depth: usize) -> Result<Option<Artifact>, KremisError> {
+        let Some(start) = self.buffer.active_nodes.first() else {
+            return Ok(None);
+        };
         self.compose(*start, depth)
     }
 
     /// Extract path between two nodes.
-    pub fn extract_path(&self, start: NodeId, end: NodeId) -> Option<Artifact> {
+    pub fn extract_path(
+        &self,
+        start: NodeId,
+        end: NodeId,
+    ) -> Result<Option<Artifact>, KremisError> {
         let path_result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
             StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
         };
-        let path = log_and_convert(path_result, "extract_path").flatten()?;
+        let Some(path) = path_result? else {
+            return Ok(None);
+        };
 
         // Collect edges along the path for the artifact
         let mut subgraph = Vec::new();
         for window in path.windows(2) {
             let from = window[0];
             let to = window[1];
-            if let Some(weight) = self.get_edge(from, to) {
+            if let Some(weight) = self.get_edge(from, to)? {
                 subgraph.push((from, to, weight));
             }
         }
 
-        Some(Artifact::with_subgraph(path, subgraph))
+        Ok(Some(Artifact::with_subgraph(path, subgraph)))
     }
 
     /// Find intersection of active context nodes.
-    pub fn intersect_active(&self) -> Artifact {
+    pub fn intersect_active(&self) -> Result<Artifact, KremisError> {
         let nodes: Vec<_> = self.buffer.active_nodes.iter().copied().collect();
         let result = match &self.backend {
             StorageBackend::InMemory(graph) => graph.intersect(&nodes),
             StorageBackend::Persistent(redb) => redb.intersect(&nodes),
         };
-        Artifact::with_path(log_and_default(result, "intersect_active"))
+        Ok(Artifact::with_path(result?))
     }
 
     // =========================================================================
@@ -403,12 +357,14 @@ impl Session {
     }
 
     /// Get edge weight between two nodes.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<EdgeWeight> {
-        let result = match &self.backend {
+    ///
+    /// Returns `Ok(None)` when the edge does not exist (intentional absence).
+    /// Returns `Err` only on storage failures.
+    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Result<Option<EdgeWeight>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.get_edge(from, to),
             StorageBackend::Persistent(redb) => redb.get_edge(from, to),
-        };
-        log_and_convert(result, "get_edge").flatten()
+        }
     }
 
     // =========================================================================
@@ -416,64 +372,69 @@ impl Session {
     // =========================================================================
 
     /// Get the node count.
-    #[must_use]
-    pub fn node_count(&self) -> usize {
-        let result = match &self.backend {
+    pub fn node_count(&self) -> Result<usize, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.node_count(),
             StorageBackend::Persistent(redb) => redb.node_count(),
-        };
-        log_and_default(result, "node_count")
+        }
     }
 
     /// Get the edge count.
-    #[must_use]
-    pub fn edge_count(&self) -> usize {
-        let result = match &self.backend {
+    pub fn edge_count(&self) -> Result<usize, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.edge_count(),
             StorageBackend::Persistent(redb) => redb.edge_count(),
-        };
-        log_and_default(result, "edge_count")
+        }
     }
 
     /// Traverse from a starting node.
-    pub fn traverse(&self, start: NodeId, depth: usize) -> Option<Artifact> {
-        let result = match &self.backend {
+    ///
+    /// Returns `Ok(None)` when the start node does not exist (intentional absence).
+    /// Returns `Err` only on storage failures.
+    pub fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.traverse(start, depth),
             StorageBackend::Persistent(redb) => redb.traverse(start, depth),
-        };
-        log_and_convert(result, "traverse").flatten()
+        }
     }
 
     /// Traverse with minimum weight filter.
+    ///
+    /// Returns `Ok(None)` when the start node does not exist (intentional absence).
+    /// Returns `Err` only on storage failures.
     pub fn traverse_filtered(
         &self,
         start: NodeId,
         depth: usize,
         min_weight: EdgeWeight,
-    ) -> Option<Artifact> {
-        let result = match &self.backend {
+    ) -> Result<Option<Artifact>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.traverse_filtered(start, depth, min_weight),
             StorageBackend::Persistent(redb) => redb.traverse_filtered(start, depth, min_weight),
-        };
-        log_and_convert(result, "traverse_filtered").flatten()
+        }
     }
 
     /// Find strongest path between two nodes.
-    pub fn strongest_path(&self, start: NodeId, end: NodeId) -> Option<Vec<NodeId>> {
-        let result = match &self.backend {
+    ///
+    /// Returns `Ok(None)` when no path exists (intentional absence).
+    /// Returns `Err` only on storage failures.
+    pub fn strongest_path(
+        &self,
+        start: NodeId,
+        end: NodeId,
+    ) -> Result<Option<Vec<NodeId>>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.strongest_path(start, end),
             StorageBackend::Persistent(redb) => redb.strongest_path(start, end),
-        };
-        log_and_convert(result, "strongest_path").flatten()
+        }
     }
 
     /// Find intersection of nodes.
-    pub fn intersect(&self, nodes: &[NodeId]) -> Vec<NodeId> {
-        let result = match &self.backend {
+    pub fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
+        match &self.backend {
             StorageBackend::InMemory(graph) => graph.intersect(nodes),
             StorageBackend::Persistent(redb) => redb.intersect(nodes),
-        };
-        log_and_default(result, "intersect")
+        }
     }
 
     // =========================================================================
@@ -603,7 +564,12 @@ mod tests {
 
         let nodes = session.ingest_sequence(&signals).expect("ingest");
 
-        assert!(session.get_edge(nodes[0], nodes[1]).is_some());
+        assert!(
+            session
+                .get_edge(nodes[0], nodes[1])
+                .expect("get_edge")
+                .is_some()
+        );
     }
 
     #[test]
@@ -615,6 +581,33 @@ mod tests {
         // Properties are stored during ingest
         let props = session.get_properties(node).expect("get properties");
         assert!(props.contains(&(Attribute::new("name"), Value::new("Alice"))));
+    }
+
+    /// Verifies that operations return structured `Result` types and that
+    /// "not found" is represented as `Ok(None)` / `Ok(0)`, not as an error.
+    /// Storage errors (e.g. redb I/O failures) propagate as `Err` to callers
+    /// and are no longer silently converted to defaults.
+    #[test]
+    fn result_types_distinguish_absence_from_error() {
+        let session = Session::new();
+
+        // Missing node → Ok(None), not Err
+        assert!(matches!(session.traverse(NodeId(999), 1), Ok(None)));
+        assert!(matches!(
+            session.traverse_filtered(NodeId(999), 1, EdgeWeight::new(1)),
+            Ok(None)
+        ));
+        assert!(matches!(
+            session.strongest_path(NodeId(1), NodeId(2)),
+            Ok(None)
+        ));
+        assert!(matches!(session.get_edge(NodeId(1), NodeId(2)), Ok(None)));
+        assert!(matches!(session.compose(NodeId(999), 1), Ok(None)));
+
+        // Empty graph → Ok(0) / Ok([]), not Err
+        assert_eq!(session.node_count().expect("node_count"), 0);
+        assert_eq!(session.edge_count().expect("edge_count"), 0);
+        assert_eq!(session.intersect(&[NodeId(1)]).expect("intersect"), vec![]);
     }
 
     #[test]
