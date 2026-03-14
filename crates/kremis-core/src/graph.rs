@@ -25,6 +25,13 @@ pub trait GraphStore {
 
     /// Insert or update an edge with the given weight.
     /// If the edge exists, the weight is updated (not added).
+    ///
+    /// ## Missing-node semantics
+    ///
+    /// If either `from` or `to` does not exist in the graph, the call is a
+    /// **silent no-op** (returns `Ok(())`). This is an explicit design choice:
+    /// callers are responsible for inserting nodes before edges; a dangling-node
+    /// edge is treated as a caller error that can be safely ignored.
     fn insert_edge(
         &mut self,
         from: NodeId,
@@ -34,6 +41,12 @@ pub trait GraphStore {
 
     /// Increment the weight of an edge by 1 using saturating arithmetic.
     /// Creates the edge with weight 1 if it doesn't exist.
+    ///
+    /// ## Missing-node semantics
+    ///
+    /// Consistent with [`insert_edge`](GraphStore::insert_edge): if either
+    /// `from` or `to` does not exist in the graph, the call is a **silent
+    /// no-op** (returns `Ok(())`). No phantom edge is created.
     fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError>;
 
     /// Decrement the weight of an existing edge by 1, floored at 0.
@@ -287,6 +300,10 @@ impl GraphStore for Graph {
     }
 
     fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        // Silent no-op when either node is missing — consistent with insert_edge semantics.
+        if !self.nodes.contains_key(&from) || !self.nodes.contains_key(&to) {
+            return Ok(());
+        }
         let targets = self.edges.entry(from).or_default();
         let current = targets.get(&to).copied().unwrap_or(EdgeWeight::new(0));
         targets.insert(to, current.increment());
@@ -974,6 +991,31 @@ mod tests {
         graph
             .insert_edge(dangling, node1, EdgeWeight::new(5))
             .expect("insert edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+    }
+
+    #[test]
+    fn increment_edge_ignores_dangling_nodes() {
+        let mut graph = Graph::new();
+        let node1 = graph.insert_node(EntityId(1)).expect("insert");
+        let dangling = NodeId(999);
+
+        // Increment from existing to non-existing: silently ignored, no phantom edge
+        graph
+            .increment_edge(node1, dangling)
+            .expect("increment edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+
+        // Increment from non-existing to existing: silently ignored, no phantom edge
+        graph
+            .increment_edge(dangling, node1)
+            .expect("increment edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+
+        // Increment between two non-existing nodes: silently ignored
+        graph
+            .increment_edge(NodeId(998), dangling)
+            .expect("increment edge");
         assert_eq!(graph.edge_count().expect("count"), 0);
     }
 

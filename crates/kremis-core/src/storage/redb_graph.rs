@@ -487,6 +487,10 @@ impl GraphStore for RedbGraph {
     }
 
     fn increment_edge(&mut self, from: NodeId, to: NodeId) -> Result<(), KremisError> {
+        // Silent no-op when either node is missing — consistent with insert_edge semantics.
+        if !self.contains_node(from)? || !self.contains_node(to)? {
+            return Ok(());
+        }
         let write_txn = self
             .db
             .begin_write()
@@ -1678,6 +1682,34 @@ mod tests {
         graph
             .insert_edge(NodeId(888), dangling, EdgeWeight::new(5))
             .expect("insert edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+    }
+
+    #[test]
+    fn increment_edge_ignores_dangling_nodes() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let node1 = graph.insert_node(EntityId(1)).expect("insert node");
+        let dangling = NodeId(999);
+
+        // Increment from existing to non-existing: silently ignored, no phantom edge
+        graph
+            .increment_edge(node1, dangling)
+            .expect("increment edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+
+        // Increment from non-existing to existing: silently ignored, no phantom edge
+        graph
+            .increment_edge(dangling, node1)
+            .expect("increment edge");
+        assert_eq!(graph.edge_count().expect("count"), 0);
+
+        // Increment between two non-existing nodes: silently ignored
+        graph
+            .increment_edge(NodeId(998), dangling)
+            .expect("increment edge");
         assert_eq!(graph.edge_count().expect("count"), 0);
     }
 
