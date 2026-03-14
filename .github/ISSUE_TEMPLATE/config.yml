@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/TyKolt/kremis/discussions
+    about: For general questions, ideas, or help using Kremis, please use GitHub Discussions.

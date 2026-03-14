@@ -1,0 +1,80 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in Kremis
+labels: ["bug"]
+title: "[Bug] "
+body:
+  - type: checkboxes
+    id: existing_issues
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I have searched [existing issues](https://github.com/TyKolt/kremis/issues) and this has not been reported before.
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `kremis --version`
+      placeholder: "kremis 0.16.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Storage Backend
+      description: How was the database initialized?
+      options:
+        - redb (default, --backend redb)
+        - file (--backend file)
+        - in-memory (no --database flag)
+        - not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal sequence of commands or code to trigger the bug.
+      placeholder: |
+        1. kremis init --database /tmp/test.db
+        2. kremis ingest ...
+        3. kremis query ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      description: Paste any error messages or stack traces here.
+      render: text
