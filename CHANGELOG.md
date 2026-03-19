@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.2] - 2026-03-19
+
+### Bug Fixes
+
+- Clamp next_node_id in from_canonical to prevent node ID collision ([`3d5f2be`](https://github.com/TyKolt/kremis/commit/3d5f2bea77c9949ad46ad518cc8773cf2b7cc077))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.1 [skip ci] ([`1a4d854`](https://github.com/TyKolt/kremis/commit/1a4d854747a0f92abb0c6f21d41e2ddbe043e029))
+
 ## [0.16.1] - 2026-03-14
 
 ### Bug Fixes
