@@ -16,7 +16,7 @@ body:
     attributes:
       label: Version
       description: Output of `kremis --version`
-      placeholder: "kremis 0.16.1"
+      placeholder: "kremis x.y.z"
     validations:
       required: true
 
