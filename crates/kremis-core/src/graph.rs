@@ -174,6 +174,16 @@ impl Graph {
             graph.entity_index.insert(entity, node_id);
         }
 
+        // Guard: next_node_id must be strictly above all imported node IDs.
+        // A crafted canonical with next_node_id below the maximum imported ID
+        // would cause future insert_node calls to collide with existing nodes
+        // and corrupt the graph state.
+        if let Some(max_id) = graph.nodes.keys().map(|n| n.0).max()
+            && graph.next_node_id <= max_id
+        {
+            graph.next_node_id = max_id.saturating_add(1);
+        }
+
         for ce in &canonical.edges {
             let from = NodeId(ce.from);
             let to = NodeId(ce.to);
@@ -1058,5 +1068,38 @@ mod tests {
         let props_b = restored.get_properties(b).expect("get");
         assert_eq!(props_b.len(), 1);
         assert!(props_b.contains(&(Attribute::new("name"), Value::new("Bob"))));
+    }
+
+    #[test]
+    fn from_canonical_clamps_tampered_next_node_id() {
+        // A crafted canonical sets next_node_id=0 even though nodes with IDs 0,1,2 exist.
+        // from_canonical must clamp it so that subsequent insert_node calls do not collide.
+        let canonical = crate::export::CanonicalGraph {
+            nodes: vec![
+                crate::export::CanonicalNode { id: 0, entity: 100 },
+                crate::export::CanonicalNode { id: 1, entity: 101 },
+                crate::export::CanonicalNode { id: 2, entity: 102 },
+            ],
+            edges: vec![],
+            next_node_id: 0, // tampered: below all existing node IDs
+            properties: vec![],
+        };
+
+        let mut graph = Graph::from_canonical(&canonical);
+
+        // next_node_id must have been clamped above the max imported ID (2)
+        assert!(
+            graph.next_node_id() > 2,
+            "next_node_id {} should be > 2",
+            graph.next_node_id()
+        );
+
+        // A new insert must not collide with any existing node ID
+        let new_node = graph.insert_node(EntityId(999)).expect("insert");
+        assert!(
+            new_node.0 > 2,
+            "new node ID {} collides with imported nodes",
+            new_node.0
+        );
     }
 }
