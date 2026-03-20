@@ -2,11 +2,26 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.3] - 2026-03-20
+
+### Bug Fixes
+
+- Propagate backend query failures correctly in HTTP and MCP layers ([`ec96971`](https://github.com/TyKolt/kremis/commit/ec9697107a36df02a5c3a3a7e30a870be3328fc2))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.2 [skip ci] ([`c8a30af`](https://github.com/TyKolt/kremis/commit/c8a30af24210de7212c6faf8ae3c59638df9fa44))
+- Use version placeholder x.y.z in bug_report.yml ([`1e7e0ae`](https://github.com/TyKolt/kremis/commit/1e7e0aee86e8397d7f1017a4f8f6e25ccf9f94e6))
+
 ## [0.16.2] - 2026-03-19
 
 ### Bug Fixes
 
-- Clamp next_node_id in from_canonical to prevent node ID collision ([`3d5f2be`](https://github.com/TyKolt/kremis/commit/3d5f2bea77c9949ad46ad518cc8773cf2b7cc077))
+- Clamp next_node_id in from_canonical to prevent node ID collision ([`5e67986`](https://github.com/TyKolt/kremis/commit/5e679866ebbdfb22f1edbb99a5d34a4877e0134a))
+
+### Dependencies
+
+- Bump the rust-minor-patch group with 3 updates (#19) ([`31f3426`](https://github.com/TyKolt/kremis/commit/31f342698b58d5e55c2d0cb343407bc88cd62278))
 
 ### Documentation
 
