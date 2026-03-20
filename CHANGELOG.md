@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.6] - 2026-03-20
+
+### Bug Fixes
+
+- Detect hash collision and deserialization errors in redb property buckets ([`bc883e4`](https://github.com/TyKolt/kremis/commit/bc883e489d9e08d65237a482bf3719cc27d64eb5))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.5 [skip ci] ([`da50da8`](https://github.com/TyKolt/kremis/commit/da50da83c6a46254dfec77821cbe58f22d569ff1))
+
 ## [0.16.5] - 2026-03-20
 
 ### Bug Fixes
