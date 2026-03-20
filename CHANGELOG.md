@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.4] - 2026-03-20
+
+### Bug Fixes
+
+- Bound properties payload size before deserialization in import_canonical ([`72a362f`](https://github.com/TyKolt/kremis/commit/72a362f8a13c44706a0ab11a51dbb347d9cf2aa8))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.3 [skip ci] ([`366d6fc`](https://github.com/TyKolt/kremis/commit/366d6fc92ee27679e811dd23fe8a83d6fd3638bb))
+
 ## [0.16.3] - 2026-03-20
 
 ### Bug Fixes
