@@ -47,7 +47,7 @@ pub struct Graph {
 |--------|-----------|---------|
 | `compose` | BFS | `VecDeque` queue, bounded by `depth` (max 100) |
 | `compose_filtered` | BFS + weight filter | Skips edges below `min_weight` |
-| `strongest_path` | Dijkstra | Cost = `i64::MAX - weight` (higher weight = preferred) |
+| `strongest_path` | Dijkstra | Cost = `-weight` (higher weight = lower cost = preferred) |
 | `intersect` | Set intersection | Neighbors of first node, intersect with remaining |
 | `related_context` | BFS | Contextual alias for `compose` |
 

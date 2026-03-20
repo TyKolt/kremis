@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.16.5"
+                version: "0.16.6"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -114,9 +114,9 @@ paths:
                 $ref: "#/components/schemas/StageResponse"
               example:
                 stage: S1
-                name: Emerging
+                name: Pattern Crystallization
                 progress_percent: 42
-                stable_edges_needed: 500
+                stable_edges_needed: 1000
                 stable_edges_current: 207
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -199,8 +199,9 @@ paths:
         symmetric to `POST /signal` — each retraction undoes one ingest.
 
         **Weight floor:** The weight is never decremented below 0. Negative
-        weights are architecturally forbidden because `strongest_path` computes
-        cost as `i64::MAX - weight`; a negative weight would cause overflow.
+        weights are architecturally forbidden because `strongest_path` uses
+        Dijkstra with `cost = -weight`, and the algorithm requires non-negative
+        costs after negation (i.e., weights must be ≥ 0).
 
         **Returns 404** if either entity does not exist or if no edge exists
         between them. No edge is created by a retract operation.
@@ -557,8 +558,8 @@ paths:
         produces the same bytes.
 
         **Format**: `[header_len: u32][header][postcard-encoded data]`
-        **Magic bytes**: `KREM`
-        **Version**: 1
+        **Magic bytes**: `KREX`
+        **Version**: 2
 
         Use the checksum to verify integrity after transfer.
       tags: [export]
@@ -636,7 +637,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.16.5"
+          example: "0.16.6"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -692,7 +693,7 @@ components:
         name:
           type: string
           description: Human-readable stage name.
-          example: Emerging
+          example: Pattern Crystallization
         progress_percent:
           type: integer
           format: uint8
@@ -705,7 +706,7 @@ components:
           format: uint64
           minimum: 0
           description: Total stable edges required to reach the next stage.
-          example: 500
+          example: 1000
         stable_edges_current:
           type: integer
           format: uint64
@@ -1182,7 +1183,7 @@ components:
           description: |
             Base64-encoded Kremis canonical binary snapshot.
             Format: `[header_len: u32][header][postcard-encoded graph]`
-            Magic bytes: `KREM` (first 4 bytes after decoding).
+            Magic bytes: `KREX` (first 4 bytes after decoding).
           example: "S1JFTQ..."
         checksum:
           type: ["integer", "null"]

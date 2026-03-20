@@ -14,8 +14,9 @@ Decrements the edge weight between two entities by 1, floored at 0.
 
 Use this to correct erroneously ingested signals. Each retraction undoes one
 `POST /signal` ingest. The weight is never decremented below 0 — negative
-weights are architecturally forbidden because `strongest_path` computes path
-cost as `i64::MAX - weight`.
+weights are architecturally forbidden because `strongest_path` uses Dijkstra
+with `cost = -weight`, and the algorithm requires non-negative costs after
+negation (i.e., weights must be ≥ 0).
 
 ## Request Body
 
