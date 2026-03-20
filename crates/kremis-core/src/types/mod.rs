@@ -335,6 +335,10 @@ pub enum KremisError {
     #[error("Deserialization error: {0}")]
     DeserializationError(String),
 
+    /// Storage integrity violation: hash collision or data corruption detected.
+    #[error("Storage corruption: {0}")]
+    StorageCorruption(String),
+
     /// An I/O error occurred.
     #[error("I/O error: {0}")]
     IoError(String),

@@ -255,9 +255,21 @@ impl RedbGraph {
                     .map_err(|e| KremisError::IoError(e.to_string()))?
                     .map(|data| {
                         postcard::from_bytes::<(Attribute, Vec<Value>)>(data.value())
-                            .map(|(_, v)| v)
-                            .unwrap_or_default()
+                            .map_err(|e| KremisError::DeserializationError(e.to_string()))
+                            .and_then(|(stored_attr, values)| {
+                                if stored_attr != signal.attribute {
+                                    Err(KremisError::StorageCorruption(format!(
+                                        "attribute hash collision: bucket contains \"{}\", \
+                                         expected \"{}\"",
+                                        stored_attr.as_str(),
+                                        signal.attribute.as_str()
+                                    )))
+                                } else {
+                                    Ok(values)
+                                }
+                            })
                     })
+                    .transpose()?
                     .unwrap_or_default();
                 // Set semantics: identical (attribute, value) pairs are idempotent.
                 if !values.contains(&signal.value) {
@@ -852,9 +864,21 @@ impl GraphStore for RedbGraph {
                 .map_err(|e| KremisError::IoError(e.to_string()))?
                 .map(|data| {
                     postcard::from_bytes::<(Attribute, Vec<Value>)>(data.value())
-                        .map(|(_, values)| values)
-                        .unwrap_or_default()
+                        .map_err(|e| KremisError::DeserializationError(e.to_string()))
+                        .and_then(|(stored_attr, values)| {
+                            if stored_attr != attribute {
+                                Err(KremisError::StorageCorruption(format!(
+                                    "attribute hash collision: bucket contains \"{}\", \
+                                     expected \"{}\"",
+                                    stored_attr.as_str(),
+                                    attribute.as_str()
+                                )))
+                            } else {
+                                Ok(values)
+                            }
+                        })
                 })
+                .transpose()?
                 .unwrap_or_default();
 
             // Set semantics: identical (attribute, value) pairs are idempotent.
@@ -1931,5 +1955,60 @@ mod tests {
                 "expected exactly 2 name values (Alice + Bob), got: {name_values:?}"
             );
         }
+    }
+
+    #[test]
+    fn property_deserialization_error_propagates() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("corrupt.redb");
+
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+        let node = graph.insert_node(EntityId(1)).expect("insert node");
+
+        // Write garbage bytes directly into PROPERTIES at the key for attribute "name"
+        let attr_hash = stable_attr_hash("name");
+        let write_txn = graph.db.begin_write().expect("begin write");
+        {
+            let mut props_table = write_txn.open_table(PROPERTIES).expect("open table");
+            props_table
+                .insert((node.0, attr_hash), b"garbage_not_postcard" as &[u8])
+                .expect("insert garbage");
+        }
+        write_txn.commit().expect("commit");
+
+        let result = graph.store_property(node, Attribute::new("name"), Value::new("x"));
+        assert!(
+            matches!(result, Err(KremisError::DeserializationError(_))),
+            "expected DeserializationError, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn property_hash_collision_returns_storage_corruption() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("collision.redb");
+
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+        let node = graph.insert_node(EntityId(1)).expect("insert node");
+
+        // Serialize data for "attr_a" and store it at the hash of "attr_b",
+        // simulating a hash collision where the bucket belongs to a different attribute.
+        let wrong_data = postcard::to_allocvec(&(Attribute::new("attr_a"), vec![Value::new("v")]))
+            .expect("serialize");
+        let attr_b_hash = stable_attr_hash("attr_b");
+        let write_txn = graph.db.begin_write().expect("begin write");
+        {
+            let mut props_table = write_txn.open_table(PROPERTIES).expect("open table");
+            props_table
+                .insert((node.0, attr_b_hash), wrong_data.as_slice())
+                .expect("insert");
+        }
+        write_txn.commit().expect("commit");
+
+        let result = graph.store_property(node, Attribute::new("attr_b"), Value::new("x"));
+        assert!(
+            matches!(result, Err(KremisError::StorageCorruption(_))),
+            "expected StorageCorruption, got: {result:?}"
+        );
     }
 }
