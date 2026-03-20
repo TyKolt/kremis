@@ -33,6 +33,10 @@ Import a graph from a canonical format file.
   Import is currently supported only with the `file` backend (`-B file`). Import to `redb` backend is not yet implemented.
 </Warning>
 
+<Note>
+  Import files are limited to **256 MiB**. Files exceeding this limit will return an error.
+</Note>
+
 ## Examples
 
 ```bash
