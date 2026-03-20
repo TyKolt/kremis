@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.5] - 2026-03-20
+
+### Bug Fixes
+
+- Strongest_path now correctly prefers stronger multi-hop paths ([`0e6ad60`](https://github.com/TyKolt/kremis/commit/0e6ad60d78b129f925757d15988419fd7c335977))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.4 [skip ci] ([`1840c55`](https://github.com/TyKolt/kremis/commit/1840c5547fcc68ea4142122c6a15d3b717cf0c91))
+
 ## [0.16.4] - 2026-03-20
 
 ### Bug Fixes
