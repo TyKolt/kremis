@@ -731,7 +731,7 @@ impl GraphStore for RedbGraph {
             return Ok(Some(vec![start]));
         }
 
-        // Dijkstra with cost = i64::MAX - weight
+        // Dijkstra with cost = -weight (higher weight = lower cost = preferred)
         let mut dist: BTreeMap<NodeId, i64> = BTreeMap::new();
         let mut prev: BTreeMap<NodeId, NodeId> = BTreeMap::new();
         let mut visited = BTreeSet::new();
@@ -762,10 +762,10 @@ impl GraphStore for RedbGraph {
                     continue;
                 }
 
-                // Cost = i64::MAX - weight (higher weight = lower cost = preferred)
-                // Clamp negative weights to 0 to maintain Dijkstra invariant
+                // Cost = -weight (higher weight = lower cost = preferred).
+                // Clamp negative weights to 0 so only positive weights reduce cost.
                 let clamped_weight = weight.value().max(0);
-                let edge_cost = i64::MAX.saturating_sub(clamped_weight);
+                let edge_cost = -clamped_weight;
                 let new_dist = current_dist.saturating_add(edge_cost);
 
                 if !dist.contains_key(&neighbor) || new_dist < dist[&neighbor] {
@@ -1063,6 +1063,29 @@ mod tests {
 
         let path = graph.strongest_path(a, c).expect("path");
         assert_eq!(path, Some(vec![a, b, c]));
+    }
+
+    #[test]
+    fn strongest_path_prefers_stronger_multihop() {
+        // Direct weak edge (3->4, w=1) must lose to stronger multi-hop (3->5->4, w=50+50).
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let n3 = graph.insert_node(EntityId(3)).expect("insert node");
+        let n4 = graph.insert_node(EntityId(4)).expect("insert node");
+        let n5 = graph.insert_node(EntityId(5)).expect("insert node");
+
+        graph.insert_edge(n3, n4, EdgeWeight::new(1)).expect("edge");
+        graph
+            .insert_edge(n3, n5, EdgeWeight::new(50))
+            .expect("edge");
+        graph
+            .insert_edge(n5, n4, EdgeWeight::new(50))
+            .expect("edge");
+
+        let path = graph.strongest_path(n3, n4).expect("path");
+        assert_eq!(path, Some(vec![n3, n5, n4]));
     }
 
     #[test]
