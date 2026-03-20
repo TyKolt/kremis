@@ -10,7 +10,7 @@ icon: "diamond-turn-right"
 
 **Authentication:** Required (if enabled)
 
-Uses Dijkstra's algorithm with cost = `i64::MAX - weight` (higher weight = preferred path).
+Uses Dijkstra's algorithm with negative edge costs (`cost = -weight`) to prefer higher-weight paths, correctly prioritizing stronger multi-hop routes over weaker direct ones.
 
 ## Request
 
