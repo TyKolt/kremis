@@ -209,10 +209,16 @@ pub async fn query_handler(
     let session = state.session.read().await;
     match execute_query_session(&session, &request) {
         Ok(response) => (StatusCode::OK, Json(response)),
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(QueryResponse::error(format!("Query failed: {}", e))),
-        ),
+        Err(e) => {
+            let status = match &e {
+                KremisError::InvalidSignal => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (
+                status,
+                Json(QueryResponse::error(format!("Query failed: {}", e))),
+            )
+        }
     }
 }
 

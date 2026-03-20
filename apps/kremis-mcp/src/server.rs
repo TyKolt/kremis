@@ -325,6 +325,13 @@ fn format_retract_response(resp: &serde_json::Value) -> String {
 
 /// Format a query response JSON into human-readable text.
 fn format_query_response(resp: &serde_json::Value) -> String {
+    let success = resp
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !success && let Some(err) = resp.get("error").and_then(|v| v.as_str()) {
+        return format!("Query error: {err}");
+    }
     let found = resp.get("found").and_then(|v| v.as_bool()).unwrap_or(false);
     if !found {
         let grounding = resp
