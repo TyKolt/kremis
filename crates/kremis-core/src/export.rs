@@ -34,6 +34,13 @@ pub const MAX_IMPORT_NODE_COUNT: u64 = 1_000_000;
 /// 10 million edges is a reasonable upper bound (10x node count).
 pub const MAX_IMPORT_EDGE_COUNT: u64 = 10_000_000;
 
+/// Maximum allowed raw payload size in canonical imports (256 MiB).
+///
+/// This bounds the `properties` payload before `postcard` deserializes it,
+/// preventing memory exhaustion from a file with valid node/edge counts but
+/// a massive properties vector.
+pub const MAX_IMPORT_BYTES: usize = 256 * 1024 * 1024;
+
 /// Header for canonical export files.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CanonicalHeader {
@@ -376,10 +383,21 @@ pub fn import_canonical(data: &[u8]) -> Result<Graph, KremisError> {
         )));
     }
 
+    // Bound the raw payload size BEFORE deserialization to prevent DoS via
+    // a massive properties vector (node/edge counts alone do not cover this).
+    let payload = &data[4 + header_len..];
+    if payload.len() > MAX_IMPORT_BYTES {
+        return Err(KremisError::SerializationError(format!(
+            "Payload size {} exceeds maximum allowed {}",
+            payload.len(),
+            MAX_IMPORT_BYTES
+        )));
+    }
+
     // Deserialize data based on version
     let canonical: CanonicalGraph = if header.version == 1 {
         // V1 format: no properties field
-        let v1: CanonicalGraphV1 = postcard::from_bytes(&data[4 + header_len..])
+        let v1: CanonicalGraphV1 = postcard::from_bytes(payload)
             .map_err(|e| KremisError::SerializationError(format!("Data: {}", e)))?;
         CanonicalGraph {
             nodes: v1.nodes,
@@ -388,7 +406,7 @@ pub fn import_canonical(data: &[u8]) -> Result<Graph, KremisError> {
             properties: Vec::new(),
         }
     } else {
-        postcard::from_bytes(&data[4 + header_len..])
+        postcard::from_bytes(payload)
             .map_err(|e| KremisError::SerializationError(format!("Data: {}", e)))?
     };
 
@@ -944,6 +962,35 @@ mod tests {
         assert!(
             !err_msg.contains("exceeds maximum"),
             "Should not fail on size validation: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn corrupted_import_payload_exceeds_max_bytes() {
+        // Header with valid counts but payload larger than MAX_IMPORT_BYTES should be rejected
+        // before postcard attempts to deserialize it.
+        let header = CanonicalHeader {
+            magic: CANONICAL_MAGIC,
+            version: CANONICAL_VERSION,
+            node_count: 1,
+            edge_count: 0,
+            checksum: 0,
+        };
+
+        let header_bytes = postcard::to_allocvec(&header).expect("serialize");
+        let mut data = Vec::new();
+        data.extend_from_slice(&(header_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(&header_bytes);
+        // Append MAX_IMPORT_BYTES + 1 bytes of padding to exceed the limit
+        data.extend(std::iter::repeat_n(0u8, MAX_IMPORT_BYTES + 1));
+
+        let result = import_canonical(&data);
+        assert!(result.is_err());
+        let err_msg = format!("{:?}", result.unwrap_err());
+        assert!(
+            err_msg.contains("Payload size") && err_msg.contains("exceeds maximum"),
+            "Expected payload size error, got: {}",
             err_msg
         );
     }
