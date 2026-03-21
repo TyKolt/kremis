@@ -483,15 +483,14 @@ impl Session {
 
                 // Import all edges
                 for (from, to, weight) in redb.edges()? {
-                    let _ = graph.insert_edge(from, to, weight);
+                    graph.insert_edge(from, to, weight)?;
                 }
 
-                // Import all properties
+                // Import all properties — propagate errors so corrupted
+                // backends are not silently exported as partial snapshots.
                 for node in &nodes {
-                    if let Ok(props) = redb.get_properties(node.id) {
-                        for (attr, val) in props {
-                            let _ = graph.store_property(node.id, attr, val);
-                        }
+                    for (attr, val) in redb.get_properties(node.id)? {
+                        graph.store_property(node.id, attr, val)?;
                     }
                 }
 

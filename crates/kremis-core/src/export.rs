@@ -494,11 +494,10 @@ pub fn canonical_checksum(graph: &Graph) -> u64 {
 /// This function is only available with the `crypto-hash` feature enabled.
 /// Add `kremis-core = { version = "...", features = ["crypto-hash"] }` to enable.
 #[cfg(feature = "crypto-hash")]
-#[must_use]
-pub fn canonical_crypto_hash(graph: &Graph) -> String {
-    let data = export_canonical(graph).unwrap_or_default();
+pub fn canonical_crypto_hash(graph: &Graph) -> Result<String, crate::KremisError> {
+    let data = export_canonical(graph)?;
     let hash = blake3::hash(&data);
-    hash.to_hex().to_string()
+    Ok(hash.to_hex().to_string())
 }
 
 /// Verify a graph against a BLAKE3 hash.
@@ -511,12 +510,12 @@ pub fn canonical_crypto_hash(graph: &Graph) -> String {
 ///
 /// This function is only available with the `crypto-hash` feature enabled.
 #[cfg(feature = "crypto-hash")]
-pub fn verify_crypto_hash(graph: &Graph, expected_hash: &str) -> bool {
-    let actual_hash = canonical_crypto_hash(graph);
+pub fn verify_crypto_hash(graph: &Graph, expected_hash: &str) -> Result<bool, crate::KremisError> {
+    let actual_hash = canonical_crypto_hash(graph)?;
     // Constant-time comparison would be ideal here for security,
     // but for integrity verification (not authentication), timing attacks
     // are not a concern.
-    actual_hash == expected_hash
+    Ok(actual_hash == expected_hash)
 }
 
 /// Compute a BLAKE3 hash of raw bytes.

@@ -84,8 +84,8 @@ pub trait GraphStore {
     /// Find nodes connected to ALL input nodes (intersection).
     fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError>;
 
-    /// Find the strongest path between two nodes.
-    /// Cost = -weight, so higher weights = lower cost = preferred.
+    /// Find the simple path with maximum total weight between two nodes.
+    /// Uses DFS with backtracking (correct for all graph topologies).
     fn strongest_path(
         &self,
         start: NodeId,
@@ -469,69 +469,27 @@ impl GraphStore for Graph {
             return Ok(Some(vec![start]));
         }
 
-        // Dijkstra with cost = -weight (higher weight = lower cost = preferred).
-        // Using BTreeMap for deterministic ordering.
-        let mut dist: BTreeMap<NodeId, i64> = BTreeMap::new();
-        let mut prev: BTreeMap<NodeId, NodeId> = BTreeMap::new();
+        // DFS with backtracking: explore all simple paths, keep the one with
+        // maximum total weight.  Correct for all graph topologies (including
+        // cycles).  Bounded by MAX_TRAVERSAL_DEPTH to prevent DoS.
+        let mut best_path: Option<Vec<NodeId>> = None;
+        let mut best_weight: i64 = i64::MIN;
         let mut visited = BTreeSet::new();
+        let mut current_path = vec![start];
+        visited.insert(start);
 
-        dist.insert(start, 0);
+        self.dfs_strongest_path(
+            start,
+            end,
+            0,
+            &mut visited,
+            &mut current_path,
+            0,
+            &mut best_path,
+            &mut best_weight,
+        );
 
-        loop {
-            // Find unvisited node with minimum distance
-            let current = dist
-                .iter()
-                .filter(|(n, _)| !visited.contains(*n))
-                .min_by_key(|(_, d)| *d)
-                .map(|(n, _)| *n);
-
-            let Some(current) = current else {
-                break;
-            };
-
-            if current == end {
-                break;
-            }
-
-            visited.insert(current);
-            let current_dist = dist[&current];
-
-            for (neighbor, weight) in self.neighbors_internal(current) {
-                if visited.contains(&neighbor) {
-                    continue;
-                }
-
-                // Cost = -weight (higher weight = lower cost = preferred).
-                // Clamp negative weights to 0 so only positive weights reduce cost.
-                let clamped_weight = weight.value().max(0);
-                let edge_cost = -clamped_weight;
-                let new_dist = current_dist.saturating_add(edge_cost);
-
-                if !dist.contains_key(&neighbor) || new_dist < dist[&neighbor] {
-                    dist.insert(neighbor, new_dist);
-                    prev.insert(neighbor, current);
-                }
-            }
-        }
-
-        // Reconstruct path
-        if !prev.contains_key(&end) && start != end {
-            return Ok(None);
-        }
-
-        let mut path = Vec::new();
-        let mut current = end;
-        while current != start {
-            path.push(current);
-            current = match prev.get(&current) {
-                Some(&p) => p,
-                None => return Ok(None),
-            };
-        }
-        path.push(start);
-        path.reverse();
-
-        Ok(Some(path))
+        Ok(best_path)
     }
 
     fn node_count(&self) -> Result<usize, KremisError> {
@@ -650,6 +608,61 @@ impl Graph {
         }
     }
 
+    /// DFS helper for strongest_path: explores all simple paths from `current`
+    /// to `end`, tracking the one with maximum total weight.
+    #[allow(clippy::too_many_arguments)]
+    fn dfs_strongest_path(
+        &self,
+        current: NodeId,
+        end: NodeId,
+        depth: usize,
+        visited: &mut BTreeSet<NodeId>,
+        current_path: &mut Vec<NodeId>,
+        current_weight: i64,
+        best_path: &mut Option<Vec<NodeId>>,
+        best_weight: &mut i64,
+    ) {
+        use crate::primitives::MAX_TRAVERSAL_DEPTH;
+
+        if depth >= MAX_TRAVERSAL_DEPTH {
+            return;
+        }
+
+        for (neighbor, weight) in self.neighbors_internal(current) {
+            let w = weight.value().max(0);
+            let new_weight = current_weight.saturating_add(w);
+
+            if neighbor == end {
+                if new_weight > *best_weight {
+                    let mut path = current_path.clone();
+                    path.push(end);
+                    *best_path = Some(path);
+                    *best_weight = new_weight;
+                }
+                continue;
+            }
+
+            if visited.contains(&neighbor) {
+                continue;
+            }
+
+            visited.insert(neighbor);
+            current_path.push(neighbor);
+            self.dfs_strongest_path(
+                neighbor,
+                end,
+                depth.saturating_add(1),
+                visited,
+                current_path,
+                new_weight,
+                best_path,
+                best_weight,
+            );
+            current_path.pop();
+            visited.remove(&neighbor);
+        }
+    }
+
     /// Bounded traverse that enforces MAX_TRAVERSAL_DEPTH.
     pub fn traverse_bounded(
         &self,
@@ -708,6 +721,15 @@ impl From<SerializableGraph> for Graph {
         for node in sg.nodes {
             graph.nodes.insert(node.id, node.clone());
             graph.entity_index.insert(node.entity, node.id);
+        }
+
+        // Guard: next_node_id must be strictly above all imported node IDs.
+        // Same guard as from_canonical — prevents node ID collision after
+        // loading a tampered persistence file.
+        if let Some(max_id) = graph.nodes.keys().map(|n| n.0).max()
+            && graph.next_node_id <= max_id
+        {
+            graph.next_node_id = max_id.saturating_add(1);
         }
 
         for (from, to, weight) in sg.edges {
@@ -902,6 +924,27 @@ mod tests {
 
         let path = graph.strongest_path(n3, n4).expect("path");
         assert_eq!(path, Some(vec![n3, n5, n4]));
+    }
+
+    #[test]
+    fn strongest_path_prefers_indirect_stronger_route() {
+        // Codex reproduction: 2->3=2, 2->4=1, 3->5=1, 4->5=10.
+        // Direct-ish path [2,3,5] has weight 3; indirect [2,4,5] has weight 11.
+        let mut graph = Graph::new();
+        let n2 = graph.insert_node(EntityId(2)).expect("insert");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert");
+        let n4 = graph.insert_node(EntityId(4)).expect("insert");
+        let n5 = graph.insert_node(EntityId(5)).expect("insert");
+
+        graph.insert_edge(n2, n3, EdgeWeight::new(2)).expect("edge");
+        graph.insert_edge(n2, n4, EdgeWeight::new(1)).expect("edge");
+        graph.insert_edge(n3, n5, EdgeWeight::new(1)).expect("edge");
+        graph
+            .insert_edge(n4, n5, EdgeWeight::new(10))
+            .expect("edge");
+
+        let path = graph.strongest_path(n2, n5).expect("path");
+        assert_eq!(path, Some(vec![n2, n4, n5]));
     }
 
     #[test]
@@ -1115,6 +1158,36 @@ mod tests {
         );
 
         // A new insert must not collide with any existing node ID
+        let new_node = graph.insert_node(EntityId(999)).expect("insert");
+        assert!(
+            new_node.0 > 2,
+            "new node ID {} collides with imported nodes",
+            new_node.0
+        );
+    }
+
+    #[test]
+    fn serializable_graph_clamps_tampered_next_node_id() {
+        // Same guard as from_canonical but for the file-backend persistence path.
+        let sg = SerializableGraph {
+            nodes: vec![
+                Node::new(NodeId(0), EntityId(100)),
+                Node::new(NodeId(1), EntityId(101)),
+                Node::new(NodeId(2), EntityId(102)),
+            ],
+            edges: vec![],
+            next_node_id: 0, // tampered: below all existing node IDs
+            properties: vec![],
+        };
+
+        let mut graph = Graph::from(sg);
+
+        assert!(
+            graph.next_node_id() > 2,
+            "next_node_id {} should be > 2",
+            graph.next_node_id()
+        );
+
         let new_node = graph.insert_node(EntityId(999)).expect("insert");
         assert!(
             new_node.0 > 2,

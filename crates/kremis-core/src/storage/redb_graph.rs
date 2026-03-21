@@ -407,6 +407,62 @@ impl RedbGraph {
         }
         Ok(count)
     }
+    /// DFS helper for strongest_path: explores all simple paths from `current`
+    /// to `end`, tracking the one with maximum total weight.
+    #[allow(clippy::too_many_arguments)]
+    fn dfs_strongest_path(
+        &self,
+        current: NodeId,
+        end: NodeId,
+        depth: usize,
+        visited: &mut BTreeSet<NodeId>,
+        current_path: &mut Vec<NodeId>,
+        current_weight: i64,
+        best_path: &mut Option<Vec<NodeId>>,
+        best_weight: &mut i64,
+    ) -> Result<(), KremisError> {
+        use crate::primitives::MAX_TRAVERSAL_DEPTH;
+
+        if depth >= MAX_TRAVERSAL_DEPTH {
+            return Ok(());
+        }
+
+        for (neighbor, weight) in self.neighbors(current)? {
+            let w = weight.value().max(0);
+            let new_weight = current_weight.saturating_add(w);
+
+            if neighbor == end {
+                if new_weight > *best_weight {
+                    let mut path = current_path.clone();
+                    path.push(end);
+                    *best_path = Some(path);
+                    *best_weight = new_weight;
+                }
+                continue;
+            }
+
+            if visited.contains(&neighbor) {
+                continue;
+            }
+
+            visited.insert(neighbor);
+            current_path.push(neighbor);
+            self.dfs_strongest_path(
+                neighbor,
+                end,
+                depth.saturating_add(1),
+                visited,
+                current_path,
+                new_weight,
+                best_path,
+                best_weight,
+            )?;
+            current_path.pop();
+            visited.remove(&neighbor);
+        }
+
+        Ok(())
+    }
 }
 
 // =============================================================================
@@ -743,68 +799,27 @@ impl GraphStore for RedbGraph {
             return Ok(Some(vec![start]));
         }
 
-        // Dijkstra with cost = -weight (higher weight = lower cost = preferred)
-        let mut dist: BTreeMap<NodeId, i64> = BTreeMap::new();
-        let mut prev: BTreeMap<NodeId, NodeId> = BTreeMap::new();
+        // DFS with backtracking: explore all simple paths, keep the one with
+        // maximum total weight.  Correct for all graph topologies (including
+        // cycles).  Bounded by MAX_TRAVERSAL_DEPTH to prevent DoS.
+        let mut best_path: Option<Vec<NodeId>> = None;
+        let mut best_weight: i64 = i64::MIN;
         let mut visited = BTreeSet::new();
+        let mut current_path = vec![start];
+        visited.insert(start);
 
-        dist.insert(start, 0);
+        self.dfs_strongest_path(
+            start,
+            end,
+            0,
+            &mut visited,
+            &mut current_path,
+            0,
+            &mut best_path,
+            &mut best_weight,
+        )?;
 
-        loop {
-            // Find unvisited node with minimum distance
-            let current = dist
-                .iter()
-                .filter(|(n, _)| !visited.contains(*n))
-                .min_by_key(|(_, d)| *d)
-                .map(|(n, _)| *n);
-
-            let Some(current) = current else {
-                break;
-            };
-
-            if current == end {
-                break;
-            }
-
-            visited.insert(current);
-            let current_dist = dist[&current];
-
-            for (neighbor, weight) in self.neighbors(current)? {
-                if visited.contains(&neighbor) {
-                    continue;
-                }
-
-                // Cost = -weight (higher weight = lower cost = preferred).
-                // Clamp negative weights to 0 so only positive weights reduce cost.
-                let clamped_weight = weight.value().max(0);
-                let edge_cost = -clamped_weight;
-                let new_dist = current_dist.saturating_add(edge_cost);
-
-                if !dist.contains_key(&neighbor) || new_dist < dist[&neighbor] {
-                    dist.insert(neighbor, new_dist);
-                    prev.insert(neighbor, current);
-                }
-            }
-        }
-
-        // Reconstruct path
-        if !prev.contains_key(&end) && start != end {
-            return Ok(None);
-        }
-
-        let mut path = Vec::new();
-        let mut current = end;
-        while current != start {
-            path.push(current);
-            current = match prev.get(&current) {
-                Some(&p) => p,
-                None => return Ok(None),
-            };
-        }
-        path.push(start);
-        path.reverse();
-
-        Ok(Some(path))
+        Ok(best_path)
     }
 
     fn node_count(&self) -> Result<usize, KremisError> {
@@ -1110,6 +1125,29 @@ mod tests {
 
         let path = graph.strongest_path(n3, n4).expect("path");
         assert_eq!(path, Some(vec![n3, n5, n4]));
+    }
+
+    #[test]
+    fn strongest_path_prefers_indirect_stronger_route() {
+        // Codex reproduction: 2->3=2, 2->4=1, 3->5=1, 4->5=10.
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let n2 = graph.insert_node(EntityId(2)).expect("insert node");
+        let n3 = graph.insert_node(EntityId(3)).expect("insert node");
+        let n4 = graph.insert_node(EntityId(4)).expect("insert node");
+        let n5 = graph.insert_node(EntityId(5)).expect("insert node");
+
+        graph.insert_edge(n2, n3, EdgeWeight::new(2)).expect("edge");
+        graph.insert_edge(n2, n4, EdgeWeight::new(1)).expect("edge");
+        graph.insert_edge(n3, n5, EdgeWeight::new(1)).expect("edge");
+        graph
+            .insert_edge(n4, n5, EdgeWeight::new(10))
+            .expect("edge");
+
+        let path = graph.strongest_path(n2, n5).expect("path");
+        assert_eq!(path, Some(vec![n2, n4, n5]));
     }
 
     #[test]

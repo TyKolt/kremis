@@ -373,8 +373,9 @@ pub fn cmd_ingest(
             "text" => {
                 let text = String::from_utf8_lossy(&contents);
                 let mut signals = Vec::new();
+                let mut skipped: usize = 0;
 
-                for line in text.lines() {
+                for (line_num, line) in text.lines().enumerate() {
                     let parts: Vec<&str> = line.split(':').collect();
                     if parts.len() >= 3 {
                         let entity_id: u64 = parts[0]
@@ -385,6 +386,11 @@ pub fn cmd_ingest(
                         let value = parts[2..].join(":");
 
                         if attribute.is_empty() || value.is_empty() {
+                            skipped = skipped.saturating_add(1);
+                            eprintln!(
+                                "Warning: skipping line {} (empty attribute or value)",
+                                line_num.saturating_add(1)
+                            );
                             continue;
                         }
 
@@ -393,7 +399,16 @@ pub fn cmd_ingest(
                             Attribute::new(attribute),
                             Value::new(value.trim()),
                         ));
+                    } else if !line.trim().is_empty() {
+                        skipped = skipped.saturating_add(1);
+                        eprintln!(
+                            "Warning: skipping line {} (expected entity_id:attribute:value)",
+                            line_num.saturating_add(1)
+                        );
                     }
+                }
+                if skipped > 0 {
+                    eprintln!("Warning: {skipped} line(s) skipped during text ingest");
                 }
                 signals
             }
@@ -580,8 +595,13 @@ pub fn cmd_query(
 
             let node_ids: Vec<NodeId> = nodes_str
                 .split(',')
-                .filter_map(|s: &str| s.trim().parse::<u64>().ok().map(NodeId))
-                .collect();
+                .map(|s: &str| {
+                    s.trim()
+                        .parse::<u64>()
+                        .map(NodeId)
+                        .map_err(|_| KremisError::InvalidSignal)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
             let result = session.intersect(&node_ids)?;
 
@@ -855,7 +875,7 @@ pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(),
     use kremis_core::export::canonical_crypto_hash;
     let session = load_or_create_session(db_path, backend)?;
     let graph = session.export_graph_snapshot()?;
-    let hash = canonical_crypto_hash(&graph);
+    let hash = canonical_crypto_hash(&graph)?;
     let checksum = canonical_checksum(&graph);
     if json_mode {
         println!(

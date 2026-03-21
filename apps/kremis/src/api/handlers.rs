@@ -403,7 +403,15 @@ pub async fn hash_handler(State(state): State<AppState>) -> impl IntoResponse {
             );
         }
     };
-    let hash = canonical_crypto_hash(&graph);
+    let hash = match canonical_crypto_hash(&graph) {
+        Ok(h) => h,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"success": false, "error": format!("Hash failed: {}", e)})),
+            );
+        }
+    };
     let checksum = canonical_checksum(&graph);
     (
         StatusCode::OK,

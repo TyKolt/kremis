@@ -10,7 +10,7 @@ icon: "diamond-turn-right"
 
 **Authentication:** Required (if enabled)
 
-Uses Dijkstra's algorithm with negative edge costs (`cost = -weight`) to prefer higher-weight paths, correctly prioritizing stronger multi-hop routes over weaker direct ones.
+Uses DFS with backtracking to find the simple path with maximum total weight between two nodes, correctly handling all graph topologies including cycles.
 
 ## Request
 

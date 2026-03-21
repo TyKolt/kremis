@@ -13,6 +13,8 @@ pub enum ClientError {
     Unauthorized,
     /// 429 Too Many Requests.
     RateLimited,
+    /// Client error (4xx other than 401/429).
+    ClientRequestError(u16, String),
     /// Server returned a 5xx error.
     ServerError(u16, String),
     /// Failed to parse response body.
@@ -25,6 +27,9 @@ impl std::fmt::Display for ClientError {
             Self::ConnectionFailed(url) => write!(f, "Cannot connect to Kremis at {url}"),
             Self::Unauthorized => write!(f, "Unauthorized: invalid or missing API key"),
             Self::RateLimited => write!(f, "Rate limited: too many requests"),
+            Self::ClientRequestError(status, msg) => {
+                write!(f, "Client error ({status}): {msg}")
+            }
             Self::ServerError(status, msg) => write!(f, "Server error ({status}): {msg}"),
             Self::ParseError(msg) => write!(f, "Parse error: {msg}"),
         }
@@ -70,6 +75,10 @@ impl KremisClient {
         }
         if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             return Err(ClientError::RateLimited);
+        }
+        if status.is_client_error() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ClientError::ClientRequestError(status.as_u16(), body));
         }
         if status.is_server_error() {
             let body = resp.text().await.unwrap_or_default();

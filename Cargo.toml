@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.16.6"
+version = "0.16.7"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/TyKolt/kremis"
@@ -17,6 +17,9 @@ readme = "README.md"
 # =============================================================================
 # WORKSPACE LINTS (inherited by all crates)
 # =============================================================================
+
+[workspace.lints.rust]
+dead_code = "deny"
 
 [workspace.lints.clippy]
 # Critical denials — inherited by ALL crates
