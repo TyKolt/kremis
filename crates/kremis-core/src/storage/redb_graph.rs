@@ -16,9 +16,9 @@
 //! `RedbGraph` persists data to disk automatically.
 
 use crate::graph::GraphStore;
-use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Signal, Value};
+use crate::{Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Signal, Value};
 use redb::{Database, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Table for nodes: NodeId(u64) -> serialized Node bytes
@@ -407,62 +407,6 @@ impl RedbGraph {
         }
         Ok(count)
     }
-    /// DFS helper for strongest_path: explores all simple paths from `current`
-    /// to `end`, tracking the one with maximum total weight.
-    #[allow(clippy::too_many_arguments)]
-    fn dfs_strongest_path(
-        &self,
-        current: NodeId,
-        end: NodeId,
-        depth: usize,
-        visited: &mut BTreeSet<NodeId>,
-        current_path: &mut Vec<NodeId>,
-        current_weight: i64,
-        best_path: &mut Option<Vec<NodeId>>,
-        best_weight: &mut i64,
-    ) -> Result<(), KremisError> {
-        use crate::primitives::MAX_TRAVERSAL_DEPTH;
-
-        if depth >= MAX_TRAVERSAL_DEPTH {
-            return Ok(());
-        }
-
-        for (neighbor, weight) in self.neighbors(current)? {
-            let w = weight.value().max(0);
-            let new_weight = current_weight.saturating_add(w);
-
-            if neighbor == end {
-                if new_weight > *best_weight {
-                    let mut path = current_path.clone();
-                    path.push(end);
-                    *best_path = Some(path);
-                    *best_weight = new_weight;
-                }
-                continue;
-            }
-
-            if visited.contains(&neighbor) {
-                continue;
-            }
-
-            visited.insert(neighbor);
-            current_path.push(neighbor);
-            self.dfs_strongest_path(
-                neighbor,
-                end,
-                depth.saturating_add(1),
-                visited,
-                current_path,
-                new_weight,
-                best_path,
-                best_weight,
-            )?;
-            current_path.pop();
-            visited.remove(&neighbor);
-        }
-
-        Ok(())
-    }
 }
 
 // =============================================================================
@@ -681,145 +625,6 @@ impl GraphStore for RedbGraph {
             .get(id.0)
             .map_err(|e| KremisError::IoError(e.to_string()))?
             .is_some())
-    }
-
-    fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
-        let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start)? {
-            return Ok(None);
-        }
-
-        let mut visited = BTreeSet::new();
-        let mut queue = VecDeque::new();
-        let mut path = Vec::new();
-        let mut subgraph_edges = Vec::new();
-
-        queue.push_back((start, 0usize));
-        visited.insert(start);
-
-        while let Some((current, current_depth)) = queue.pop_front() {
-            path.push(current);
-
-            if current_depth >= depth {
-                continue;
-            }
-
-            for (neighbor, weight) in self.neighbors(current)? {
-                subgraph_edges.push((current, neighbor, weight));
-
-                if !visited.contains(&neighbor) {
-                    visited.insert(neighbor);
-                    queue.push_back((neighbor, current_depth.saturating_add(1)));
-                }
-            }
-        }
-
-        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
-    }
-
-    fn traverse_filtered(
-        &self,
-        start: NodeId,
-        depth: usize,
-        min_weight: EdgeWeight,
-    ) -> Result<Option<Artifact>, KremisError> {
-        let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start)? {
-            return Ok(None);
-        }
-
-        let mut visited = BTreeSet::new();
-        let mut queue = VecDeque::new();
-        let mut path = Vec::new();
-        let mut subgraph_edges = Vec::new();
-
-        queue.push_back((start, 0usize));
-        visited.insert(start);
-
-        while let Some((current, current_depth)) = queue.pop_front() {
-            path.push(current);
-
-            if current_depth >= depth {
-                continue;
-            }
-
-            for (neighbor, weight) in self.neighbors(current)? {
-                // Filter by minimum weight
-                if weight.value() >= min_weight.value() {
-                    subgraph_edges.push((current, neighbor, weight));
-
-                    if !visited.contains(&neighbor) {
-                        visited.insert(neighbor);
-                        queue.push_back((neighbor, current_depth.saturating_add(1)));
-                    }
-                }
-            }
-        }
-
-        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
-    }
-
-    fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
-        if nodes.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Get neighbors of first node
-        let first_neighbors: BTreeSet<_> = self
-            .neighbors(nodes[0])?
-            .into_iter()
-            .map(|(n, _)| n)
-            .collect();
-
-        if first_neighbors.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Intersect with neighbors of remaining nodes
-        let mut result = first_neighbors;
-        for &node in &nodes[1..] {
-            let neighbors: BTreeSet<_> =
-                self.neighbors(node)?.into_iter().map(|(n, _)| n).collect();
-            result = result.intersection(&neighbors).copied().collect();
-        }
-
-        Ok(result.into_iter().collect())
-    }
-
-    fn strongest_path(
-        &self,
-        start: NodeId,
-        end: NodeId,
-    ) -> Result<Option<Vec<NodeId>>, KremisError> {
-        if !self.contains_node(start)? || !self.contains_node(end)? {
-            return Ok(None);
-        }
-
-        if start == end {
-            return Ok(Some(vec![start]));
-        }
-
-        // DFS with backtracking: explore all simple paths, keep the one with
-        // maximum total weight.  Correct for all graph topologies (including
-        // cycles).  Bounded by MAX_TRAVERSAL_DEPTH to prevent DoS.
-        let mut best_path: Option<Vec<NodeId>> = None;
-        let mut best_weight: i64 = i64::MIN;
-        let mut visited = BTreeSet::new();
-        let mut current_path = vec![start];
-        visited.insert(start);
-
-        self.dfs_strongest_path(
-            start,
-            end,
-            0,
-            &mut visited,
-            &mut current_path,
-            0,
-            &mut best_path,
-            &mut best_weight,
-        )?;
-
-        Ok(best_path)
     }
 
     fn node_count(&self) -> Result<usize, KremisError> {

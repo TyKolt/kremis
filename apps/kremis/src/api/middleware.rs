@@ -45,17 +45,6 @@ pub fn create_rate_limiter(requests_per_second: u32) -> GlobalRateLimiter {
     Arc::new(RateLimiter::direct(quota))
 }
 
-/// Get rate limit from environment variable.
-///
-/// Returns the value of `KREMIS_RATE_LIMIT` or 100 if not set.
-#[allow(dead_code)]
-pub fn get_rate_limit_from_env() -> u32 {
-    std::env::var("KREMIS_RATE_LIMIT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(100)
-}
-
 /// Rate limiting middleware.
 ///
 /// Checks the global rate limiter before allowing requests through.

@@ -24,23 +24,6 @@ use axum::{
 use subtle::ConstantTimeEq;
 
 // =============================================================================
-// LEGACY HELPER (kept for backward compatibility with existing tests)
-// =============================================================================
-
-/// Get API key from the `KREMIS_API_KEY` environment variable.
-///
-/// Returns `Some(key)` if set and non-empty, `None` otherwise.
-///
-/// Prefer injecting the key via [`AppConfig`][crate::config::AppConfig] and
-/// [`AppState`][crate::api::AppState] instead of calling this directly.
-#[allow(dead_code)]
-pub fn get_api_key_from_env() -> Option<String> {
-    std::env::var("KREMIS_API_KEY")
-        .ok()
-        .filter(|k| !k.is_empty())
-}
-
-// =============================================================================
 // API KEY AUTHENTICATION MIDDLEWARE
 // =============================================================================
 
@@ -111,22 +94,5 @@ pub async fn api_key_auth_middleware(
             );
             Err((StatusCode::UNAUTHORIZED, "Unauthorized"))
         }
-    }
-}
-
-// =============================================================================
-// TESTS
-// =============================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_api_key_empty_returns_none() {
-        // Clear the env var if set
-        // SAFETY: This is a unit test running in isolation.
-        unsafe { std::env::remove_var("KREMIS_API_KEY") };
-        assert!(get_api_key_from_env().is_none());
     }
 }

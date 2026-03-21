@@ -46,7 +46,6 @@ pub struct KremisClient {
     api_key: Option<String>,
 }
 
-#[allow(dead_code)]
 impl KremisClient {
     /// Create a new client pointing at the given Kremis server URL.
     pub fn new(base_url: String, api_key: Option<String>) -> Self {
@@ -96,13 +95,6 @@ impl KremisClient {
             .map_err(|e| ClientError::ConnectionFailed(format!("{}: {e}", self.base_url)))
     }
 
-    /// GET /health
-    pub async fn health(&self) -> Result<Value, ClientError> {
-        let req = self.request(reqwest::Method::GET, "/health");
-        let resp = self.send(req).await?;
-        self.handle_response(resp).await
-    }
-
     /// GET /status → graph statistics.
     pub async fn status(&self) -> Result<Value, ClientError> {
         let req = self.request(reqwest::Method::GET, "/status");
@@ -130,13 +122,6 @@ impl KremisClient {
     /// POST /query → execute a graph query (generic JSON body).
     pub async fn query(&self, request: Value) -> Result<Value, ClientError> {
         let req = self.request(reqwest::Method::POST, "/query").json(&request);
-        let resp = self.send(req).await?;
-        self.handle_response(resp).await
-    }
-
-    /// POST /export → export graph in canonical format.
-    pub async fn export(&self) -> Result<Value, ClientError> {
-        let req = self.request(reqwest::Method::POST, "/export");
         let resp = self.send(req).await?;
         self.handle_response(resp).await
     }

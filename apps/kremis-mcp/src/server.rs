@@ -129,7 +129,7 @@ impl KremisMcp {
                 };
                 Ok(CallToolResult::success(vec![Content::text(text)]))
             }
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -146,7 +146,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_query_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -167,7 +167,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_query_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -185,7 +185,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_query_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -202,7 +202,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_query_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -225,7 +225,7 @@ impl KremisMcp {
                 );
                 Ok(CallToolResult::success(vec![Content::text(text)]))
             }
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -242,7 +242,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_query_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -261,7 +261,7 @@ impl KremisMcp {
             Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
                 format_retract_response(&resp),
             )])),
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 
@@ -276,7 +276,7 @@ impl KremisMcp {
                 };
                 Ok(CallToolResult::success(vec![Content::text(text)]))
             }
-            Err(e) => Err(McpError::internal_error(format!("{e}"), None)),
+            Err(e) => Err(mcp_err(e)),
         }
     }
 }
@@ -299,6 +299,11 @@ impl ServerHandler for KremisMcp {
             ..Default::default()
         }
     }
+}
+
+/// Map any displayable error into an MCP internal error.
+fn mcp_err(e: impl std::fmt::Display) -> McpError {
+    McpError::internal_error(format!("{e}"), None)
 }
 
 // =============================================================================

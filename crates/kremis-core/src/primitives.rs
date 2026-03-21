@@ -44,12 +44,6 @@ pub const PROMOTION_THRESHOLD: i64 = 10;
 /// - This prevents runaway traversals in large graphs.
 pub const MAX_TRAVERSAL_DEPTH: usize = 100;
 
-/// Maximum path length for pathfinding algorithms.
-///
-/// Limits the number of nodes in a single path to prevent
-/// unbounded computation in strongest_path and similar queries.
-pub const MAX_PATH_LENGTH: usize = 1000;
-
 // =============================================================================
 // INPUT VALIDATION LIMITS
 // =============================================================================

@@ -101,6 +101,11 @@ fn validate_output_path(path: &std::path::Path) -> Result<PathBuf, KremisError> 
     Ok(canonical_parent.join(filename))
 }
 
+/// Serialize a JSON value to a pretty-printed string.
+fn json_pretty(value: &serde_json::Value) -> Result<String, KremisError> {
+    serde_json::to_string_pretty(value).map_err(|e| KremisError::SerializationError(e.to_string()))
+}
+
 // =============================================================================
 // SERVER COMMAND
 // =============================================================================
@@ -157,11 +162,7 @@ pub fn cmd_status(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(
             "density_per_thousand": metrics.density_per_thousand(),
             "max_depth": metrics.max_depth
         });
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&output)
-                .map_err(|e| KremisError::SerializationError(e.to_string()))?
-        );
+        println!("{}", json_pretty(&output)?);
         return Ok(());
     }
 
@@ -212,11 +213,7 @@ pub fn cmd_stage(
                 "stable_edge_count": progress.metrics.stable_edge_count
             }
         });
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&output)
-                .map_err(|e| KremisError::SerializationError(e.to_string()))?
-        );
+        println!("{}", json_pretty(&output)?);
         return Ok(());
     }
 
@@ -481,11 +478,7 @@ pub fn cmd_query(
                     "entity_id": entity_id,
                     "node_id": node_id.map(|n| n.0)
                 });
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output)
-                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                );
+                println!("{}", json_pretty(&output)?);
             } else {
                 match node_id {
                     Some(n) => println!("Entity {} -> Node {}", entity_id, n.0),
@@ -524,11 +517,7 @@ pub fn cmd_query(
                         "found": false
                     }),
                 };
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output)
-                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                );
+                println!("{}", json_pretty(&output)?);
             } else {
                 match artifact {
                     Some(a) => {
@@ -574,11 +563,7 @@ pub fn cmd_query(
                         "found": false
                     }),
                 };
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output)
-                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                );
+                println!("{}", json_pretty(&output)?);
             } else {
                 match result {
                     Some(path) => {
@@ -611,11 +596,7 @@ pub fn cmd_query(
                     "nodes": node_ids.iter().map(|n| n.0).collect::<Vec<_>>(),
                     "common_neighbors": result.iter().map(|n| n.0).collect::<Vec<_>>()
                 });
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output)
-                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                );
+                println!("{}", json_pretty(&output)?);
             } else {
                 println!(
                     "Intersection of {:?}:",
@@ -654,11 +635,7 @@ pub fn cmd_query(
                         "found": false
                     }),
                 };
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&output)
-                        .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                );
+                println!("{}", json_pretty(&output)?);
             } else {
                 match artifact {
                     Some(a) => {
@@ -697,11 +674,7 @@ pub fn cmd_query(
                                 "value": v.as_str()
                             })).collect::<Vec<_>>()
                         });
-                        println!(
-                            "{}",
-                            serde_json::to_string_pretty(&output)
-                                .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                        );
+                        println!("{}", json_pretty(&output)?);
                     } else if props.is_empty() {
                         println!("Node {} has no properties", node_id);
                     } else {
@@ -718,11 +691,7 @@ pub fn cmd_query(
                             "node_id": node_id,
                             "found": false
                         });
-                        println!(
-                            "{}",
-                            serde_json::to_string_pretty(&output)
-                                .map_err(|e| KremisError::SerializationError(e.to_string()))?
-                        );
+                        println!("{}", json_pretty(&output)?);
                     } else {
                         println!("Node {} not found", node_id);
                     }
@@ -878,13 +847,10 @@ pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(),
     let hash = canonical_crypto_hash(&graph)?;
     let checksum = canonical_checksum(&graph);
     if json_mode {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&serde_json::json!({
-                "hash": hash, "algorithm": "blake3", "checksum": checksum
-            }))
-            .map_err(|e| KremisError::SerializationError(e.to_string()))?
-        );
+        let output = serde_json::json!({
+            "hash": hash, "algorithm": "blake3", "checksum": checksum
+        });
+        println!("{}", json_pretty(&output)?);
     } else {
         println!("BLAKE3: {}", hash);
         println!("Checksum (XOR): {}", checksum);
