@@ -2,6 +2,19 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.7] - 2026-03-21
+
+### Bug Fixes
+
+- Resolve 7 bugs in core, CLI, and MCP bridge ([`5f46892`](https://github.com/TyKolt/kremis/commit/5f4689278e5e53452b7347bcca19b4e53896821f))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.6 [skip ci] ([`3b528e7`](https://github.com/TyKolt/kremis/commit/3b528e710f184ae800b57deae2d54f1369d774b0))
+- Fix 10 stale values in API/MCP docs post v0.16.2–v0.16.6 ([`5926419`](https://github.com/TyKolt/kremis/commit/5926419ce40a6804c375b8e4ff49e28557291294))
+- Update query-path algorithm and add import size limit note ([`618ce57`](https://github.com/TyKolt/kremis/commit/618ce578a380ee7bd2d5f4a4f71f71506d97bdc1))
+- Fix query-path algorithm description stale after v0.16.5 ([`193705c`](https://github.com/TyKolt/kremis/commit/193705c92122522338ec0458fe50d39455d10379))
+
 ## [0.16.6] - 2026-03-20
 
 ### Bug Fixes
