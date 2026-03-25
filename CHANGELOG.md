@@ -2,6 +2,20 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.9] - 2026-03-25
+
+### Bug Fixes
+
+- Exempt /health from rate limiter (#26) ([`cb449ba`](https://github.com/TyKolt/kremis/commit/cb449baa665dd016d3b24e7dbf094682238f7ea2))
+
+### Dependencies
+
+- Bump proptest in the rust-minor-patch group (#32) ([`5c534c2`](https://github.com/TyKolt/kremis/commit/5c534c2050d097a76c2df338fd929ed70a7ea56b))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.8 [skip ci] ([`9cc7d8d`](https://github.com/TyKolt/kremis/commit/9cc7d8daaf8408dfecaba45eb1002b20652675d1))
+
 ## [0.16.8] - 2026-03-25
 
 ### Bug Fixes
