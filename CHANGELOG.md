@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.0] - 2026-03-25
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.10 [skip ci] ([`75372cf`](https://github.com/TyKolt/kremis/commit/75372cfafb74f1ebb7618f8630e133d9337e779f))
+
+### Features
+
+- Add --strict flag to ingest text mode (#29) ([`b3c15d2`](https://github.com/TyKolt/kremis/commit/b3c15d2d399db8f17d427f2d5ccafba4daaa5b0e))
+
 ## [0.16.10] - 2026-03-25
 
 ### Bug Fixes
