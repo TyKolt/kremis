@@ -262,6 +262,7 @@ pub fn cmd_ingest(
     file: Option<&PathBuf>,
     format: &str,
     from_stdin: bool,
+    strict: bool,
 ) -> Result<(), KremisError> {
     use kremis_core::{Attribute, EntityId, Signal, Value};
 
@@ -406,6 +407,11 @@ pub fn cmd_ingest(
                 }
                 if skipped > 0 {
                     eprintln!("Warning: {skipped} line(s) skipped during text ingest");
+                    if strict {
+                        return Err(KremisError::SerializationError(format!(
+                            "{skipped} line(s) skipped: aborting due to --strict"
+                        )));
+                    }
                 }
                 signals
             }

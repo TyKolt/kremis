@@ -98,6 +98,10 @@ pub enum Commands {
         /// Input format for --file mode (json, text)
         #[arg(short = 't', long, default_value = "json")]
         format: String,
+
+        /// Fail with exit code 1 if any lines are skipped (text format only)
+        #[arg(long)]
+        strict: bool,
     },
 
     /// Execute a query on the graph
@@ -181,6 +185,7 @@ pub async fn execute(cli: Cli, config: AppConfig) -> Result<(), KremisError> {
             file,
             format,
             from_stdin,
+            strict,
         }) => cmd_ingest(
             &cli.database,
             backend,
@@ -188,6 +193,7 @@ pub async fn execute(cli: Cli, config: AppConfig) -> Result<(), KremisError> {
             file.as_ref(),
             &format,
             from_stdin,
+            strict,
         ),
         Some(Commands::Query {
             query_type,

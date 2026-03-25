@@ -210,7 +210,15 @@ fn test_ingest_json_format() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    let result = cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false);
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    );
     assert!(result.is_ok());
 
     // Verify data was ingested
@@ -225,7 +233,15 @@ fn test_ingest_text_format() {
     let signals_file = create_signals_text(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    let result = cmd_ingest(&db_path, "file", false, Some(&signals_file), "text", false);
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "text",
+        false,
+        false,
+    );
     assert!(result.is_ok());
 
     // Verify data was ingested
@@ -247,6 +263,7 @@ fn test_ingest_invalid_format() {
         Some(&signals_file),
         "unknown",
         false,
+        false,
     );
     assert!(result.is_err());
 }
@@ -259,8 +276,55 @@ fn test_ingest_invalid_json() {
     std::fs::write(&bad_file, "not valid json").unwrap();
 
     cmd_init(&db_path, "file", false).unwrap();
-    let result = cmd_ingest(&db_path, "file", false, Some(&bad_file), "json", false);
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&bad_file),
+        "json",
+        false,
+        false,
+    );
     assert!(result.is_err());
+}
+
+#[test]
+fn ingest_text_strict_fails_on_malformed_lines() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let bad_file = temp.path().join("mixed.txt");
+    std::fs::write(&bad_file, "1:name:Alice\nbad line\n2:role:Engineer").unwrap();
+
+    cmd_init(&db_path, "file", false).unwrap();
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&bad_file),
+        "text",
+        false,
+        true,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
+fn ingest_text_strict_ok_on_all_valid_lines() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let signals_file = create_signals_text(&temp);
+
+    cmd_init(&db_path, "file", false).unwrap();
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "text",
+        false,
+        true,
+    );
+    assert!(result.is_ok());
 }
 
 // =============================================================================
@@ -296,7 +360,16 @@ fn test_query_lookup_found() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -320,7 +393,16 @@ fn test_query_traverse() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -344,7 +426,16 @@ fn test_query_traverse_filtered() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -368,7 +459,16 @@ fn test_query_path() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -392,7 +492,16 @@ fn test_query_intersect() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -442,7 +551,16 @@ fn test_query_lookup_json_mode() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -466,7 +584,16 @@ fn test_query_traverse_json_mode() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -490,7 +617,16 @@ fn test_query_intersect_json_mode() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -514,7 +650,16 @@ fn test_query_properties_json_mode() {
     let signals_file = create_signals_json(&temp);
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_query(
         &db_path,
@@ -543,7 +688,16 @@ fn test_export_canonical_format() {
     let output_path = temp.path().join("export.bin");
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_export(&db_path, "file", &output_path, "canonical");
     assert!(result.is_ok());
@@ -558,7 +712,16 @@ fn test_export_json_format() {
     let output_path = temp.path().join("export.json");
 
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
 
     let result = cmd_export(&db_path, "file", &output_path, "json");
     assert!(result.is_ok());
@@ -595,7 +758,16 @@ fn test_import_canonical() {
 
     // Create and export
     cmd_init(&db_path, "file", false).unwrap();
-    cmd_ingest(&db_path, "file", false, Some(&signals_file), "json", false).unwrap();
+    cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&signals_file),
+        "json",
+        false,
+        false,
+    )
+    .unwrap();
     cmd_export(&db_path, "file", &export_path, "canonical").unwrap();
 
     // Import

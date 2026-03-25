@@ -5,7 +5,7 @@ icon: "upload"
 ---
 
 ```bash
-kremis ingest [-f <FILE>] [-t <FORMAT>] [--from-stdin]
+kremis ingest [-f <FILE>] [-t <FORMAT>] [--from-stdin] [--strict]
 ```
 
 Read signals from a file or stdin and ingest them into the graph.
@@ -19,6 +19,7 @@ Read signals from a file or stdin and ingest them into the graph.
 | `--file <path>` | `-f` | Path to the input file | (required without `--from-stdin`) |
 | `--format <fmt>` | `-t` | Input format: `json` or `text` (file only) | `json` |
 | `--from-stdin` | | Read signals from stdin as JSON Lines | `false` |
+| `--strict` | | Fail with exit code 1 if any lines are skipped (`text` format only) | `false` |
 
 ## Input Formats
 
@@ -77,4 +78,7 @@ kremis ingest --from-stdin <<EOF
 {"entity_id": 1, "attribute": "name", "value": "Alice"}
 {"entity_id": 2, "attribute": "name", "value": "Bob"}
 EOF
+
+# Strict mode: fail if any lines are malformed (CI/CD pipelines)
+kremis ingest -f data.txt -t text --strict
 ```
