@@ -258,7 +258,7 @@ pub fn cmd_stage(
 pub fn cmd_ingest(
     db_path: &PathBuf,
     backend: &str,
-    _json_mode: bool,
+    json_mode: bool,
     file: Option<&PathBuf>,
     format: &str,
     from_stdin: bool,
@@ -434,12 +434,21 @@ pub fn cmd_ingest(
     // Save graph
     save_session(&session, db_path)?;
 
-    println!("Ingested {} signals", count);
-    println!(
-        "Graph now has {} nodes, {} edges",
-        session.node_count()?,
-        session.edge_count()?
-    );
+    if json_mode {
+        let output = serde_json::json!({
+            "ingested": count,
+            "nodes": session.node_count()?,
+            "edges": session.edge_count()?
+        });
+        println!("{}", json_pretty(&output)?);
+    } else {
+        println!("Ingested {} signals", count);
+        println!(
+            "Graph now has {} nodes, {} edges",
+            session.node_count()?,
+            session.edge_count()?
+        );
+    }
 
     Ok(())
 }
