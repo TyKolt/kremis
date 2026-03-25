@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.8] - 2026-03-25
+
+### Bug Fixes
+
+- Respect --json-mode flag on ingest command ([`31f939a`](https://github.com/TyKolt/kremis/commit/31f939aa758ffed8ae7f27cbd7743ab79558d471))
+
+### Documentation
+
+- Fix stale GraphStore method count in architecture.mdx ([`57ad733`](https://github.com/TyKolt/kremis/commit/57ad733640c0a1dbc247d4e653f81c493b89a619))
+
 ## [0.16.7] - 2026-03-21
 
 ### Bug Fixes
@@ -14,6 +24,7 @@ All notable changes to Kremis are documented in this file.
 - Fix 10 stale values in API/MCP docs post v0.16.2–v0.16.6 ([`5926419`](https://github.com/TyKolt/kremis/commit/5926419ce40a6804c375b8e4ff49e28557291294))
 - Update query-path algorithm and add import size limit note ([`618ce57`](https://github.com/TyKolt/kremis/commit/618ce578a380ee7bd2d5f4a4f71f71506d97bdc1))
 - Fix query-path algorithm description stale after v0.16.5 ([`193705c`](https://github.com/TyKolt/kremis/commit/193705c92122522338ec0458fe50d39455d10379))
+- Regenerate CHANGELOG for v0.16.7 [skip ci] ([`12c4ef5`](https://github.com/TyKolt/kremis/commit/12c4ef516c8be6fc40e924a4a41880b3c0c0d90a))
 
 ## [0.16.6] - 2026-03-20
 
