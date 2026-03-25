@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.16.10] - 2026-03-25
+
+### Bug Fixes
+
+- Properties query returns found:true for existing node without properties (#27) ([`ad6c237`](https://github.com/TyKolt/kremis/commit/ad6c23767de52d714288a6ad626dd880c82af9ea))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.16.9 [skip ci] ([`5cb4e60`](https://github.com/TyKolt/kremis/commit/5cb4e60ff318621837dc377fbf225d3a98646f0b))
+
 ## [0.16.9] - 2026-03-25
 
 ### Bug Fixes
