@@ -33,10 +33,10 @@ updates:
       time: "09:00"
       timezone: "Europe/Rome"
     open-pull-requests-limit: 3
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
+    groups:
+      actions-all:
+        patterns:
+          - "*"
     commit-message:
       prefix: "ci"
     labels:
