@@ -206,8 +206,11 @@ pub fn create_router_with_config(state: AppState, config: &AppConfig) -> Router 
         );
     }
 
-    let mut router = Router::new()
-        .route("/health", get(handlers::health_handler))
+    // Health endpoint: exempt from rate limiter and auth (healthcheck contract)
+    let health_router = Router::new().route("/health", get(handlers::health_handler));
+
+    // All other endpoints: subject to auth + rate limiter
+    let mut api_router = Router::new()
         .route("/status", get(handlers::status_handler))
         .route("/stage", get(handlers::stage_handler))
         .route("/signal", post(handlers::ingest_handler))
@@ -219,20 +222,21 @@ pub fn create_router_with_config(state: AppState, config: &AppConfig) -> Router 
         .route("/metrics", get(handlers::metrics_handler));
 
     if has_auth {
-        router = router.layer(axum_middleware::from_fn_with_state(
+        api_router = api_router.layer(axum_middleware::from_fn_with_state(
             state.api_key.clone(),
             auth::api_key_auth_middleware,
         ));
     }
 
     if let Some(limiter) = rate_limiter {
-        router = router.layer(axum_middleware::from_fn_with_state(
+        api_router = api_router.layer(axum_middleware::from_fn_with_state(
             limiter,
             middleware::rate_limit_middleware,
         ));
     }
 
-    router
+    health_router
+        .merge(api_router)
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
