@@ -875,6 +875,14 @@ async fn test_query_properties_missing_node_has_diagnostic() {
     assert_eq!(result.diagnostic, Some("node_not_found".to_string()));
 }
 
+#[test]
+fn test_query_response_with_empty_properties_has_found_true() {
+    let response = QueryResponse::with_properties(vec![]);
+    assert!(response.success);
+    assert!(response.found);
+    assert!(response.properties.is_empty());
+}
+
 // =============================================================================
 // EXPORT ENDPOINT TESTS
 // =============================================================================

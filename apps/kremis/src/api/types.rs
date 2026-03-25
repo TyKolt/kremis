@@ -338,7 +338,7 @@ impl QueryResponse {
     pub fn with_properties(properties: Vec<PropertyJson>) -> Self {
         Self {
             success: true,
-            found: !properties.is_empty(),
+            found: true,
             path: vec![],
             edges: vec![],
             grounding: "unknown".to_string(),
