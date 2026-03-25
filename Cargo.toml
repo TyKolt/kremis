@@ -77,5 +77,5 @@ subtle = "2.6"
 toml = { version = "0.8", default-features = false, features = ["parse"] }
 
 # DEV / TESTS
-proptest = "1.9"
+proptest = "1.11"
 tempfile = "3.27"
