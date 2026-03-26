@@ -44,6 +44,13 @@ pub const PROMOTION_THRESHOLD: i64 = 10;
 /// - This prevents runaway traversals in large graphs.
 pub const MAX_TRAVERSAL_DEPTH: usize = 100;
 
+/// Maximum total node visits during strongest-path DFS.
+///
+/// Bounds the total work done by the DFS, preventing exponential blowup
+/// on dense graphs where depth alone is insufficient.
+/// When exhausted, the algorithm returns the best path found so far.
+pub const MAX_VISIT_COUNT: usize = 50_000;
+
 // =============================================================================
 // INPUT VALIDATION LIMITS
 // =============================================================================

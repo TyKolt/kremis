@@ -956,6 +956,29 @@ mod tests {
     }
 
     #[test]
+    fn strongest_path_dense_graph_completes() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        let mut nodes = Vec::new();
+        for i in 0..20 {
+            nodes.push(graph.insert_node(EntityId(i)).expect("insert node"));
+        }
+        for (i, &a) in nodes.iter().enumerate() {
+            for &b in &nodes[i + 1..] {
+                graph.insert_edge(a, b, EdgeWeight::new(1)).expect("edge");
+            }
+        }
+        let start = *nodes.first().expect("non-empty");
+        let end = *nodes.last().expect("non-empty");
+        let path = graph.strongest_path(start, end).expect("should not error");
+        let p = path.expect("should find a path");
+        assert_eq!(*p.first().expect("non-empty"), start);
+        assert_eq!(*p.last().expect("non-empty"), end);
+    }
+
+    #[test]
     fn intersect_finds_common() {
         let temp = tempdir().expect("temp dir");
         let db_path = temp.path().join("test.redb");

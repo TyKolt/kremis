@@ -192,6 +192,7 @@ pub trait GraphStore {
         let mut best_weight: i64 = i64::MIN;
         let mut visited = BTreeSet::new();
         let mut current_path = vec![start];
+        let mut visit_budget = crate::primitives::MAX_VISIT_COUNT;
         visited.insert(start);
 
         dfs_strongest_path_default(
@@ -204,6 +205,7 @@ pub trait GraphStore {
             0,
             &mut best_path,
             &mut best_weight,
+            &mut visit_budget,
         )?;
 
         Ok(best_path)
@@ -256,14 +258,20 @@ fn dfs_strongest_path_default<G: GraphStore + ?Sized>(
     current_weight: i64,
     best_path: &mut Option<Vec<NodeId>>,
     best_weight: &mut i64,
+    visit_budget: &mut usize,
 ) -> Result<(), KremisError> {
     use crate::primitives::MAX_TRAVERSAL_DEPTH;
 
-    if depth >= MAX_TRAVERSAL_DEPTH {
+    if depth >= MAX_TRAVERSAL_DEPTH || *visit_budget == 0 {
         return Ok(());
     }
 
     for (neighbor, weight) in store.neighbors(current)? {
+        *visit_budget = visit_budget.saturating_sub(1);
+        if *visit_budget == 0 {
+            return Ok(());
+        }
+
         let w = weight.value().max(0);
         let new_weight = current_weight.saturating_add(w);
 
@@ -293,6 +301,7 @@ fn dfs_strongest_path_default<G: GraphStore + ?Sized>(
             new_weight,
             best_path,
             best_weight,
+            visit_budget,
         )?;
         current_path.pop();
         visited.remove(&neighbor);
@@ -661,11 +670,13 @@ impl GraphStore for Graph {
 
         // DFS with backtracking: explore all simple paths, keep the one with
         // maximum total weight.  Correct for all graph topologies (including
-        // cycles).  Bounded by MAX_TRAVERSAL_DEPTH to prevent DoS.
+        // cycles).  Bounded by MAX_TRAVERSAL_DEPTH and MAX_VISIT_COUNT to
+        // prevent DoS.
         let mut best_path: Option<Vec<NodeId>> = None;
         let mut best_weight: i64 = i64::MIN;
         let mut visited = BTreeSet::new();
         let mut current_path = vec![start];
+        let mut visit_budget = crate::primitives::MAX_VISIT_COUNT;
         visited.insert(start);
 
         self.dfs_strongest_path(
@@ -677,6 +688,7 @@ impl GraphStore for Graph {
             0,
             &mut best_path,
             &mut best_weight,
+            &mut visit_budget,
         );
 
         Ok(best_path)
@@ -811,14 +823,20 @@ impl Graph {
         current_weight: i64,
         best_path: &mut Option<Vec<NodeId>>,
         best_weight: &mut i64,
+        visit_budget: &mut usize,
     ) {
         use crate::primitives::MAX_TRAVERSAL_DEPTH;
 
-        if depth >= MAX_TRAVERSAL_DEPTH {
+        if depth >= MAX_TRAVERSAL_DEPTH || *visit_budget == 0 {
             return;
         }
 
         for (neighbor, weight) in self.neighbors_internal(current) {
+            *visit_budget = visit_budget.saturating_sub(1);
+            if *visit_budget == 0 {
+                return;
+            }
+
             let w = weight.value().max(0);
             let new_weight = current_weight.saturating_add(w);
 
@@ -847,6 +865,7 @@ impl Graph {
                 new_weight,
                 best_path,
                 best_weight,
+                visit_budget,
             );
             current_path.pop();
             visited.remove(&neighbor);
@@ -1152,6 +1171,28 @@ mod tests {
 
         let path = graph.strongest_path(n2, n5).expect("path");
         assert_eq!(path, Some(vec![n2, n4, n5]));
+    }
+
+    #[test]
+    fn strongest_path_dense_graph_completes() {
+        // K_20 complete graph: without a visit budget this would explore ~20! paths.
+        // With the budget it returns a best-effort path almost instantly.
+        let mut graph = Graph::new();
+        let mut nodes = Vec::new();
+        for i in 0..20 {
+            nodes.push(graph.insert_node(EntityId(i)).expect("insert"));
+        }
+        for (i, &a) in nodes.iter().enumerate() {
+            for &b in &nodes[i + 1..] {
+                graph.insert_edge(a, b, EdgeWeight::new(1)).expect("edge");
+            }
+        }
+        let start = *nodes.first().expect("non-empty");
+        let end = *nodes.last().expect("non-empty");
+        let path = graph.strongest_path(start, end).expect("should not error");
+        let p = path.expect("should find a path");
+        assert_eq!(*p.first().expect("non-empty"), start);
+        assert_eq!(*p.last().expect("non-empty"), end);
     }
 
     #[test]
