@@ -2,7 +2,7 @@
 
 Thank you for your interest in Kremis. This document explains how to contribute effectively.
 
-> **Status:** Kremis is experimental. The architecture is still evolving. Contributions are welcome, but expect breaking changes.
+> **Status:** Kremis is in alpha. The architecture is stabilizing but breaking changes may still occur before v1.0. Contributions are welcome.
 
 ---
 
