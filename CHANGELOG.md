@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.2] - 2026-03-26
+
+### Bug Fixes
+
+- Add visit budget to strongest_path DFS to prevent exponential blowup (#25) ([`2e4cb31`](https://github.com/TyKolt/kremis/commit/2e4cb31bd95d288717572a15b1b0f96f8654911b))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.17.1 [skip ci] ([`aee966c`](https://github.com/TyKolt/kremis/commit/aee966c5e5e103c3b33c8b0bb123b45b0be3cac5))
+
 ## [0.17.1] - 2026-03-26
 
 ### Bug Fixes
