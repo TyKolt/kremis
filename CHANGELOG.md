@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.1] - 2026-03-26
+
+### Bug Fixes
+
+- From<SerializableGraph> silently discards dangling edges without diagnostics (#28) ([`c4bf707`](https://github.com/TyKolt/kremis/commit/c4bf707156970339a95c3becfd464e5701cf2b0b))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.17.0 [skip ci] ([`56b57dd`](https://github.com/TyKolt/kremis/commit/56b57ddbc74c16282806831bd2e5993d00c7a918))
+
 ## [0.17.0] - 2026-03-25
 
 ### Documentation
