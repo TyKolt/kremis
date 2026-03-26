@@ -8,7 +8,7 @@
 //!
 //! This module provides deterministic, bit-exact serialization for graph verification.
 
-use crate::graph::{Graph, GraphStore};
+use crate::graph::{Graph, GraphStore, LoadDiagnostics};
 use crate::{EdgeWeight, EntityId, KremisError, Node, NodeId};
 use serde::{Deserialize, Serialize};
 
@@ -347,7 +347,7 @@ pub fn export_canonical(graph: &Graph) -> Result<Vec<u8>, KremisError> {
 ///
 /// Returns `KremisError::SerializationError` if deserialization fails
 /// or the data is corrupted.
-pub fn import_canonical(data: &[u8]) -> Result<Graph, KremisError> {
+pub fn import_canonical(data: &[u8]) -> Result<(Graph, LoadDiagnostics), KremisError> {
     if data.len() < 4 {
         return Err(KremisError::SerializationError(
             "Data too short".to_string(),
@@ -442,14 +442,15 @@ pub fn import_canonical(data: &[u8]) -> Result<Graph, KremisError> {
         ));
     }
 
-    Ok(canonical.to_graph())
+    let (graph, diag) = Graph::from_canonical_validated(&canonical);
+    Ok((graph, diag))
 }
 
 /// Verify that a graph matches its canonical export.
 ///
 /// This is used to verify `redb` data against the canonical format.
 pub fn verify_canonical(graph: &Graph, canonical_data: &[u8]) -> Result<bool, KremisError> {
-    let imported = import_canonical(canonical_data)?;
+    let (imported, _diag) = import_canonical(canonical_data)?;
 
     // Compare node counts
     if graph.node_count()? != imported.node_count()? {
@@ -566,7 +567,7 @@ mod tests {
         let graph = create_test_graph();
 
         let exported = export_canonical(&graph).expect("export should succeed");
-        let imported = import_canonical(&exported).expect("import should succeed");
+        let (imported, _diag) = import_canonical(&exported).expect("import should succeed");
 
         assert_eq!(
             graph.node_count().expect("count"),
@@ -692,7 +693,7 @@ mod tests {
         let graph = Graph::new();
 
         let exported = export_canonical(&graph).expect("export empty");
-        let imported = import_canonical(&exported).expect("import empty");
+        let (imported, _diag) = import_canonical(&exported).expect("import empty");
 
         assert_eq!(imported.node_count().expect("count"), 0);
         assert_eq!(imported.edge_count().expect("count"), 0);
@@ -1124,7 +1125,7 @@ mod tests {
             .expect("store property");
 
         let exported = export_canonical(&graph).expect("export should succeed");
-        let imported = import_canonical(&exported).expect("import should succeed");
+        let (imported, _diag) = import_canonical(&exported).expect("import should succeed");
 
         // Verify properties survived the roundtrip
         let props = imported.get_properties(node_a).expect("get properties");
@@ -1182,7 +1183,7 @@ mod tests {
         data.extend_from_slice(&data_bytes);
 
         // Import should succeed with empty properties
-        let imported = import_canonical(&data).expect("import v1 should succeed");
+        let (imported, _diag) = import_canonical(&data).expect("import v1 should succeed");
         assert_eq!(imported.node_count().expect("count"), 3);
         assert_eq!(imported.edge_count().expect("count"), 3);
 

@@ -17,7 +17,7 @@
 //! - Header validation before payload parsing
 //! - Graceful error handling for corrupted data
 
-use crate::{Graph, KremisError, SerializableGraph, primitives};
+use crate::{Graph, KremisError, LoadDiagnostics, SerializableGraph, primitives};
 
 // =============================================================================
 // SECURITY LIMITS (H7 Fix)
@@ -136,7 +136,7 @@ pub fn graph_to_bytes(graph: &Graph) -> Result<Vec<u8>, KremisError> {
 /// 3. Header magic bytes and version
 ///
 /// All validation occurs BEFORE attempting payload deserialization.
-pub fn graph_from_bytes(bytes: &[u8]) -> Result<Graph, KremisError> {
+pub fn graph_from_bytes(bytes: &[u8]) -> Result<(Graph, LoadDiagnostics), KremisError> {
     // H7 FIX: Validate minimum size
     if bytes.len() < MIN_FILE_SIZE {
         return Err(KremisError::SerializationError(
@@ -163,7 +163,7 @@ pub fn graph_from_bytes(bytes: &[u8]) -> Result<Graph, KremisError> {
         KremisError::SerializationError(format!("Failed to deserialize graph data: {}", e))
     })?;
 
-    Ok(Graph::from(serializable))
+    Ok(Graph::from_serializable(serializable))
 }
 
 // =============================================================================
@@ -198,7 +198,7 @@ mod tests {
         let bytes1 = graph_to_bytes(&graph).expect("first serialize");
 
         // Deserialize and reserialize
-        let restored = graph_from_bytes(&bytes1).expect("deserialize");
+        let (restored, _diag) = graph_from_bytes(&bytes1).expect("deserialize");
         let bytes2 = graph_to_bytes(&restored).expect("second serialize");
 
         // Must be bit-exact

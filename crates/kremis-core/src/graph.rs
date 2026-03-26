@@ -338,10 +338,19 @@ impl Graph {
     /// Reconstruct a graph from a canonical representation, preserving original NodeIds.
     #[must_use]
     pub fn from_canonical(canonical: &crate::export::CanonicalGraph) -> Self {
+        let (graph, _diag) = Self::from_canonical_validated(canonical);
+        graph
+    }
+
+    /// Load from canonical format, returning diagnostics about discarded data.
+    pub fn from_canonical_validated(
+        canonical: &crate::export::CanonicalGraph,
+    ) -> (Self, LoadDiagnostics) {
         let mut graph = Self {
             next_node_id: canonical.next_node_id,
             ..Self::default()
         };
+        let mut diag = LoadDiagnostics::default();
 
         for cn in &canonical.nodes {
             let node_id = NodeId(cn.id);
@@ -370,6 +379,8 @@ impl Graph {
                     .entry(from)
                     .or_default()
                     .insert(to, EdgeWeight::new(ce.weight));
+            } else {
+                diag.dangling_edges += 1;
             }
         }
 
@@ -381,10 +392,12 @@ impl Graph {
                     Attribute::new(&cp.attribute),
                     Value::new(&cp.value),
                 );
+            } else {
+                diag.dangling_properties += 1;
             }
         }
 
-        graph
+        (graph, diag)
     }
 
     /// Get all nodes in deterministic order.
@@ -847,6 +860,14 @@ impl Graph {
 
 use serde::{Deserialize, Serialize};
 
+/// Diagnostics returned when loading a graph from a serialized representation.
+/// Counts items silently discarded because they reference non-existent nodes.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LoadDiagnostics {
+    pub dangling_edges: usize,
+    pub dangling_properties: usize,
+}
+
 /// Serializable representation of the graph for persistence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializableGraph {
@@ -880,9 +901,12 @@ impl From<&Graph> for SerializableGraph {
     }
 }
 
-impl From<SerializableGraph> for Graph {
-    fn from(sg: SerializableGraph) -> Self {
+impl Graph {
+    /// Load from a serializable representation, returning diagnostics about
+    /// any edges or properties discarded because they reference missing nodes.
+    pub fn from_serializable(sg: SerializableGraph) -> (Self, LoadDiagnostics) {
         let mut graph = Graph::new();
+        let mut diag = LoadDiagnostics::default();
         graph.next_node_id = sg.next_node_id;
 
         for node in sg.nodes {
@@ -900,13 +924,29 @@ impl From<SerializableGraph> for Graph {
         }
 
         for (from, to, weight) in sg.edges {
-            let _ = graph.insert_edge(from, to, weight);
+            if !graph.nodes.contains_key(&from) || !graph.nodes.contains_key(&to) {
+                diag.dangling_edges += 1;
+            } else {
+                let _ = graph.insert_edge(from, to, weight);
+            }
         }
 
         for (node_id, attr, val) in sg.properties {
-            let _ = graph.store_property(NodeId(node_id), Attribute::new(&attr), Value::new(&val));
+            if !graph.nodes.contains_key(&NodeId(node_id)) {
+                diag.dangling_properties += 1;
+            } else {
+                let _ =
+                    graph.store_property(NodeId(node_id), Attribute::new(&attr), Value::new(&val));
+            }
         }
 
+        (graph, diag)
+    }
+}
+
+impl From<SerializableGraph> for Graph {
+    fn from(sg: SerializableGraph) -> Self {
+        let (graph, _diag) = Self::from_serializable(sg);
         graph
     }
 }
@@ -1361,5 +1401,78 @@ mod tests {
             "new node ID {} collides with imported nodes",
             new_node.0
         );
+    }
+
+    #[test]
+    fn from_serializable_reports_dangling_edges() {
+        let sg = SerializableGraph {
+            nodes: vec![
+                Node::new(NodeId(0), EntityId(100)),
+                Node::new(NodeId(1), EntityId(101)),
+            ],
+            edges: vec![
+                (NodeId(0), NodeId(1), EdgeWeight::new(5)),   // valid
+                (NodeId(0), NodeId(999), EdgeWeight::new(3)), // dangling: node 999 missing
+            ],
+            next_node_id: 2,
+            properties: vec![],
+        };
+
+        let (graph, diag) = Graph::from_serializable(sg);
+        assert_eq!(graph.edge_count().expect("count"), 1);
+        assert_eq!(diag.dangling_edges, 1);
+        assert_eq!(diag.dangling_properties, 0);
+    }
+
+    #[test]
+    fn from_serializable_reports_dangling_properties() {
+        let sg = SerializableGraph {
+            nodes: vec![Node::new(NodeId(0), EntityId(100))],
+            edges: vec![],
+            next_node_id: 1,
+            properties: vec![
+                (0, "name".to_string(), "Alice".to_string()),   // valid
+                (999, "role".to_string(), "admin".to_string()), // dangling
+            ],
+        };
+
+        let (graph, diag) = Graph::from_serializable(sg);
+        let props = graph.get_properties(NodeId(0)).expect("get");
+        assert_eq!(props.len(), 1);
+        assert_eq!(diag.dangling_edges, 0);
+        assert_eq!(diag.dangling_properties, 1);
+    }
+
+    #[test]
+    fn from_canonical_validated_reports_dangling() {
+        let canonical = crate::export::CanonicalGraph {
+            nodes: vec![
+                crate::export::CanonicalNode { id: 0, entity: 100 },
+                crate::export::CanonicalNode { id: 1, entity: 101 },
+            ],
+            edges: vec![
+                crate::export::CanonicalEdge {
+                    from: 0,
+                    to: 1,
+                    weight: 5,
+                },
+                crate::export::CanonicalEdge {
+                    from: 0,
+                    to: 999,
+                    weight: 3,
+                },
+            ],
+            next_node_id: 2,
+            properties: vec![crate::export::CanonicalProperty {
+                node_id: 888,
+                attribute: "x".to_string(),
+                value: "y".to_string(),
+            }],
+        };
+
+        let (graph, diag) = Graph::from_canonical_validated(&canonical);
+        assert_eq!(graph.edge_count().expect("count"), 1);
+        assert_eq!(diag.dangling_edges, 1);
+        assert_eq!(diag.dangling_properties, 1);
     }
 }

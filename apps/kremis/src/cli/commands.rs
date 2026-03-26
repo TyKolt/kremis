@@ -798,7 +798,13 @@ pub fn cmd_import(
     let data = std::fs::read(&validated_path)
         .map_err(|e| KremisError::SerializationError(format!("Read file: {}", e)))?;
 
-    let graph = import_canonical(&data)?;
+    let (graph, diag) = import_canonical(&data)?;
+    if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
+        eprintln!(
+            "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
+            diag.dangling_edges, diag.dangling_properties
+        );
+    }
     let session = Session::with_graph(graph);
 
     if backend == "redb" {
@@ -887,7 +893,13 @@ pub fn load_or_create_session(db_path: &PathBuf, backend: &str) -> Result<Sessio
                     .map_err(|e| KremisError::SerializationError(format!("Read db: {}", e)))?;
 
                 // Try canonical format first
-                if let Ok(graph) = import_canonical(&data) {
+                if let Ok((graph, diag)) = import_canonical(&data) {
+                    if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
+                        eprintln!(
+                            "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
+                            diag.dangling_edges, diag.dangling_properties
+                        );
+                    }
                     return Ok(Session::with_graph(graph));
                 }
 
@@ -895,7 +907,14 @@ pub fn load_or_create_session(db_path: &PathBuf, backend: &str) -> Result<Sessio
                 if let Ok(serializable) =
                     serde_json::from_slice::<kremis_core::SerializableGraph>(&data)
                 {
-                    return Ok(Session::with_graph(Graph::from(serializable)));
+                    let (graph, diag) = Graph::from_serializable(serializable);
+                    if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
+                        eprintln!(
+                            "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
+                            diag.dangling_edges, diag.dangling_properties
+                        );
+                    }
+                    return Ok(Session::with_graph(graph));
                 }
 
                 Err(KremisError::SerializationError(

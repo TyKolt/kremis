@@ -622,7 +622,7 @@ mod tests {
         // Export and re-import
         let snapshot = session.export_graph_snapshot().expect("snapshot");
         let exported = export_canonical(&snapshot).expect("export");
-        let imported = import_canonical(&exported).expect("import");
+        let (imported, _diag) = import_canonical(&exported).expect("import");
 
         // Properties should survive the roundtrip
         let props1 = imported.get_properties(node1).expect("props");
