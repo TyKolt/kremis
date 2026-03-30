@@ -14,7 +14,9 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use kremis_core::{
     Artifact, EdgeWeight, EntityId, KremisError, NodeId, Session,
     export::{canonical_checksum, canonical_crypto_hash, export_canonical},
-    primitives::{MAX_INTERSECT_NODES, MAX_SEQUENCE_LENGTH, MAX_TRAVERSAL_DEPTH},
+    primitives::{
+        MAX_INTERSECT_NODES, MAX_SEQUENCE_LENGTH, MAX_TRAVERSAL_DEPTH, MIN_INTERSECT_NODES,
+    },
     system::{GraphMetrics, Stage, StageAssessor},
 };
 use std::collections::BTreeSet;
@@ -342,8 +344,8 @@ fn execute_query_inner(
         }
 
         QueryRequest::Intersect { nodes } => {
-            // Validate node count limit
-            if nodes.len() > MAX_INTERSECT_NODES {
+            // Validate node count bounds
+            if nodes.len() < MIN_INTERSECT_NODES || nodes.len() > MAX_INTERSECT_NODES {
                 return Err(KremisError::InvalidSignal);
             }
             let node_ids: Vec<NodeId> = nodes.iter().map(|n| NodeId(*n)).collect();

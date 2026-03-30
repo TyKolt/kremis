@@ -883,6 +883,26 @@ fn test_query_response_with_empty_properties_has_found_true() {
     assert!(response.properties.is_empty());
 }
 
+#[tokio::test]
+async fn test_query_intersect_too_few_nodes_empty() {
+    let (server, _guard) = create_test_server();
+
+    let request = QueryRequest::Intersect { nodes: vec![] };
+    let response = server.post("/query").json(&request).await;
+
+    response.assert_status_bad_request();
+}
+
+#[tokio::test]
+async fn test_query_intersect_too_few_nodes_one() {
+    let (server, _guard) = create_test_server();
+
+    let request = QueryRequest::Intersect { nodes: vec![1] };
+    let response = server.post("/query").json(&request).await;
+
+    response.assert_status_bad_request();
+}
+
 // =============================================================================
 // EXPORT ENDPOINT TESTS
 // =============================================================================

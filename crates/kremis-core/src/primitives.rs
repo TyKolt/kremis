@@ -72,6 +72,11 @@ pub const MAX_VALUE_LENGTH: usize = 65536;
 /// Sequences longer than this will be rejected to prevent DoS.
 pub const MAX_SEQUENCE_LENGTH: usize = 10000;
 
+/// Minimum number of nodes in an Intersect query.
+///
+/// Intersection requires at least two sets to be meaningful.
+pub const MIN_INTERSECT_NODES: usize = 2;
+
 /// Maximum number of nodes in an Intersect query.
 ///
 /// Limits the computational cost of intersection queries.
