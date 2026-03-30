@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.4] - 2026-03-30
+
+### Bug Fixes
+
+- Reject CLI traversal depth over limit instead of silent clamp (#34) ([`fdc7a4d`](https://github.com/TyKolt/kremis/commit/fdc7a4d2080c4c7337c134ccf5a97718556214bd))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.17.3 [skip ci] ([`48e8dfd`](https://github.com/TyKolt/kremis/commit/48e8dfd10ed51c4ab8c7eee7ae609af91585300c))
+
 ## [0.17.3] - 2026-03-30
 
 ### Bug Fixes
