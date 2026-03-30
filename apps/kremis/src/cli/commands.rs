@@ -479,7 +479,9 @@ pub fn cmd_query(
 ) -> Result<(), KremisError> {
     use kremis_core::{EdgeWeight, EntityId};
 
-    let depth = depth.min(kremis_core::primitives::MAX_TRAVERSAL_DEPTH);
+    if depth > kremis_core::primitives::MAX_TRAVERSAL_DEPTH {
+        return Err(KremisError::InvalidSignal);
+    }
     let session = load_or_create_session(db_path, backend)?;
 
     match query_type {
