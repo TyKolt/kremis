@@ -2,11 +2,22 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.3] - 2026-03-30
+
+### Bug Fixes
+
+- Reject intersect queries with fewer than 2 nodes (#33) ([`449a27c`](https://github.com/TyKolt/kremis/commit/449a27c2fd12f5cd38a8b69adad6b4bb6b6588fc))
+
+### Documentation
+
+- Regenerate CHANGELOG for v0.17.2 [skip ci] ([`08ea67d`](https://github.com/TyKolt/kremis/commit/08ea67d3d35970e7cfcf8b4ac1cbf55a5dacb47a))
+- Mark project status as alpha ([`f41b6d1`](https://github.com/TyKolt/kremis/commit/f41b6d1f75aa3eada1c146387aa72d32e104c4c7))
+
 ## [0.17.2] - 2026-03-26
 
 ### Bug Fixes
 
-- Add visit budget to strongest_path DFS to prevent exponential blowup (#25) ([`2e4cb31`](https://github.com/TyKolt/kremis/commit/2e4cb31bd95d288717572a15b1b0f96f8654911b))
+- Add visit budget to strongest_path DFS to prevent exponential blowup (#25) ([`6cd9a4a`](https://github.com/TyKolt/kremis/commit/6cd9a4a05e9f84c9a92ca4f233b125418db08849))
 
 ### Documentation
 
