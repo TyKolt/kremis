@@ -4,25 +4,37 @@ Thank you for your interest in Kremis. This document explains how to contribute 
 
 > **Status:** Kremis is in alpha. The architecture is stabilizing but breaking changes may still occur before v1.0. Contributions are welcome.
 
----
-
-## Prerequisites
-
-- **Rust 1.89+** (stable, edition 2024)
-- **Git** with signed commits (GPG recommended)
-- Familiarity with graph data structures and Rust's type system
+This project adheres to the [Contributor Covenant 3.0 Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
 ---
 
-## Project Structure
+## Table of Contents
 
-```
-kremis/
-├── crates/kremis-core/   # Graph engine (pure Rust, no async, no network)
-├── apps/kremis/           # HTTP server + CLI (axum, clap)
-├── apps/kremis-mcp/       # MCP server bridge (rmcp, stdio)
-└── docs/                  # Public documentation (Mintlify MDX format)
-```
+- [How Can I Contribute?](#how-can-i-contribute)
+- [The 4 Fundamental Laws](#the-4-fundamental-laws)
+- [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
+- [Code Style](#code-style)
+- [Testing](#testing)
+- [Commit Conventions](#commit-conventions)
+- [Pull Request Process](#pull-request-process)
+- [What NOT to Contribute](#what-not-to-contribute)
+- [Reporting Bugs](#reporting-bugs)
+- [First-Time Contributors](#first-time-contributors)
+- [License](#license)
+
+---
+
+## How Can I Contribute?
+
+There are several ways to contribute, and not all of them require writing code:
+
+- **Report bugs** — Found something broken? [Open a bug report](https://github.com/TyKolt/kremis/issues/new?template=bug_report.yml).
+- **Suggest features** — Have an idea? [Open a feature request](https://github.com/TyKolt/kremis/issues/new?template=feature_request.yml).
+- **Improve documentation** — Fix typos, add examples, clarify confusing sections in [`docs/`](docs/) or the [Mintlify site](https://kremis.mintlify.app).
+- **Submit code** — Look for issues labeled [`good first issue`](https://github.com/TyKolt/kremis/labels/good%20first%20issue) or [`help wanted`](https://github.com/TyKolt/kremis/labels/help%20wanted).
+- **Review pull requests** — Read open PRs, test them locally, leave constructive feedback.
+- **Join discussions** — Ask or answer questions in [GitHub Discussions](https://github.com/TyKolt/kremis/discussions).
 
 ---
 
@@ -39,11 +51,51 @@ Every contribution must respect these laws. PRs that violate them will be reject
 
 ## Development Setup
 
+### Prerequisites
+
+- **Rust 1.89+** (stable, edition 2024)
+- **Git** with signed commits (GPG recommended)
+- Familiarity with graph data structures and Rust's type system
+
+### Fork and Clone
+
 ```bash
-git clone https://github.com/TyKolt/kremis.git
+# 1. Fork the repository on GitHub (click "Fork" button)
+
+# 2. Clone your fork locally
+git clone https://github.com/YOUR_USERNAME/kremis.git
 cd kremis
+
+# 3. Add upstream remote
+git remote add upstream https://github.com/TyKolt/kremis.git
+
+# 4. Build and verify
 cargo build --workspace
 cargo test --workspace
+```
+
+### Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `cargo build --workspace` | Build all crates |
+| `cargo test --workspace` | Run all tests |
+| `cargo test --doc --workspace` | Run doc tests |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Lint (zero warnings) |
+| `cargo fmt --all -- --check` | Check formatting |
+| `cargo run -p kremis -- server` | Start HTTP server |
+| `cargo run -p kremis -- --help` | CLI help |
+
+---
+
+## Project Structure
+
+```
+kremis/
+├── crates/kremis-core/   # Graph engine (pure Rust, no async, no network)
+├── apps/kremis/           # HTTP server + CLI (axum, clap)
+├── apps/kremis-mcp/       # MCP server bridge (rmcp, stdio)
+└── docs/                  # Public documentation (Mintlify MDX format)
 ```
 
 ---
@@ -130,12 +182,39 @@ Committed files that contain the version (all must be updated together):
 
 ## Pull Request Process
 
+### Workflow
+
+```bash
+# 1. Sync your fork with upstream
+git fetch upstream
+git checkout main
+git merge upstream/main
+
+# 2. Create a feature branch
+git checkout -b feat/your-feature-name
+
+# 3. Make changes, commit with conventional commits
+git add .
+git commit -m "feat: add your feature"
+
+# 4. Run all checks locally
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --workspace
+
+# 5. Push to your fork
+git push origin feat/your-feature-name
+
+# 6. Open a Pull Request against main on GitHub
+```
+
+### Guidelines
+
 1. **Open an issue first.** Describe what you want to change and why. Wait for feedback before writing code.
-2. **Fork and branch.** Create a branch from `main` with a descriptive name (`feat/batch-ingest`, `fix/edge-overflow`).
-3. **Keep it focused.** One logical change per PR. Do not mix features, fixes, and refactoring.
-4. **Pass all checks.** Run the full test suite locally before pushing.
-5. **Write a clear description.** Explain what changed, why, and how to test it.
-6. **Be patient.** This is a solo-maintained project. Reviews may take time.
+2. **Keep it focused.** One logical change per PR. Do not mix features, fixes, and refactoring.
+3. **Pass all checks.** Run the full test suite locally before pushing.
+4. **Write a clear description.** Explain what changed, why, and how to test it.
+5. **Be patient.** This is a solo-maintained project. Reviews may take time.
 
 ### Merge Authority
 
@@ -166,18 +245,27 @@ To keep the project focused, the following will not be accepted:
 - **New dependencies without discussion.** Open an issue first.
 - **Speculative features.** Every change must solve a concrete, current problem.
 - **Cosmetic refactoring.** Do not restructure working code for style preferences.
-- **SECURITY files.** Not needed at this stage.
 
 ---
 
 ## Reporting Bugs
 
-Open an [issue](https://github.com/TyKolt/kremis/issues) with:
+Use the [bug report template](https://github.com/TyKolt/kremis/issues/new?template=bug_report.yml) or open an [issue](https://github.com/TyKolt/kremis/issues) with:
 
 - Kremis version (`cargo run -p kremis -- --version`)
 - OS and Rust version (`rustc --version`)
 - Steps to reproduce
 - Expected vs actual behavior
+
+---
+
+## First-Time Contributors
+
+New to Kremis or open source? Welcome.
+
+- Browse [good first issues](https://github.com/TyKolt/kremis/labels/good%20first%20issue) for tasks suited to newcomers.
+- Ask questions in [GitHub Discussions](https://github.com/TyKolt/kremis/discussions) — no question is too small.
+- Read through the [Quick Start](https://kremis.mintlify.app/quickstart) to get a local setup running before diving into code.
 
 ---
 

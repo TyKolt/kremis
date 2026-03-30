@@ -1,7 +1,13 @@
 name: Feature Request
 description: Propose a new feature or improvement
 labels: ["enhancement"]
+title: "[Feature] "
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the problem you're trying to solve and, if possible, how you'd like it to work.
+
   - type: checkboxes
     id: existing_issues
     attributes:
@@ -9,6 +15,20 @@ body:
       options:
         - label: I have searched [existing issues](https://github.com/TyKolt/kremis/issues) and [discussions](https://github.com/TyKolt/kremis/discussions) and this has not been requested before.
           required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the project does this feature relate to?
+      options:
+        - kremis-core (graph engine)
+        - CLI / HTTP server (apps/kremis)
+        - MCP server (apps/kremis-mcp)
+        - Documentation
+        - Other
+    validations:
+      required: true
 
   - type: textarea
     id: problem

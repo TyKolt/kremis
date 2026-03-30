@@ -3,6 +3,11 @@ description: Report a bug or unexpected behavior in Kremis
 labels: ["bug"]
 title: "[Bug] "
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the form below so we can reproduce and fix the issue.
+
   - type: checkboxes
     id: existing_issues
     attributes:
@@ -14,11 +19,20 @@ body:
   - type: input
     id: version
     attributes:
-      label: Version
+      label: Kremis Version
       description: Output of `kremis --version`
       placeholder: "kremis x.y.z"
     validations:
       required: true
+
+  - type: input
+    id: rust_version
+    attributes:
+      label: Rust Version
+      description: Output of `rustc --version`
+      placeholder: "rustc 1.89.0 (xxxxxxx 2025-xx-xx)"
+    validations:
+      required: false
 
   - type: dropdown
     id: os
@@ -78,3 +92,12 @@ body:
       label: Relevant logs or output
       description: Paste any error messages or stack traces here.
       render: text
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/TyKolt/kremis/blob/main/CODE_OF_CONDUCT.md).
+      options:
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

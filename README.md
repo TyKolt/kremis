@@ -1,18 +1,27 @@
 <p align="center">
-  <img src="docs/logo/icon.svg" alt="Kremis" width="64" height="64">
+  <img src="docs/logo/icon.svg" alt="Kremis" width="120" height="120">
 </p>
 
-# Kremis
+<h1 align="center">Kremis</h1>
 
-[![CI](https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg)](https://github.com/TyKolt/kremis/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-mintlify-0D9373.svg)](https://kremis.mintlify.app)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org/)
-![Status](https://img.shields.io/badge/status-alpha-orange)
+<p align="center">
+  <strong>Deterministic knowledge graph for AI that never hallucinates</strong>
+</p>
 
-> **Alpha** - Functional and tested. Breaking changes may still occur before v1.0.
+<p align="center">
+  A minimal, graph-based cognitive substrate in Rust.<br>
+  Records, associates, retrieves — but never invents.
+</p>
 
-**Kremis** is a minimal, deterministic, graph-based cognitive substrate implemented in Rust.
+<p align="center">
+  <a href="https://github.com/TyKolt/kremis/actions/workflows/ci.yml"><img src="https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://kremis.mintlify.app"><img src="https://img.shields.io/badge/docs-mintlify-0D9373.svg" alt="Docs"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust"></a>
+  <img src="https://img.shields.io/badge/status-alpha-orange" alt="Status">
+</p>
+
+> **Alpha** — Functional and tested. Breaking changes may still occur before v1.0.
 
 <p align="center">
   <img src="assets/demo.svg" alt="Kremis Honesty Demo" width="800">
@@ -20,46 +29,75 @@
 
 ---
 
-It functions solely as a mechanism to **record**, **associate**, and **retrieve** structural relationships derived from grounded experience.
-
-> **The system does not *understand*.** It contains only the structure of the signals it has processed.
-
----
-
-<details>
-<summary><strong>📚 Table of Contents</strong></summary>
-
-- [Quick Start](#quick-start)
-- [Why Kremis](#why-kremis)
-- [Usage](#usage)
-  - [CLI](#cli)
-  - [HTTP API](#http-api)
-  - [MCP Server](#mcp-server)
-  - [Rust API](#rust-api)
-- [Architecture](#architecture)
-- [Testing](#testing)
-- [License](#license)
-- [Contributing](#contributing)
-
-</details>
-
 ## Why Kremis
 
 | Problem | How Kremis addresses it |
 |---------|------------------------|
-| **Hallucination** | No fabricated data. Every result traces back to real ingested signals. Explicit "not found" for missing data |
-| **Opacity** | Fully inspectable state. No hidden layers, no black box. Every result traces back to a graph path |
+| **Hallucination** | Every result traces back to a real ingested signal. Missing data returns explicit "not found" — never fabricated |
+| **Opacity** | Fully inspectable graph state. No hidden layers, no black box |
 | **Lack of grounding** | Zero pre-loaded knowledge. All structure emerges from real signals, not assumptions |
 | **Non-determinism** | Same input, same output. No randomness, no floating-point arithmetic in core |
 | **Data loss** | ACID transactions via `redb` embedded database. Crash-safe by design |
 
-→ [Design Philosophy](https://kremis.mintlify.app/philosophy) — why these constraints exist.
+> [Design Philosophy](https://kremis.mintlify.app/philosophy) — why these constraints exist.
+
+---
+
+## Features
+
+- **Deterministic graph engine** — Pure Rust, no async in core, no floating-point. Same input always produces the same output
+- **CLI + HTTP API + MCP bridge** — Three interfaces to the same engine: terminal, REST, and AI assistants
+- **BLAKE3 hashing** — Cryptographic hash of the full graph state for integrity verification at any point
+- **Canonical export (KREX)** — Deterministic binary snapshot for provenance, audit trails, and reproducibility
+- **Zero baked-in knowledge** — Kremis starts empty. Every node comes from a real signal
+- **ACID persistence** — Default `redb` backend with crash-safe transactions
+
+---
+
+## Use Cases
+
+### AI agent memory via MCP
+
+Give Claude, Cursor, or any MCP-compatible assistant a verifiable memory layer. Kremis stores facts as graph nodes — the agent queries them, and every answer traces back to a real data point. No embeddings, no probabilistic retrieval.
+
+### LLM fact-checking
+
+Ingest your data, let an LLM generate claims, then validate each claim against the graph. Kremis labels every statement as `[FACT]` or `[NOT IN GRAPH]` — no confidence scores, no ambiguity.
+
+### Provenance and audit trail
+
+Export the full graph as a deterministic binary snapshot, compute its BLAKE3 hash, and verify integrity at any point. Every node links to the signal that created it. Useful for compliance workflows where you need to prove what data was present and when.
+
+---
+
+## Honesty Demo
+
+Ingest a few facts, let an LLM generate claims, and Kremis validates each one:
+
+```
+[FACT]          Alice is an engineer.              ← Kremis: "engineer"
+[FACT]          Alice works on the Kremis project. ← Kremis: "Kremis"
+[FACT]          Alice knows Bob.                   ← Kremis: "Bob"
+[NOT IN GRAPH]  Alice holds a PhD from MIT.        ← Kremis: None
+[NOT IN GRAPH]  Alice previously worked at DeepMind. ← Kremis: None
+[NOT IN GRAPH]  Alice manages a team of 8.         ← Kremis: None
+
+Confirmed by graph: 3/6
+Not in graph:       3/6
+```
+
+Three facts grounded. Three fabricated. No ambiguity.
+
+```bash
+python examples/demo_honesty.py            # mock LLM (no external deps)
+python examples/demo_honesty.py --ollama   # real LLM via Ollama
+```
 
 ---
 
 ## Quick Start
 
-Requires **Rust 1.89+** (stable, edition 2024) and Cargo.
+Requires **Rust 1.89+** and Cargo.
 
 ```bash
 git clone https://github.com/TyKolt/kremis.git
@@ -69,210 +107,27 @@ cargo test --workspace
 ```
 
 ```bash
-# Initialize database
-cargo run -p kremis -- init
+cargo run -p kremis -- init                                          # initialize database
+cargo run -p kremis -- ingest -f examples/sample_signals.json -t json # ingest sample data
+cargo run -p kremis -- server                                        # start HTTP server
+```
 
-# Ingest sample data (9 signals: 3 entities with properties + relationships)
-cargo run -p kremis -- ingest -f examples/sample_signals.json -t json
+In a second terminal:
 
-# Start HTTP server (in a separate terminal, or background with &)
-cargo run -p kremis -- server
-
-# Check health (in another terminal)
+```bash
 curl http://localhost:8080/health
-```
-
-> **Note:** CLI commands and the HTTP server cannot run simultaneously (redb holds an exclusive lock). Stop the server before using CLI commands like `ingest`, `status`, or `export`.
-
-### Try It
-
-With the server running, query the graph:
-
-```bash
-# Look up entity 1 (Alice)
 curl -X POST http://localhost:8080/query \
-     -H "Content-Type: application/json" \
-     -d '{"type": "lookup", "entity_id": 1}'
-
-# Traverse from node 0, depth 3
-curl -X POST http://localhost:8080/query \
-     -H "Content-Type: application/json" \
-     -d '{"type": "traverse", "node_id": 0, "depth": 3}'
-
-# Get properties of node 0 (name, role, etc.)
-curl -X POST http://localhost:8080/query \
-     -H "Content-Type: application/json" \
-     -d '{"type": "properties", "node_id": 0}'
-
-# Find common connections between nodes 0 and 1
-curl -X POST http://localhost:8080/query \
-     -H "Content-Type: application/json" \
-     -d '{"type": "intersect", "nodes": [0, 1]}'
-
-# Check graph status
-curl http://localhost:8080/status
+  -H "Content-Type: application/json" \
+  -d '{"type":"lookup","entity_id":1}'
 ```
 
-You can also ingest signals via HTTP:
-
-```bash
-curl -X POST http://localhost:8080/signal \
-     -H "Content-Type: application/json" \
-     -d '{"entity_id": 1, "attribute": "name", "value": "Alice"}'
-# {"success":true,"node_id":0,"error":null}
-```
-
-The `examples/` directory contains sample data in both JSON and text formats.
-
-### Honesty Demo
-
-See what happens when an LLM makes claims about data you've ingested — Kremis tells you which ones are grounded and which ones aren't.
-
-Requires a running server (see Quick Start above). No `pip install` needed — standard library only.
-
-```bash
-python examples/demo_honesty.py
-```
-
-```
-Step 1 — Ingest knowledge base
-  ✓  [1] name       = Alice
-  ✓  [1] role       = engineer
-  ✓  [1] works_on   = Kremis
-  ...
-
-Step 2 — LLM: "Tell me about Alice"
-  › Alice is an engineer.
-  › Alice works on the Kremis project.
-  › Alice knows Bob.
-  › Alice holds a PhD in machine learning from MIT.
-  › Alice previously worked at DeepMind as a research lead.
-  › Alice manages a cross-functional team of 8 people.
-
-Step 3 — Kremis validates each claim
-  [FACT]          Alice is an engineer.          ← Kremis: "engineer"
-  [FACT]          Alice works on the Kremis project.  ← Kremis: "Kremis"
-  [FACT]          Alice knows Bob.               ← Kremis: "Bob"
-  [NOT IN GRAPH]  Alice holds a PhD from MIT.    ← Kremis: None
-  [NOT IN GRAPH]  Alice previously worked at DeepMind.  ← Kremis: None
-  [NOT IN GRAPH]  Alice manages a team of 8.     ← Kremis: None
-
-  Confirmed by graph: 3/6
-  Not in graph:       3/6  (hallucinations or unknown facts)
-```
-
-With `--ollama` (requires [Ollama](https://ollama.com) running locally), the LLM generates claims in real time:
-
-```bash
-python examples/demo_honesty.py --ollama
-```
+> **Note:** CLI commands and the HTTP server cannot run simultaneously (`redb` holds an exclusive lock). Stop the server before using CLI commands.
 
 ### Docker
 
 ```bash
 docker build -t kremis .
 docker run -d -p 8080:8080 -v kremis-data:/data kremis
-```
-
-Pass configuration via environment variables:
-
-```bash
-docker run -d -p 8080:8080 \
-  -v kremis-data:/data \
-  -e KREMIS_API_KEY=your-secret \
-  -e KREMIS_CORS_ORIGINS="https://example.com" \
-  kremis
-```
-
-Multi-stage build (~136 MB image). Data persists in `/data` volume. Built-in healthcheck on `/health`.
-
----
-
-## Usage
-
-### CLI
-
-```bash
-# Show graph status
-cargo run -p kremis -- status
-
-# Show developmental stage
-cargo run -p kremis -- stage --detailed
-
-# Ingest signals from file
-cargo run -p kremis -- ingest -f data.json -t json
-
-# Query the graph
-cargo run -p kremis -- query -t lookup --entity 1
-cargo run -p kremis -- query -t traverse -s 0 -d 3
-cargo run -p kremis -- query -t path -s 0 -e 5
-
-# Export/Import
-cargo run -p kremis -- export -o graph.bin -t canonical
-cargo run -p kremis -- import -i graph.bin -B file
-```
-
-### HTTP API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/status` | GET | Graph statistics |
-| `/stage` | GET | Developmental stage |
-| `/signal` | POST | Ingest a signal |
-| `/signals` | POST | Ingest a sequence of signals (creates edges) |
-| `/signal/retract` | POST | Retract a signal (decrement edge weight) |
-| `/query` | POST | Execute a query |
-| `/export` | POST | Export graph |
-| `/hash` | GET | BLAKE3 cryptographic hash |
-| `/metrics` | GET | Prometheus metrics |
-
-See the [full documentation](https://kremis.mintlify.app/api/overview) or browse the [source docs](docs/api/) for API reference.
-
-### MCP Server
-
-Kremis provides an MCP (Model Context Protocol) server that enables AI assistants like Claude to interact with the knowledge graph directly.
-
-```bash
-# Build the MCP server
-cargo build -p kremis-mcp --release
-
-# Run (requires a Kremis HTTP server running)
-KREMIS_URL=http://localhost:8080 ./target/release/kremis-mcp
-```
-
-Configure in Claude Desktop (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "kremis": {
-      "command": "/path/to/kremis-mcp",
-      "env": {
-        "KREMIS_URL": "http://localhost:8080",
-        "KREMIS_API_KEY": "your-key-here"
-      }
-    }
-  }
-}
-```
-
-9 tools available: `kremis_ingest`, `kremis_lookup`, `kremis_traverse`, `kremis_path`, `kremis_intersect`, `kremis_status`, `kremis_properties`, `kremis_retract`, `kremis_hash`.
-
-### Rust API
-
-```rust
-use kremis_core::{Session, Signal, EntityId, Attribute, Value};
-
-let mut session = Session::new();
-
-let signal = Signal::new(
-    EntityId(1),
-    Attribute::new("name"),
-    Value::new("Alice"),
-);
-
-let node_id = session.ingest(&signal)?;
 ```
 
 ---
@@ -285,7 +140,24 @@ let node_id = session.ingest(&signal)?;
 | **apps/kremis** | HTTP server + CLI (tokio, axum, clap) |
 | **apps/kremis-mcp** | MCP server bridge for AI assistants (rmcp, stdio) |
 
-See the [architecture docs](https://kremis.mintlify.app/architecture) or browse the [source](docs/architecture.mdx) for internal details (data flow, storage backends, algorithms, export formats).
+See the [architecture docs](https://kremis.mintlify.app/architecture) for internals: data flow, storage backends, algorithms, export formats.
+
+---
+
+## Documentation
+
+Full reference at **[kremis.mintlify.app](https://kremis.mintlify.app)**:
+
+| Topic | Link |
+|-------|------|
+| Introduction | [kremis.mintlify.app/introduction](https://kremis.mintlify.app/introduction) |
+| Installation | [kremis.mintlify.app/installation](https://kremis.mintlify.app/installation) |
+| Quick Start | [kremis.mintlify.app/quickstart](https://kremis.mintlify.app/quickstart) |
+| Configuration | [kremis.mintlify.app/configuration](https://kremis.mintlify.app/configuration) |
+| CLI Reference | [kremis.mintlify.app/cli/overview](https://kremis.mintlify.app/cli/overview) |
+| API Reference | [kremis.mintlify.app/api/overview](https://kremis.mintlify.app/api/overview) |
+| MCP Server | [kremis.mintlify.app/mcp/overview](https://kremis.mintlify.app/mcp/overview) |
+| Philosophy | [kremis.mintlify.app/philosophy](https://kremis.mintlify.app/philosophy) |
 
 ---
 

@@ -6,6 +6,10 @@
 - [ ] `refactor:` — code restructuring, no behavior change
 - [ ] `chore:` — tooling, CI, dependencies
 
+## Related issues
+
+<!-- Link the issue(s) this PR addresses. Use "Closes #123" to auto-close on merge. -->
+
 ## Description
 
 <!-- What does this PR do and why? -->
@@ -16,6 +20,13 @@
 - [ ] `cargo clippy --all-targets --all-features -- -D warnings` passes
 - [ ] `cargo check --all-targets` passes
 - [ ] `cargo test --workspace` passes
+
+## 4 Fundamental Laws
+
+- [ ] **Determinism** — no randomness, no `HashMap`/`HashSet` in core, no floats in core
+- [ ] **Precision** — output is honest: Facts, Inferences, or "I don't know"
+- [ ] **Security** — input validation, no path traversal, constant-time auth
+- [ ] **Separation** — `kremis-core` stays pure (no async, no network, no IO)
 
 ## Version bump (feat/fix only)
 

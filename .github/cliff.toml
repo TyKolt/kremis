@@ -12,9 +12,12 @@ body = """
 ## [Unreleased]
 {% endif %}\
 {% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | upper_first }}
+### {{ group | striptags | trim | upper_first }}
 {% for commit in commits %}
-- {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }} ([`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/TyKolt/kremis/commit/{{ commit.id }}))\
+- {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+{% if commit.breaking %}[**breaking**] {% endif %}\
+{{ commit.message | upper_first }}\
+{% if commit.id %} ([`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/TyKolt/kremis/commit/{{ commit.id }})){% endif %}\
 {% endfor %}
 {% endfor %}\n
 """
@@ -28,22 +31,35 @@ trim = true
 conventional_commits = true
 filter_unconventional = false
 split_commits = false
+# Prevent breaking commits from being excluded by commit parsers.
+protect_breaking_commits = true
+# Preprocessors: enrich issue references before parsing.
+commit_preprocessors = [
+  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](https://github.com/TyKolt/kremis/issues/${2}))" },
+]
 # Parsers evaluated in order — first match wins.
-# User-relevant types are shown; internal types are skipped.
+# Noise commits are filtered first, then user-relevant types are grouped.
 commit_parsers = [
-  { message = "^feat", group = "Features" },
-  { message = "^fix", group = "Bug Fixes" },
-  { message = "^perf", group = "Performance" },
-  { message = "^deps", group = "Dependencies" },
-  { message = "^docs", group = "Documentation" },
+  # --- Noise filters (skip) ---
+  { message = "^docs: [Rr]egenerate CHANGELOG", skip = true },
+  { message = "\\[skip ci\\]", skip = true },
+  { message = "^Merge", skip = true },
   { message = "^ci", skip = true },
   { message = "^style", skip = true },
   { message = "^test", skip = true },
-  { message = "^refactor", skip = true },
   { message = "^bench", skip = true },
-  { message = "^chore", skip = true },
   { message = "^build", skip = true },
-  { message = "^Merge", skip = true },
+  { message = "^chore\\(release\\)", skip = true },
+  # --- User-visible groups (sorted by HTML comment prefix) ---
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
+  { message = "^refactor", group = "<!-- 2 -->Refactoring" },
+  { message = "^perf", group = "<!-- 3 -->Performance" },
+  { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^deps", group = "<!-- 5 -->Dependencies" },
+  { body = ".*security", group = "<!-- 6 -->Security" },
+  { message = "^revert", group = "<!-- 7 -->Reverted" },
+  { message = "^chore", group = "<!-- 8 -->Miscellaneous" },
 ]
 # Only commits matching a non-skip group above are included.
 filter_commits = true
