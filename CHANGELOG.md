@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.7] - 2026-03-31
+
+### Bug Fixes
+
+- Align OpenAPI depth minimum with runtime semantics ([#35](https://github.com/TyKolt/kremis/issues/35)) ([`f24ca3e`](https://github.com/TyKolt/kremis/commit/f24ca3ed72591d63a95ba4381040c3ce075183ba))
+
 ## [0.17.6] - 2026-03-31
 
 ### Bug Fixes
