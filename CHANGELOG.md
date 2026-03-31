@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.6] - 2026-03-31
+
+### Bug Fixes
+
+- Accept UTF-8 BOM in CLI ingest JSON files ([#36](https://github.com/TyKolt/kremis/issues/36)) ([`9b69c62`](https://github.com/TyKolt/kremis/commit/9b69c62d143030a8c03c68d89cc5d1fe20f03e70))
+
 ## [0.17.5] - 2026-03-31
 
 ### Bug Fixes
