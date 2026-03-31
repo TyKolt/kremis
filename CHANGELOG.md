@@ -2,11 +2,15 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [Unreleased]
+## [0.17.5] - 2026-03-31
+
+### Bug Fixes
+
+- Reject CLI intersect queries with fewer than 2 nodes ([#37](https://github.com/TyKolt/kremis/issues/37)) ([`186afb2`](https://github.com/TyKolt/kremis/commit/186afb26007b0bed96245be444e04ca9c8c58726))
 
 ### Documentation
 
-- Update community health files and GitHub templates to 2026 best practices ([`68a3f5b`](https://github.com/TyKolt/kremis/commit/68a3f5b7b7e18cf822e670a3adae0491e5f40674))
+- Update community health files and GitHub templates to 2026 best practices ([`0518aa9`](https://github.com/TyKolt/kremis/commit/0518aa9ca90b4d7fb82606bae9e6781cbe0be382))
 
 ## [0.17.4] - 2026-03-30
 
