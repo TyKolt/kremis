@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.17.6
+  version: 0.17.7
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.17.6"
+                version: "0.17.7"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -637,7 +637,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.17.6"
+          example: "0.17.7"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -914,9 +914,9 @@ components:
           example: 9876543210
         depth:
           type: integer
-          minimum: 1
+          minimum: 0
           maximum: 100
-          description: Maximum traversal depth (1–100).
+          description: Maximum traversal depth (0–100).
           example: 3
 
     TraverseFilteredQuery:
@@ -935,9 +935,9 @@ components:
           example: 9876543210
         depth:
           type: integer
-          minimum: 1
+          minimum: 0
           maximum: 100
-          description: Maximum traversal depth (1–100).
+          description: Maximum traversal depth (0–100).
           example: 3
         min_weight:
           type: integer
@@ -1012,9 +1012,9 @@ components:
           example: 9876543210
         depth:
           type: integer
-          minimum: 1
+          minimum: 0
           maximum: 100
-          description: Maximum traversal depth (1–100).
+          description: Maximum traversal depth (0–100).
           example: 2
 
     PropertiesQuery:
