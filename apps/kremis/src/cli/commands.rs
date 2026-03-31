@@ -605,6 +605,12 @@ pub fn cmd_query(
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
+            if node_ids.len() < kremis_core::primitives::MIN_INTERSECT_NODES
+                || node_ids.len() > kremis_core::primitives::MAX_INTERSECT_NODES
+            {
+                return Err(KremisError::InvalidSignal);
+            }
+
             let result = session.intersect(&node_ids)?;
 
             if json_mode {
