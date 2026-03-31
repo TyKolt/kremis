@@ -289,6 +289,33 @@ fn test_ingest_invalid_json() {
 }
 
 #[test]
+fn test_ingest_json_with_bom() {
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("test.db");
+    let bom_file = temp.path().join("bom.json");
+
+    // UTF-8 BOM (EF BB BF) followed by valid JSON
+    let mut bom_content = vec![0xEF, 0xBB, 0xBF];
+    bom_content.extend_from_slice(br#"[{"entity_id":1,"attribute":"name","value":"Alice"}]"#);
+    std::fs::write(&bom_file, bom_content).unwrap();
+
+    cmd_init(&db_path, "file", false).unwrap();
+    let result = cmd_ingest(
+        &db_path,
+        "file",
+        false,
+        Some(&bom_file),
+        "json",
+        false,
+        false,
+    );
+    assert!(result.is_ok(), "ingest should accept JSON with UTF-8 BOM");
+
+    let session = load_or_create_session(&db_path, "file").unwrap();
+    assert!(session.node_count().expect("node_count") > 0);
+}
+
+#[test]
 fn ingest_text_strict_fails_on_malformed_lines() {
     let temp = create_temp_dir();
     let db_path = temp.path().join("test.db");

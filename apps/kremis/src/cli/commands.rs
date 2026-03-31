@@ -331,6 +331,13 @@ pub fn cmd_ingest(
         let contents = std::fs::read(&validated_path)
             .map_err(|e| KremisError::SerializationError(format!("Read file: {}", e)))?;
 
+        // Strip UTF-8 BOM if present (common on Windows)
+        let contents = if contents.starts_with(&[0xEF, 0xBB, 0xBF]) {
+            contents[3..].to_vec()
+        } else {
+            contents
+        };
+
         // Parse signals based on format
         match format {
             "json" => {
