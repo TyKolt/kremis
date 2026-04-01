@@ -101,9 +101,9 @@ fn test_load_nonexistent_creates_new() {
     let temp = create_temp_dir();
     let db_path = temp.path().join("nonexistent.db");
 
-    let session = load_or_create_session(&db_path, "file");
-    assert!(session.is_ok());
-    let session = session.unwrap();
+    let result = load_or_create_session(&db_path, "file");
+    assert!(result.is_ok());
+    let (session, _) = result.unwrap();
     assert_eq!(session.node_count().expect("node_count"), 0);
 }
 
@@ -124,7 +124,7 @@ fn test_save_and_load_session() {
     save_session(&session, &db_path).unwrap();
 
     // Load session back
-    let loaded = load_or_create_session(&db_path, "file").unwrap();
+    let (loaded, _) = load_or_create_session(&db_path, "file").unwrap();
     assert_eq!(loaded.node_count().expect("node_count"), node_count);
 }
 
@@ -137,8 +137,8 @@ fn test_load_redb_session() {
     cmd_init(&db_path, "redb", false).unwrap();
 
     // Load should work
-    let session = load_or_create_session(&db_path, "redb");
-    assert!(session.is_ok());
+    let result = load_or_create_session(&db_path, "redb");
+    assert!(result.is_ok());
 }
 
 // =============================================================================
@@ -222,7 +222,7 @@ fn test_ingest_json_format() {
     assert!(result.is_ok());
 
     // Verify data was ingested
-    let session = load_or_create_session(&db_path, "file").unwrap();
+    let (session, _) = load_or_create_session(&db_path, "file").unwrap();
     assert!(session.node_count().expect("node_count") > 0);
 }
 
@@ -245,7 +245,7 @@ fn test_ingest_text_format() {
     assert!(result.is_ok());
 
     // Verify data was ingested
-    let session = load_or_create_session(&db_path, "file").unwrap();
+    let (session, _) = load_or_create_session(&db_path, "file").unwrap();
     assert!(session.node_count().expect("node_count") > 0);
 }
 
@@ -311,7 +311,7 @@ fn test_ingest_json_with_bom() {
     );
     assert!(result.is_ok(), "ingest should accept JSON with UTF-8 BOM");
 
-    let session = load_or_create_session(&db_path, "file").unwrap();
+    let (session, _) = load_or_create_session(&db_path, "file").unwrap();
     assert!(session.node_count().expect("node_count") > 0);
 }
 
@@ -802,8 +802,8 @@ fn test_import_canonical() {
     assert!(result.is_ok());
 
     // Verify imported data matches
-    let original = load_or_create_session(&db_path, "file").unwrap();
-    let imported = load_or_create_session(&import_db_path, "file").unwrap();
+    let (original, _) = load_or_create_session(&db_path, "file").unwrap();
+    let (imported, _) = load_or_create_session(&import_db_path, "file").unwrap();
     assert_eq!(
         original.node_count().expect("node_count"),
         imported.node_count().expect("node_count")
@@ -866,7 +866,7 @@ fn test_export_import_roundtrip_preserves_data() {
     cmd_import(&db2_path, "file", &export_path).unwrap();
 
     // Verify
-    let imported = load_or_create_session(&db2_path, "file").unwrap();
+    let (imported, _) = load_or_create_session(&db2_path, "file").unwrap();
     assert_eq!(
         imported.node_count().expect("node_count"),
         original_node_count

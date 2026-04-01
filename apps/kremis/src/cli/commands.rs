@@ -118,7 +118,7 @@ pub async fn cmd_server(
     port: u16,
     config: AppConfig,
 ) -> Result<(), KremisError> {
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, _) = load_or_create_session(db_path, backend)?;
 
     println!("Kremis Honest AGI Server Starting...");
     println!();
@@ -129,12 +129,16 @@ pub async fn cmd_server(
     println!("  Database: {:?}", db_path);
     println!();
     println!("Endpoints:");
-    println!("  POST /signal - Ingest a signal");
-    println!("  POST /query  - Execute a query");
-    println!("  GET  /status - Get graph status");
-    println!("  GET  /stage  - Get developmental stage");
-    println!("  POST /export - Export graph");
-    println!("  GET  /health - Health check");
+    println!("  POST /signal         - Ingest a signal");
+    println!("  POST /signals        - Batch ingest signals");
+    println!("  POST /signal/retract - Retract a signal");
+    println!("  POST /query          - Execute a query");
+    println!("  GET  /status         - Get graph status");
+    println!("  GET  /stage          - Get developmental stage");
+    println!("  POST /export         - Export graph");
+    println!("  GET  /hash           - BLAKE3 graph hash");
+    println!("  GET  /metrics        - Graph metrics");
+    println!("  GET  /health         - Health check");
     println!();
     println!("Press Ctrl+C to stop");
     println!();
@@ -149,13 +153,13 @@ pub async fn cmd_server(
 
 /// Show graph status.
 pub fn cmd_status(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(), KremisError> {
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, detected_backend) = load_or_create_session(db_path, backend)?;
     let metrics = GraphMetrics::from_session(&session);
 
     if json_mode {
         let output = serde_json::json!({
             "database": db_path.to_string_lossy(),
-            "backend": backend,
+            "backend": detected_backend,
             "node_count": metrics.node_count,
             "edge_count": metrics.edge_count,
             "stable_edges": metrics.stable_edge_count,
@@ -169,7 +173,7 @@ pub fn cmd_status(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(
     println!("Kremis Graph Status");
     println!("==================");
     println!("Database: {:?}", db_path);
-    println!("Backend:  {}", backend);
+    println!("Backend:  {}", detected_backend);
     println!();
     println!("Nodes:        {}", metrics.node_count);
     println!("Edges:        {}", metrics.edge_count);
@@ -194,7 +198,7 @@ pub fn cmd_stage(
     json_mode: bool,
     detailed: bool,
 ) -> Result<(), KremisError> {
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, _) = load_or_create_session(db_path, backend)?;
 
     let assessor = StageAssessor::new();
     let progress = assessor.progress_to_next_session(&session);
@@ -266,7 +270,7 @@ pub fn cmd_ingest(
 ) -> Result<(), KremisError> {
     use kremis_core::{Attribute, EntityId, Signal, Value};
 
-    let mut session = load_or_create_session(db_path, backend)?;
+    let (mut session, _) = load_or_create_session(db_path, backend)?;
 
     let signals = if from_stdin {
         if file.is_some() {
@@ -286,18 +290,29 @@ pub fn cmd_ingest(
             if line.is_empty() {
                 continue;
             }
-            let val: serde_json::Value =
-                serde_json::from_str(&line).map_err(|_| KremisError::InvalidSignal)?;
-            let entity_id = val["entity_id"]
-                .as_u64()
-                .ok_or(KremisError::InvalidSignal)?;
-            let attribute = val["attribute"]
-                .as_str()
-                .ok_or(KremisError::InvalidSignal)?;
-            let value = val["value"].as_str().ok_or(KremisError::InvalidSignal)?;
+            let val: serde_json::Value = serde_json::from_str(&line).map_err(|e| {
+                KremisError::SerializationError(format!("Invalid JSON on stdin: {}", e))
+            })?;
+            let entity_id = val["entity_id"].as_u64().ok_or_else(|| {
+                KremisError::SerializationError(
+                    "Missing or invalid 'entity_id' (expected unsigned integer). Note: the field is 'entity_id', not 'entity'.".to_string(),
+                )
+            })?;
+            let attribute = val["attribute"].as_str().ok_or_else(|| {
+                KremisError::SerializationError(
+                    "Missing or invalid 'attribute' (expected string).".to_string(),
+                )
+            })?;
+            let value = val["value"].as_str().ok_or_else(|| {
+                KremisError::SerializationError(
+                    "Missing or invalid 'value' (expected string).".to_string(),
+                )
+            })?;
 
             if attribute.is_empty() || value.is_empty() {
-                return Err(KremisError::InvalidSignal);
+                return Err(KremisError::SerializationError(
+                    "Empty 'attribute' or 'value' field.".to_string(),
+                ));
             }
 
             signals.push(Signal::new(
@@ -342,7 +357,12 @@ pub fn cmd_ingest(
         match format {
             "json" => {
                 let json_values: Vec<serde_json::Value> =
-                    serde_json::from_slice(&contents).map_err(|_| KremisError::InvalidSignal)?;
+                    serde_json::from_slice(&contents).map_err(|e| {
+                        KremisError::SerializationError(format!(
+                            "Invalid JSON in file: {}. Expected array of {{\"entity_id\": <u64>, \"attribute\": \"...\", \"value\": \"...\"}}",
+                            e
+                        ))
+                    })?;
 
                 // Validate signal count to prevent DoS
                 if json_values.len() > MAX_SEQUENCE_LENGTH {
@@ -355,16 +375,26 @@ pub fn cmd_ingest(
 
                 let mut signals = Vec::new();
                 for val in json_values {
-                    let entity_id = val["entity_id"]
-                        .as_u64()
-                        .ok_or(KremisError::InvalidSignal)?;
-                    let attribute = val["attribute"]
-                        .as_str()
-                        .ok_or(KremisError::InvalidSignal)?;
-                    let value = val["value"].as_str().ok_or(KremisError::InvalidSignal)?;
+                    let entity_id = val["entity_id"].as_u64().ok_or_else(|| {
+                        KremisError::SerializationError(
+                            "Missing or invalid 'entity_id' (expected unsigned integer). Note: the field is 'entity_id', not 'entity'.".to_string(),
+                        )
+                    })?;
+                    let attribute = val["attribute"].as_str().ok_or_else(|| {
+                        KremisError::SerializationError(
+                            "Missing or invalid 'attribute' (expected string).".to_string(),
+                        )
+                    })?;
+                    let value = val["value"].as_str().ok_or_else(|| {
+                        KremisError::SerializationError(
+                            "Missing or invalid 'value' (expected string).".to_string(),
+                        )
+                    })?;
 
                     if attribute.is_empty() || value.is_empty() {
-                        return Err(KremisError::InvalidSignal);
+                        return Err(KremisError::SerializationError(
+                            "Empty 'attribute' or 'value' field.".to_string(),
+                        ));
                     }
 
                     signals.push(Signal::new(
@@ -489,7 +519,7 @@ pub fn cmd_query(
     if depth > kremis_core::primitives::MAX_TRAVERSAL_DEPTH {
         return Err(KremisError::InvalidSignal);
     }
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, _) = load_or_create_session(db_path, backend)?;
 
     match query_type {
         "lookup" => {
@@ -640,7 +670,16 @@ pub fn cmd_query(
         }
 
         "related" => {
-            let start_id = start.ok_or(KremisError::InvalidSignal)?;
+            let start_id = match (start, entity) {
+                (Some(s), _) => s,
+                (None, Some(eid)) => {
+                    session
+                        .lookup_entity(EntityId(eid))
+                        .ok_or(KremisError::NodeNotFound(NodeId(eid)))?
+                        .0
+                }
+                _ => return Err(KremisError::InvalidSignal),
+            };
 
             let artifact = session.compose(NodeId(start_id), depth)?;
 
@@ -690,7 +729,16 @@ pub fn cmd_query(
         }
 
         "properties" => {
-            let node_id = start.ok_or(KremisError::InvalidSignal)?;
+            let node_id = match (start, entity) {
+                (Some(s), _) => s,
+                (None, Some(eid)) => {
+                    session
+                        .lookup_entity(EntityId(eid))
+                        .ok_or(KremisError::NodeNotFound(NodeId(eid)))?
+                        .0
+                }
+                _ => return Err(KremisError::InvalidSignal),
+            };
 
             match session.get_properties(NodeId(node_id)) {
                 Ok(props) => {
@@ -761,7 +809,7 @@ pub fn cmd_export(
     // L1 FIX: Validate output path for security (prevents path traversal)
     let validated_output = validate_output_path(output)?;
 
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, _) = load_or_create_session(db_path, backend)?;
 
     // M3 FIX: Use export_graph_snapshot() which works with both backends
     let graph = session.export_graph_snapshot()?;
@@ -878,7 +926,7 @@ pub fn cmd_init(db_path: &PathBuf, backend: &str, force: bool) -> Result<(), Kre
 /// Compute BLAKE3 cryptographic hash of the graph.
 pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(), KremisError> {
     use kremis_core::export::canonical_crypto_hash;
-    let session = load_or_create_session(db_path, backend)?;
+    let (session, _) = load_or_create_session(db_path, backend)?;
     let graph = session.export_graph_snapshot()?;
     let hash = canonical_crypto_hash(&graph)?;
     let checksum = canonical_checksum(&graph);
@@ -899,47 +947,65 @@ pub fn cmd_hash(db_path: &PathBuf, backend: &str, json_mode: bool) -> Result<(),
 // =============================================================================
 
 /// Load or create a session from a database path with specified backend.
-pub fn load_or_create_session(db_path: &PathBuf, backend: &str) -> Result<Session, KremisError> {
+///
+/// When `backend` is `"redb"` (the default) and the file cannot be opened as
+/// redb, the function automatically falls back to file-backend detection.
+/// This avoids the need to repeat `--backend file` on every command after
+/// `init --backend file`.
+pub fn load_or_create_session(
+    db_path: &PathBuf,
+    backend: &str,
+) -> Result<(Session, &'static str), KremisError> {
     match backend {
-        "redb" => Session::with_redb(db_path),
+        "redb" => match Session::with_redb(db_path) {
+            Ok(session) => Ok((session, "redb")),
+            Err(_) if db_path.exists() => {
+                // redb failed on an existing file — try file-backend formats
+                load_file_backend(db_path).map(|s| (s, "file"))
+            }
+            Err(e) => Err(e),
+        },
         _ => {
             if db_path.exists() {
-                let data = std::fs::read(db_path)
-                    .map_err(|e| KremisError::SerializationError(format!("Read db: {}", e)))?;
-
-                // Try canonical format first
-                if let Ok((graph, diag)) = import_canonical(&data) {
-                    if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
-                        eprintln!(
-                            "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
-                            diag.dangling_edges, diag.dangling_properties
-                        );
-                    }
-                    return Ok(Session::with_graph(graph));
-                }
-
-                // Try JSON format
-                if let Ok(serializable) =
-                    serde_json::from_slice::<kremis_core::SerializableGraph>(&data)
-                {
-                    let (graph, diag) = Graph::from_serializable(serializable);
-                    if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
-                        eprintln!(
-                            "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
-                            diag.dangling_edges, diag.dangling_properties
-                        );
-                    }
-                    return Ok(Session::with_graph(graph));
-                }
-
-                Err(KremisError::SerializationError(
-                    "Could not parse database file".to_string(),
-                ))
+                load_file_backend(db_path).map(|s| (s, "file"))
             } else {
-                Ok(Session::new())
+                Ok((Session::new(), "file"))
             }
         }
     }
+}
+
+/// Try to load a database file as canonical or JSON format.
+fn load_file_backend(db_path: &PathBuf) -> Result<Session, KremisError> {
+    let data = std::fs::read(db_path)
+        .map_err(|e| KremisError::SerializationError(format!("Read db: {}", e)))?;
+
+    // Try canonical format first
+    if let Ok((graph, diag)) = import_canonical(&data) {
+        if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
+            eprintln!(
+                "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
+                diag.dangling_edges, diag.dangling_properties
+            );
+        }
+        return Ok(Session::with_graph(graph));
+    }
+
+    // Try JSON format
+    if let Ok(serializable) = serde_json::from_slice::<kremis_core::SerializableGraph>(&data) {
+        let (graph, diag) = Graph::from_serializable(serializable);
+        if diag.dangling_edges > 0 || diag.dangling_properties > 0 {
+            eprintln!(
+                "warning: discarded {} dangling edge(s) and {} dangling propert(ies) referencing non-existent nodes",
+                diag.dangling_edges, diag.dangling_properties
+            );
+        }
+        return Ok(Session::with_graph(graph));
+    }
+
+    Err(KremisError::SerializationError(
+        "Could not parse database file".to_string(),
+    ))
 }
 
 /// Save a session to a database path.
