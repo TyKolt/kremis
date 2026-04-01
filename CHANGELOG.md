@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.17.8] - 2026-04-01
+
+### Bug Fixes
+
+- Resolve CLI query dispatch and UX issues (C1, C2, W1, W4, W5) ([`1dbe7bc`](https://github.com/TyKolt/kremis/commit/1dbe7bc699a5c0d5b301ca7e24d56f16b5b37a3e))
+
 ## [0.17.7] - 2026-03-31
 
 ### Bug Fixes
