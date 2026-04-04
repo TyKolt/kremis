@@ -3,8 +3,6 @@ name: Benchmark
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: write
@@ -14,8 +12,12 @@ env:
 
 jobs:
   benchmark:
-    name: Run Benchmarks
-    runs-on: ubuntu-latest
+    name: Bench (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v6
 
@@ -27,18 +29,35 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ubuntu-latest-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ubuntu-latest-cargo-bench-
+            ${{ matrix.os }}-cargo-bench-
 
       - name: Run benchmarks
         run: cargo bench -p kremis-core --bench graph_bench -- --output-format bencher | tee bench-output.txt
 
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.os }}
+          path: bench-output.txt
+
+  update-readme:
+    name: Update README
+    needs: benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          path: bench-results
+
       - name: Update README benchmarks
-        if: github.ref == 'refs/heads/main'
         run: |
           python3 << 'SCRIPT'
-          import re, sys
+          import re, os, sys
           from datetime import datetime, timezone
 
           BENCHMARKS = [
@@ -51,27 +70,63 @@ jobs:
               ("redb_operations/insert_nodes/1000", "Redb node insertion (1K)"),
           ]
 
+          OS_LABELS = {
+              "ubuntu-latest": "Linux",
+              "windows-latest": "Windows",
+              "macos-latest": "macOS",
+          }
+
+          OS_ORDER = ["ubuntu-latest", "windows-latest", "macos-latest"]
+
           def format_ns(ns):
               if ns >= 1_000_000_000:
                   return f"{ns / 1_000_000_000:.1f} s"
               if ns >= 1_000_000:
                   return f"{ns / 1_000_000:.2f} ms"
               if ns >= 1_000:
-                  return f"{ns / 1_000:.1f} µs"
+                  return f"{ns / 1_000:.1f} \u00b5s"
               return f"{ns} ns"
 
-          results = {}
-          with open("bench-output.txt") as f:
-              for line in f:
-                  m = re.match(r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter", line)
-                  if m:
-                      results[m.group(1)] = int(m.group(2).replace(",", ""))
+          def parse_bench(path):
+              results = {}
+              with open(path) as f:
+                  for line in f:
+                      m = re.match(r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter", line)
+                      if m:
+                          results[m.group(1)] = int(m.group(2).replace(",", ""))
+              return results
+
+          # Parse results per OS
+          all_results = {}
+          for os_name in OS_ORDER:
+              path = os.path.join("bench-results", f"bench-{os_name}", "bench-output.txt")
+              if os.path.exists(path):
+                  all_results[os_name] = parse_bench(path)
+
+          if not all_results:
+              print("No benchmark results found", file=sys.stderr)
+              sys.exit(1)
 
           date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+          os_present = [o for o in OS_ORDER if o in all_results]
+          os_headers = " | ".join(OS_LABELS[o] for o in os_present)
+
+          header = f"| Operation | {os_headers} |"
+          separator = "|-----------|" + "|".join("------:" for _ in os_present) + "|"
+
           rows = []
           for name, display in BENCHMARKS:
-              if name in results:
-                  rows.append(f"| {display} | {format_ns(results[name])} |")
+              values = []
+              has_any = False
+              for o in os_present:
+                  ns = all_results[o].get(name)
+                  if ns is not None:
+                      values.append(format_ns(ns))
+                      has_any = True
+                  else:
+                      values.append("\u2014")
+              if has_any:
+                  rows.append(f"| {display} | {' | '.join(values)} |")
 
           if not rows:
               print("No matching benchmark results found", file=sys.stderr)
@@ -80,10 +135,10 @@ jobs:
           table = "\n".join([
               "## Benchmarks",
               "",
-              f"> Auto-generated on ubuntu-latest \u2014 {date}.",
+              f"> Auto-generated on CI runners \u2014 {date}.",
               "",
-              "| Operation | Time |",
-              "|-----------|------|",
+              header,
+              separator,
           ] + rows)
 
           section = f"<!-- BENCHMARK-START -->\n{table}\n<!-- BENCHMARK-END -->"
@@ -101,11 +156,10 @@ jobs:
           with open("README.md", "w") as f:
               f.write(readme)
 
-          print(f"Updated {len(rows)} benchmark entries")
+          print(f"Updated {len(rows)} benchmark entries across {len(os_present)} OS")
           SCRIPT
 
       - name: Commit README update
-        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
