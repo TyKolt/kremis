@@ -171,6 +171,14 @@ cargo fmt --all -- --check
 
 ---
 
+<!-- BENCHMARK-START -->
+## Benchmarks
+
+> Results will appear here after the first CI run on main.
+<!-- BENCHMARK-END -->
+
+---
+
 ## License
 
 [Apache License 2.0](LICENSE)

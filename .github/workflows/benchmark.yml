@@ -1,0 +1,131 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-latest-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ubuntu-latest-cargo-bench-
+
+      - name: Run benchmarks
+        run: cargo bench --workspace -- --output-format bencher | tee bench-output.txt
+
+      - name: Compare with baseline
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Kremis Benchmarks
+          tool: cargo
+          output-file-path: bench-output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          save-data-file: ${{ github.ref == 'refs/heads/main' }}
+          comment-on-alert: true
+          comment-always: ${{ github.event_name == 'pull_request' }}
+          alert-threshold: "115%"
+          fail-on-alert: true
+          fail-threshold: "130%"
+
+      - name: Update README benchmarks
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python3 << 'SCRIPT'
+          import re, sys
+          from datetime import datetime, timezone
+
+          BENCHMARKS = [
+              ("node_insertion/100000", "Node insertion (100K)"),
+              ("signal_ingestion/sequence/10000", "Signal ingestion (10K batch)"),
+              ("traverse/depth_50/1000", "Graph traversal (depth 50, 1K nodes)"),
+              ("strongest_path/1000", "Strongest path (1K nodes)"),
+              ("export_canonical/1000", "Canonical export (1K nodes)"),
+              ("import_canonical/10000", "Canonical import (10K nodes)"),
+              ("redb_operations/insert_nodes/1000", "Redb node insertion (1K)"),
+          ]
+
+          def format_ns(ns):
+              if ns >= 1_000_000_000:
+                  return f"{ns / 1_000_000_000:.1f} s"
+              if ns >= 1_000_000:
+                  return f"{ns / 1_000_000:.2f} ms"
+              if ns >= 1_000:
+                  return f"{ns / 1_000:.1f} µs"
+              return f"{ns} ns"
+
+          results = {}
+          with open("bench-output.txt") as f:
+              for line in f:
+                  m = re.match(r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter", line)
+                  if m:
+                      results[m.group(1)] = int(m.group(2).replace(",", ""))
+
+          date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+          rows = []
+          for name, display in BENCHMARKS:
+              if name in results:
+                  rows.append(f"| {display} | {format_ns(results[name])} |")
+
+          if not rows:
+              print("No matching benchmark results found", file=sys.stderr)
+              sys.exit(1)
+
+          table = "\n".join([
+              "## Benchmarks",
+              "",
+              f"> Auto-generated on ubuntu-latest \u2014 {date}.",
+              "",
+              "| Operation | Time |",
+              "|-----------|------|",
+          ] + rows)
+
+          section = f"<!-- BENCHMARK-START -->\n{table}\n<!-- BENCHMARK-END -->"
+
+          with open("README.md") as f:
+              readme = f.read()
+
+          readme = re.sub(
+              r"<!-- BENCHMARK-START -->.*?<!-- BENCHMARK-END -->",
+              section,
+              readme,
+              flags=re.DOTALL,
+          )
+
+          with open("README.md", "w") as f:
+              f.write(readme)
+
+          print(f"Updated {len(rows)} benchmark entries")
+          SCRIPT
+
+      - name: Commit README update
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "docs: update benchmark results [skip ci]"
+          git push
