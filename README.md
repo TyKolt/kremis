@@ -174,7 +174,17 @@ cargo fmt --all -- --check
 <!-- BENCHMARK-START -->
 ## Benchmarks
 
-> Results will appear here after the first CI run on main.
+> Auto-generated on ubuntu-latest — 2026-04-04.
+
+| Operation | Time |
+|-----------|------|
+| Node insertion (100K) | 20.74 ms |
+| Signal ingestion (10K batch) | 7.03 ms |
+| Graph traversal (depth 50, 1K nodes) | 2.6 µs |
+| Strongest path (1K nodes) | 7.3 µs |
+| Canonical export (1K nodes) | 62.3 µs |
+| Canonical import (10K nodes) | 3.12 ms |
+| Redb node insertion (1K) | 369.89 ms |
 <!-- BENCHMARK-END -->
 
 ---
