@@ -33,7 +33,7 @@ jobs:
             ubuntu-latest-cargo-bench-
 
       - name: Run benchmarks
-        run: cargo bench --workspace -- --output-format bencher | tee bench-output.txt
+        run: cargo bench -p kremis-core --bench graph_bench -- --output-format bencher | tee bench-output.txt
 
       - name: Compare with baseline
         uses: benchmark-action/github-action-benchmark@v1
