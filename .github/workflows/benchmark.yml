@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -165,5 +169,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
           git diff --cached --quiet && echo "No changes" && exit 0
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "${GITHUB_SHA}" ]; then
+            echo "main advanced since this run started; skipping stale README update"
+            exit 0
+          fi
           git commit -m "docs: update benchmark results [skip ci]"
-          git push
+          git push origin HEAD:main || {
+            git fetch origin main
+            if [ "$(git rev-parse origin/main)" != "${GITHUB_SHA}" ]; then
+              echo "main advanced during push; skipping stale README update"
+              exit 0
+            fi
+            exit 1
+          }
