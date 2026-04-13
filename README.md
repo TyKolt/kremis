@@ -175,17 +175,17 @@ cargo fmt --all -- --check
 <!-- BENCHMARK-START -->
 ## Benchmarks
 
-> Auto-generated on CI runners — 2026-04-12.
+> Auto-generated on CI runners — 2026-04-13.
 
 | Operation | Linux | Windows | macOS |
 |-----------|------:|------:|------:|
-| Node insertion (100K) | 22.31 ms | 22.52 ms | 17.81 ms |
-| Signal ingestion (10K batch) | 7.42 ms | 10.16 ms | 7.68 ms |
-| Graph traversal (depth 50, 1K nodes) | 2.8 µs | 3.2 µs | 2.0 µs |
-| Strongest path (1K nodes) | 8.2 µs | 8.5 µs | 6.1 µs |
-| Canonical export (1K nodes) | 65.5 µs | 68.6 µs | 51.4 µs |
-| Canonical import (10K nodes) | 3.23 ms | 3.97 ms | 3.25 ms |
-| Redb node insertion (1K) | 355.58 ms | 20.6 s | 331.61 ms |
+| Node insertion (100K) | 20.63 ms | 21.67 ms | 18.56 ms |
+| Signal ingestion (10K batch) | 7.32 ms | 9.72 ms | 8.83 ms |
+| Graph traversal (depth 50, 1K nodes) | 2.6 µs | 3.3 µs | 2.4 µs |
+| Strongest path (1K nodes) | 7.7 µs | 8.7 µs | 6.4 µs |
+| Canonical export (1K nodes) | 61.1 µs | 67.2 µs | 60.4 µs |
+| Canonical import (10K nodes) | 3.08 ms | 5.22 ms | 3.82 ms |
+| Redb node insertion (1K) | 363.97 ms | 24.6 s | 414.18 ms |
 <!-- BENCHMARK-END -->
 
 ---
