@@ -2,6 +2,26 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [Unreleased]
+
+### Documentation
+
+- Add dev.to story badge to README ([`2f8b57e`](https://github.com/TyKolt/kremis/commit/2f8b57e08039e89456a8083b4ed6597b7704f604))
+
+### Dependencies
+
+- Bump rust-minor-patch group (redb, tokio, blake3) ([#39](https://github.com/TyKolt/kremis/issues/39)) ([`77a701d`](https://github.com/TyKolt/kremis/commit/77a701d5f89cf5b950444ed9f4f5560ba90020b3))
+- *(deps)* Bump tokio in the rust-minor-patch group ([#41](https://github.com/TyKolt/kremis/issues/41)) ([`4090a9f`](https://github.com/TyKolt/kremis/commit/4090a9f301f9bb231289331be4a8818e6974bbc4))
+- *(deps)* Bump rand from 0.9.2 to 0.9.4 ([#42](https://github.com/TyKolt/kremis/issues/42)) ([`94921fa`](https://github.com/TyKolt/kremis/commit/94921fa89825a3759da432c500219876a511ee20))
+- *(security)* Bump rustls-webpki to 0.103.12 ([`c355076`](https://github.com/TyKolt/kremis/commit/c35507635bddcf371a72a53ffa8b904a1c101479))
+
+### Miscellaneous
+
+- Upgrade workspace resolver from 2 to 3 for edition 2024 compliance ([`2f7427b`](https://github.com/TyKolt/kremis/commit/2f7427b2dac098ddcbed4cf8694ba603787fdf71))
+- Publish kremis-core to crates.io, add badge and metadata ([`d043684`](https://github.com/TyKolt/kremis/commit/d043684f694bac27ce947addeb8148e9f9618ff3))
+- Add crates.io publish job to release workflow ([`b72e7d1`](https://github.com/TyKolt/kremis/commit/b72e7d11f110cd0c859435f99b2f819ec9abd81d))
+- Update dependencies (fix rustls-webpki CVE, unyan js-sys/wasm-bindgen) ([`d710399`](https://github.com/TyKolt/kremis/commit/d7103996c4b67dfefe77273c39bcde76dd38e3b4))
+
 ## [0.17.8] - 2026-04-01
 
 ### Bug Fixes
