@@ -23,7 +23,11 @@ name = "kremis-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Deterministic Graph Engine for Kremis - THE LOGIC"
+description = "Deterministic graph engine for grounded AI - every query returns fact, inference, or unknown. Never invents."
+documentation = "https://kremis.mintlify.app"
+readme = "../../README.md"
+keywords = ["graph", "ai", "llm", "knowledge-graph", "mcp"]
+categories = ["data-structures", "database-implementations", "artificial-intelligence"]
 
 [features]
 default = []

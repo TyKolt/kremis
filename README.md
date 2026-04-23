@@ -15,6 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/TyKolt/kremis/actions/workflows/ci.yml"><img src="https://github.com/TyKolt/kremis/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://crates.io/crates/kremis-core"><img src="https://img.shields.io/crates/v/kremis-core.svg" alt="crates.io"></a>
   <a href="https://kremis.mintlify.app"><img src="https://img.shields.io/badge/docs-mintlify-0D9373.svg" alt="Docs"></a>
   <a href="https://dev.to/tykolt/i-spent-months-trying-to-stop-llm-hallucinations-prompt-engineering-wasnt-enough-so-i-wrote-a-4872"><img src="https://img.shields.io/badge/story-dev.to-0A0A0A.svg" alt="Background & Story"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
