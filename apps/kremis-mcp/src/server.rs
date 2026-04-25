@@ -288,16 +288,15 @@ impl KremisMcp {
 #[tool_handler]
 impl ServerHandler for KremisMcp {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            instructions: Some(
-                "Kremis knowledge graph server. Use tools to ingest entities, \
-                 query relationships, traverse the graph, inspect properties, \
-                 retract edges, and verify graph integrity via BLAKE3 hash."
-                    .into(),
-            ),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            ..Default::default()
-        }
+        let mut info = ServerInfo::default();
+        info.instructions = Some(
+            "Kremis knowledge graph server. Use tools to ingest entities, \
+             query relationships, traverse the graph, inspect properties, \
+             retract edges, and verify graph integrity via BLAKE3 hash."
+                .into(),
+        );
+        info.capabilities = ServerCapabilities::builder().enable_tools().build();
+        info
     }
 }
 

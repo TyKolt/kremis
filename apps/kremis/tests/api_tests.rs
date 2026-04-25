@@ -46,10 +46,7 @@ fn create_test_server() -> (TestServer, TestGuard) {
     let session = Session::new();
     let state = AppState::new(session);
     let router = create_router(state);
-    (
-        TestServer::new(router).unwrap(),
-        TestGuard { _guard: guard },
-    )
+    (TestServer::new(router), TestGuard { _guard: guard })
 }
 
 /// Create a test server with some pre-populated data.
@@ -74,10 +71,7 @@ fn create_populated_test_server() -> (TestServer, TestGuard) {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    (
-        TestServer::new(router).unwrap(),
-        TestGuard { _guard: guard },
-    )
+    (TestServer::new(router), TestGuard { _guard: guard })
 }
 
 // =============================================================================
@@ -572,10 +566,7 @@ fn create_star_graph_server() -> (TestServer, TestGuard) {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    (
-        TestServer::new(router).unwrap(),
-        TestGuard { _guard: guard },
-    )
+    (TestServer::new(router), TestGuard { _guard: guard })
 }
 
 #[tokio::test]
@@ -707,10 +698,7 @@ fn create_isolated_pair_server() -> (TestServer, TestGuard) {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    (
-        TestServer::new(router).unwrap(),
-        TestGuard { _guard: guard },
-    )
+    (TestServer::new(router), TestGuard { _guard: guard })
 }
 
 #[tokio::test]
@@ -1002,7 +990,7 @@ fn create_auth_test_server(api_key: &str) -> TestServer {
     let session = Session::new();
     let state = AppState::new(session);
     let router = create_router(state);
-    TestServer::new(router).unwrap()
+    TestServer::new(router)
 }
 
 /// Clean up auth env var after test.
@@ -1200,7 +1188,7 @@ async fn test_hash_after_ingest() {
         ])
         .unwrap();
     let router2 = create_router(AppState::new(session2));
-    let server_populated = TestServer::new(router2).unwrap();
+    let server_populated = TestServer::new(router2);
 
     let hash_populated: serde_json::Value = server_populated.get("/hash").await.json();
     let populated_hash = hash_populated["hash"].as_str().unwrap().to_string();
@@ -1285,7 +1273,7 @@ async fn test_retract_reduces_edge_weight() {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    let server = TestServer::new(router).unwrap();
+    let server = TestServer::new(router);
     let _guard = TestGuard { _guard: guard };
 
     let request = RetractRequest {
@@ -1350,7 +1338,7 @@ async fn test_retract_edge_not_found_returns_404() {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    let server = TestServer::new(router).unwrap();
+    let server = TestServer::new(router);
     let _guard = TestGuard { _guard: guard };
 
     // Entities 1 and 2 exist but there is no direct edge from 2 to 1
@@ -1383,7 +1371,7 @@ async fn test_retract_multiple_times_floors_at_zero() {
 
     let state = AppState::new(session);
     let router = create_router(state);
-    let server = TestServer::new(router).unwrap();
+    let server = TestServer::new(router);
     let _guard = TestGuard { _guard: guard };
 
     let request = RetractRequest {

@@ -56,7 +56,7 @@ missing_fields_in_debug = "allow"
 # =============================================================================
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
-redb = "3.1"
+redb = "4.1"
 postcard = { version = "1.1", features = ["use-std"] }
 
 # =============================================================================
@@ -64,7 +64,7 @@ postcard = { version = "1.1", features = ["use-std"] }
 # =============================================================================
 clap = { version = "4.6", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-tokio = { version = "1.51", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "signal"] }
+tokio = { version = "1.52", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 axum = "0.8"
@@ -74,7 +74,7 @@ base64 = "0.22"
 governor = "0.10"
 subtle = "2.6"
 
-toml = { version = "0.8", default-features = false, features = ["parse"] }
+toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
 
 # DEV / TESTS
 proptest = "1.11"
