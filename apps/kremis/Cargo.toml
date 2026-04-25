@@ -56,7 +56,7 @@ toml = { workspace = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-axum-test = "18"
+axum-test = "20"
 bytes = "1"
 
 # =============================================================================
