@@ -3,20 +3,20 @@
   "language": "english",
   "outputStyle": "Explanatory",
   "env": {
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5"
+    "DISABLE_TELEMETRY": "1"
   },
   "permissions": {
+    "allow": [
+      "Read",
+      "LSP",
+      "Grep",
+      "Glob"
+    ],
     "ask": [
       "WebSearch",
       "Write",
       "Edit",
       "Bash"
-    ],
-    "allow": [
-      "Read",
-      "LSP"
     ]
   }
 }
