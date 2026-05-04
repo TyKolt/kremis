@@ -22,7 +22,7 @@ name = "kremis-mcp"
 path = "src/main.rs"
 
 [dependencies]
-rmcp = { version = "1.5", features = ["server", "transport-io", "schemars"] }
+rmcp = { version = "1.6", features = ["server", "transport-io", "schemars"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 tokio = { workspace = true }
 serde = { workspace = true }
