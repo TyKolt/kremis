@@ -14,6 +14,8 @@ All notable changes to Kremis are documented in this file.
 - *(deps)* Bump tokio in the rust-minor-patch group ([#41](https://github.com/TyKolt/kremis/issues/41)) ([`4090a9f`](https://github.com/TyKolt/kremis/commit/4090a9f301f9bb231289331be4a8818e6974bbc4))
 - *(deps)* Bump rand from 0.9.2 to 0.9.4 ([#42](https://github.com/TyKolt/kremis/issues/42)) ([`94921fa`](https://github.com/TyKolt/kremis/commit/94921fa89825a3759da432c500219876a511ee20))
 - *(security)* Bump rustls-webpki to 0.103.12 ([`c355076`](https://github.com/TyKolt/kremis/commit/c35507635bddcf371a72a53ffa8b904a1c101479))
+- *(deps)* Bump blake3 in the rust-minor-patch group ([#46](https://github.com/TyKolt/kremis/issues/46)) ([`7705b5a`](https://github.com/TyKolt/kremis/commit/7705b5a9b340842aaf69ffd66677363e876c92ae))
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#47](https://github.com/TyKolt/kremis/issues/47)) ([`fc9a64f`](https://github.com/TyKolt/kremis/commit/fc9a64f57e5c69cc3bad365f8b6da6588e03491b))
 
 ### Miscellaneous
 
@@ -21,6 +23,8 @@ All notable changes to Kremis are documented in this file.
 - Publish kremis-core to crates.io, add badge and metadata ([`d043684`](https://github.com/TyKolt/kremis/commit/d043684f694bac27ce947addeb8148e9f9618ff3))
 - Add crates.io publish job to release workflow ([`b72e7d1`](https://github.com/TyKolt/kremis/commit/b72e7d11f110cd0c859435f99b2f819ec9abd81d))
 - Update dependencies (fix rustls-webpki CVE, unyan js-sys/wasm-bindgen) ([`d710399`](https://github.com/TyKolt/kremis/commit/d7103996c4b67dfefe77273c39bcde76dd38e3b4))
+- Add DISABLE_TELEMETRY, Grep/Glob allow in Claude Code settings ([`b32c696`](https://github.com/TyKolt/kremis/commit/b32c6967b90935567cf35dabd9b5f1b7960fc6db))
+- Update major deps (rmcp 1.5, redb 4, schemars 1, axum-test 20, toml 1, reqwest 0.13) ([`3f922cb`](https://github.com/TyKolt/kremis/commit/3f922cb523cd735eef252d3717492bf9dbd6aefd))
 
 ## [0.17.8] - 2026-04-01
 
