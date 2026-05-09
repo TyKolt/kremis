@@ -5,7 +5,7 @@
 <h1 align="center">Kremis</h1>
 
 <p align="center">
-  <strong>Deterministic knowledge graph for AI that never hallucinates</strong>
+  <strong>A deterministic knowledge graph MCP server. Local, single binary, no LLM in the loop.</strong>
 </p>
 
 <p align="center">

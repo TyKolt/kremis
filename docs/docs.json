@@ -148,6 +148,7 @@
           {
             "group": "Integration",
             "pages": [
+              "mcp/why-kremis",
               "mcp/overview",
               "mcp/tools",
               "mcp/setup"

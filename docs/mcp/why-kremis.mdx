@@ -1,0 +1,92 @@
+---
+title: "Why Kremis"
+description: "Where Kremis sits among MCP knowledge tools, and the operational trade-offs that distinguish it."
+icon: "compass"
+---
+
+Kremis is not a memory framework. It is a **verifiable knowledge substrate**: a deterministic graph engine that stores, retrieves, and exports state — without invoking a language model and without performing semantic retrieval.
+
+This page describes where Kremis fits relative to other MCP-compatible knowledge tools, on the axis that matters for self-hosted agents: **operational footprint**.
+
+<Info>
+  This is not a benchmark page. It compares what each tool requires to run, not how well each retrieves under a given workload.
+</Info>
+
+## Architectural position
+
+```
+┌──────────────────────────────────────────────────┐
+│  Agent loop  (Claude Code, Cursor, Continue.dev) │
+├──────────────────────────────────────────────────┤
+│  Memory layer   ← Mem0, Zep, Graphiti, …         │
+│                   (extraction, summarization,     │
+│                    semantic recall)               │
+├──────────────────────────────────────────────────┤
+│  Substrate     ← Kremis                          │
+│                   (deterministic graph state,     │
+│                    auditable export)              │
+├──────────────────────────────────────────────────┤
+│  Filesystem / OS                                 │
+└──────────────────────────────────────────────────┘
+```
+
+A memory framework typically extracts entities and intents from conversations using an LLM, embeds them, and recalls them via similarity search. Kremis sits below that layer: it records the explicit signals it is given, links them deterministically, and answers structural queries (`lookup`, `traverse`, `path`, `intersect`, `related`, `properties`).
+
+If you need conversational memory with semantic recall, you want a memory framework. If you need the underlying state to be reproducible, inspectable, and free of model-introduced drift, you want a substrate.
+
+## Operational footprint
+
+| Property | Kremis | Memory frameworks with LLM extraction (typical) |
+|----------|--------|--------------------------------------------------|
+| Required external services | None | LLM API + embedding API (and sometimes a vector DB) |
+| Network calls during ingest | None (in-process) | LLM call per ingestion, embedding call per chunk |
+| Network calls during query | None | Embedding call for the query, plus optional rerank |
+| LLM in the loop | No | Yes (extraction, summarization, or recall) |
+| Determinism | Yes — same input produces the same graph and BLAKE3 state hash | Bounded by LLM determinism (typically not reproducible) |
+| Distribution | Single static binary (`kremis`) plus stdio bridge (`kremis-mcp`) | Application + model provider account + storage backend |
+| Audit trail | Canonical `KREX` export — byte-identical for identical state | Application-defined; depends on framework |
+
+The "no LLM in the loop" claim refers to the Kremis MCP bridge itself. The bridge in `apps/kremis-mcp/src/client.rs` is a thin `reqwest` wrapper around the Kremis HTTP API; it does not call any model provider, embedding service, or external API. You can verify this with `grep -ri "openai\|anthropic\|embedding" apps/kremis-mcp/`.
+
+<Note>
+  External tools evolve. Before building on a comparison, consult the official documentation of each project. The relevant axis here is architectural shape, not point-in-time feature lists.
+</Note>
+
+## When Kremis fits
+
+Choose Kremis when at least one of these is true:
+
+- You need the agent's stored state to be **reproducible**: same ingest sequence, same graph, same `/hash` value.
+- You operate in an **air-gapped or LLM-restricted** environment where adding a model dependency is a procurement or compliance issue.
+- You want a **single binary** in your container or developer machine, with no model account to provision.
+- You need a **canonical export** (`KREX`) that an auditor can compare byte-for-byte against a prior snapshot.
+- You are building MCP tools for **structural** queries — graph paths, intersections, neighborhoods — not free-text recall.
+
+## When Kremis does not fit
+
+Be honest with yourself. Kremis is **not** the right choice when:
+
+- You need **semantic search** over unstructured text. Kremis stores explicit signals, not embeddings.
+- You want a **drop-in conversational memory** that ingests raw chat turns. Kremis ingests structured `(subject, predicate, object)` signals; an extraction step is your responsibility.
+- You need **temporal validity windows** ("X was true between T1 and T2, then revised"). Kremis treats state as monotonic until you explicitly retract.
+- You need **multi-tenant cloud hosting** managed for you. Kremis is a self-hosted alpha; there is no SaaS offering.
+
+## What the substrate model buys you
+
+A memory framework that includes an LLM in its retrieval path inherits two properties from that LLM:
+
+1. **Non-determinism** at the recall step. Two identical queries can return different supporting passages.
+2. **Hidden state**. The framework's effective behavior depends on the model version, the prompt template, and the embedding index — none of which are visible in your application code.
+
+Kremis exchanges those properties for a different set:
+
+1. **Determinism** at the storage and retrieval step. The graph is the state; the state is reproducible from the ingest log.
+2. **Visible state**. Every node and edge came from a signal you sent. There are no hidden inferences. Stage classification (`S0`–`S3`) is deterministic and based on edge-confidence thresholds defined in `kremis-core/src/stage.rs`.
+
+This is the same shape as the trade-off between a database and a search service: a database does less, more predictably; a search service does more, with looser guarantees.
+
+## Status disclosure
+
+Kremis is **alpha**. The on-disk `KREM` format and the canonical `KREX` export are stable in v0.x but may change before v1.0. The HTTP API and the MCP tool surface are stable within a minor version. Breaking changes are documented in `CHANGELOG.md`.
+
+If you build on Kremis today, pin a version and read the changelog before upgrading.
