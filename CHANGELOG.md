@@ -2,11 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [Unreleased]
+## [0.18.0] - 2026-05-09
+
+### Features
+
+- *(docker)* Boot MCP stdio bridge as the default entrypoint ([`0dd44ba`](https://github.com/TyKolt/kremis/commit/0dd44bac17e8e7340f306cb781cc99407682b85a))
 
 ### Documentation
 
 - Add dev.to story badge to README ([`2f8b57e`](https://github.com/TyKolt/kremis/commit/2f8b57e08039e89456a8083b4ed6597b7704f604))
+- Reposition MCP-first with new tagline and why-kremis page ([`6add364`](https://github.com/TyKolt/kremis/commit/6add364c6110b2229926d9d5839b8eb512645283))
 
 ### Dependencies
 
