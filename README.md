@@ -129,7 +129,13 @@ curl -X POST http://localhost:8080/query \
 
 ```bash
 docker build -t kremis .
-docker run -d -p 8080:8080 -v kremis-data:/data kremis
+
+# MCP server (default) — pipe MCP stdio JSON-RPC; suitable for any MCP client
+docker run -i --rm kremis
+
+# HTTP API only — override the entrypoint
+docker run -d -p 8080:8080 -v kremis-data:/data \
+  --entrypoint kremis kremis server -H 0.0.0.0 -D /data/kremis.db
 ```
 
 ---

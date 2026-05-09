@@ -70,7 +70,13 @@ cargo test --workspace
 
 ```bash
 docker build -t kremis .
-docker run -d -p 8080:8080 -v kremis-data:/data kremis
+
+# MCP server (default) — pipe MCP stdio JSON-RPC; suitable for any MCP client
+docker run -i --rm kremis
+
+# HTTP API only — override the entrypoint
+docker run -d -p 8080:8080 -v kremis-data:/data \
+  --entrypoint kremis kremis server -H 0.0.0.0 -D /data/kremis.db
 ```
 
 With configuration:
@@ -80,7 +86,7 @@ docker run -d -p 8080:8080 \
   -v kremis-data:/data \
   -e KREMIS_API_KEY=your-secret \
   -e KREMIS_CORS_ORIGINS="https://example.com" \
-  kremis
+  --entrypoint kremis kremis server -H 0.0.0.0 -D /data/kremis.db
 ```
 
 Multi-stage build (~136 MB image). Data persists in `/data` volume. Built-in healthcheck on `/health`.
