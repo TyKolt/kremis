@@ -74,14 +74,15 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} -p kremis
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }} -p kremis -p kremis-mcp
 
       - name: Prepare archive (Unix)
         if: runner.os != 'Windows'
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/kremis dist/
+          cp target/${{ matrix.target }}/release/kremis-mcp dist/
           cp README.md LICENSE dist/ 2>/dev/null || true
           cd dist
           tar czvf ../kremis-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }} *
@@ -92,6 +93,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist
           Copy-Item target/${{ matrix.target }}/release/kremis.exe dist/
+          Copy-Item target/${{ matrix.target }}/release/kremis-mcp.exe dist/
           Copy-Item README.md, LICENSE dist/ -ErrorAction SilentlyContinue
           Compress-Archive -Path dist/* -DestinationPath kremis-${{ github.ref_name }}-${{ matrix.target }}.zip
 
