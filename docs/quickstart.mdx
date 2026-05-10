@@ -66,6 +66,10 @@ cargo test --workspace
   CLI commands and the HTTP server cannot run simultaneously — redb holds an exclusive lock. Stop the server before using CLI commands like `ingest`, `status`, or `export`.
 </Warning>
 
+<Note>
+  By default, API key authentication is disabled. The server logs a warning on startup. This is expected for local development. To enable authentication, set the `KREMIS_API_KEY` environment variable or add `api_key` under `[security]` in `kremis.toml` before exposing the server on a network.
+</Note>
+
 ## Docker
 
 ```bash
