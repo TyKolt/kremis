@@ -186,13 +186,13 @@ cargo fmt --all -- --check
 
 | Operation | Linux | Windows | macOS |
 |-----------|------:|------:|------:|
-| Node insertion (100K) | 21.30 ms | 22.06 ms | 18.67 ms |
-| Signal ingestion (10K batch) | 6.98 ms | 9.78 ms | 8.12 ms |
-| Graph traversal (depth 50, 1K nodes) | 2.6 µs | 3.1 µs | 2.3 µs |
-| Strongest path (1K nodes) | 7.6 µs | 8.7 µs | 6.1 µs |
-| Canonical export (1K nodes) | 68.2 µs | 74.4 µs | 56.6 µs |
-| Canonical import (10K nodes) | 3.09 ms | 3.97 ms | 3.38 ms |
-| Redb node insertion (1K) | 358.19 ms | 14.6 s | 489.02 ms |
+| Node insertion (100K) | 20.97 ms | 18.89 ms | 17.31 ms |
+| Signal ingestion (10K batch) | 7.23 ms | 8.42 ms | 9.54 ms |
+| Graph traversal (depth 50, 1K nodes) | 2.6 µs | 3.3 µs | 2.0 µs |
+| Strongest path (1K nodes) | 7.5 µs | 8.9 µs | 5.8 µs |
+| Canonical export (1K nodes) | 68.2 µs | 76.4 µs | 52.0 µs |
+| Canonical import (10K nodes) | 3.09 ms | 3.59 ms | 3.17 ms |
+| Redb node insertion (1K) | 367.17 ms | 9.5 s | 345.79 ms |
 <!-- BENCHMARK-END -->
 
 ---
