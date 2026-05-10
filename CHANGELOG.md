@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.18.1] - 2026-05-10
+
+### Bug Fixes
+
+- *(release)* Include kremis-mcp binary in release artifacts ([`bcfec55`](https://github.com/TyKolt/kremis/commit/bcfec55ecd2b0a57d2d81bcc3c4a82923e620158))
+
 ## [0.18.0] - 2026-05-09
 
 ### Features
