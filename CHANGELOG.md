@@ -2,11 +2,26 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.0] - 2026-05-17
+
+### Features
+
+- *(certify)* Add Proof-Carrying Knowledge — Verifiable Query Certificate ([`ab94e6f`](https://github.com/TyKolt/kremis/commit/ab94e6f5f045386c729af7e2c7ae567e9190f35d))
+
+### Documentation
+
+- *(mcp)* Note kremis-mcp binary now ships in release tarball ([`82bd072`](https://github.com/TyKolt/kremis/commit/82bd0725ee81ee968f0f36cc7f0e7f505dac4f69))
+- Add note on API key auth disabled warning in quickstart ([`79f4179`](https://github.com/TyKolt/kremis/commit/79f417919cad3274291b0f99d22b2d537ab81dd5))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#48](https://github.com/TyKolt/kremis/issues/48)) ([`60038d0`](https://github.com/TyKolt/kremis/commit/60038d0682f471765fe979ed17be4fe31e9bdcd9))
+
 ## [0.18.1] - 2026-05-10
 
 ### Bug Fixes
 
-- *(release)* Include kremis-mcp binary in release artifacts ([`bcfec55`](https://github.com/TyKolt/kremis/commit/bcfec55ecd2b0a57d2d81bcc3c4a82923e620158))
+- *(release)* Include kremis-mcp binary in release artifacts ([`dbf3356`](https://github.com/TyKolt/kremis/commit/dbf3356a4ee2772d8fef829035bf7192d99c4ac8))
 
 ## [0.18.0] - 2026-05-09
 
