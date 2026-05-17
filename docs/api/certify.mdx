@@ -1,0 +1,83 @@
+---
+title: "POST /certify"
+description: "Execute a query and return a Verifiable Query Certificate."
+icon: "certificate"
+---
+
+<ParamField path="method" type="POST">
+  `/certify`
+</ParamField>
+
+**Authentication:** Required (if enabled)
+
+Executes the same query as [`POST /query`](/api/query-lookup), then returns a
+Verifiable Query Certificate (VQC): a deterministic, base64-encoded object a
+third party re-derives offline to re-verify the result. See
+[Proof-Carrying Knowledge](/concepts/proof-carrying-knowledge) and the
+[Certificate Specification](/concepts/certificate-spec).
+
+## Request Body
+
+Identical to `/query` — the tagged `QueryRequest`.
+
+```json
+{ "type": "lookup", "entity_id": 12345678901234567 }
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Query variant (`lookup`, `traverse`, `traverse_filtered`, `strongest_path`, `intersect`, `related`, `properties`) |
+| _variant fields_ | — | Yes | Same fields as the matching `/query` variant |
+
+## Response
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the certificate was produced |
+| `found` | boolean | Whether the query found supporting data |
+| `grounding` | string | `fact`, `inference`, or `unknown` |
+| `proof_of_absence` | boolean | True when a certified `unknown` with empty evidence proves absence at `state_hash` |
+| `state_hash` | string \| null | BLAKE3 hex digest of the canonical (`KREX`) state |
+| `certificate` | string \| null | Base64 canonical bytes — magic `KVQC`, version 1 |
+| `error` | string \| null | Present only when `success` is `false` |
+
+<CodeGroup>
+
+```json Certified fact
+{
+  "success": true,
+  "found": true,
+  "grounding": "fact",
+  "proof_of_absence": false,
+  "state_hash": "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8",
+  "certificate": "S1ZRQw...",
+  "error": null
+}
+```
+
+```json Proof of absence
+{
+  "success": true,
+  "found": false,
+  "grounding": "unknown",
+  "proof_of_absence": true,
+  "state_hash": "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8",
+  "certificate": "S1ZRQw...",
+  "error": null
+}
+```
+
+</CodeGroup>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/certify \
+  -H "Content-Type: application/json" \
+  -d '{"type":"lookup","entity_id":12345678901234567}'
+# response: { "success": true, "found": true, "grounding": "fact", ... }
+```
+
+A verifier decodes `certificate`, re-runs it against a graph whose canonical
+export hashes to `state_hash`, and compares bytes. Equality re-verifies the
+result without trusting this server.

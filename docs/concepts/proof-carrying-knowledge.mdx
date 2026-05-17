@@ -1,0 +1,99 @@
+---
+title: "Proof-Carrying Knowledge"
+description: "Query results that carry the evidence needed to re-derive them."
+icon: "certificate"
+---
+
+<Warning>
+  **Status: design specification.** The Verifiable Query Certificate is under
+  implementation. This page defines the contract; it does not describe a
+  shipped feature. Sections marked _Implemented_ reference existing behavior.
+</Warning>
+
+Most grounded systems answer a query and cite a source: "trust this, it was
+retrieved." Kremis takes a different approach. A query result can carry a
+**Verifiable Query Certificate (VQC)** — a self-contained object that a third
+party re-executes to obtain the identical answer, offline, without trusting
+the server that produced it.
+
+A citation says _this exists_. A certificate says _here is how to re-derive
+it_.
+
+## The Verifiable Query Certificate
+
+The certificate is a pure function of `(graph state, query)`. It contains no
+timestamp, no randomness, and no floating-point value.
+
+| Field | Content |
+|-------|---------|
+| `query` | The query in canonical form |
+| `evidence_subgraph` | The minimal set of nodes and edges the result depends on |
+| `traversal_trace` | The ordered, deterministic steps taken |
+| `state_hash` | BLAKE3 hash of the canonical (KREX) export of the graph state |
+| `grounding` | The honest verdict: fact, inference, or unknown |
+
+The `grounding` field is not omitted when the answer is absent — see
+[Proof of Absence](#proof-of-absence).
+
+## Reproducible by construction
+
+Reproducibility here is structural, not a logging side effect. It follows
+from the same constraints documented in the
+[Graph Engine](/concepts/graph-engine):
+
+- _Implemented._ All core collections use `BTreeMap` — iteration order is
+  deterministic, no `HashMap` anywhere in `kremis-core`.
+- _Implemented._ The canonical export (`KREX`, magic `b"KREX"`, version 2,
+  postcard) is bit-exact; the same state serializes to the same bytes.
+- _Implemented._ `GET /hash` already returns a BLAKE3 hash over that
+  canonical form.
+
+Because the answer is a deterministic function of the serialized state, the
+certificate is too. Re-running it yields the same bytes.
+
+## Independent re-verification
+
+A verifier does not need Kremis. Any implementation that reproduces the
+canonical `KREX` bytes for a given state can recompute the certificate and
+compare. Correctness is therefore **falsifiable by anyone**: a divergent
+implementation that produces different bytes proves a defect, the way a
+mismatched hash does.
+
+The published [certificate specification](/concepts/certificate-spec) freezes
+this format and ships test vectors (a frozen graph, a set of queries, and the
+expected certificate bytes) so the property can be checked, not assumed.
+
+## Proof of absence
+
+When a query has no answer, `grounding` is `unknown`. The certificate over an
+absent result, together with `state_hash`, is a verifiable assertion: _the
+graph at this state does not contain X_. A probabilistic retriever cannot
+demonstrate a negative; a complete, deterministic store can. Absence is
+treated as a first-class, certifiable result, not a silent empty response.
+
+## Scope and honesty
+
+This page describes a verification substrate, not a retrieval engine. Kremis
+deliberately does not provide:
+
+- ontology-constrained or LLM-based extraction (authoring is the caller's job)
+- vector or hybrid retrieval
+- a temporal / bi-temporal model
+
+These are out of scope by design, not pending features.
+
+### Related work
+
+Deterministic, auditable knowledge graphs for agents are an active area:
+canonical-primitive APIs for auditable reasoning over temporal knowledge
+graphs (arXiv:2510.06002), cryptographic deletion receipts (ForgetAgent), and
+reproducible KG construction (OPTIMUS). These provide auditable _logs_ or
+reproducible _construction_. Kremis differs on a narrow, checkable point: the
+query result itself is reproducible by construction and re-verifiable by an
+independent implementation, delivered as a single local binary over MCP.
+
+The defensible claim is intentionally narrow and falsifiable: no combination
+of (reproducible-by-construction query results) + (independently
+re-verifiable certificate) + (proof of absence) + (single local binary over
+MCP) is covered by the work above. Overstating beyond this is a defect, the
+same as a wrong hash.

@@ -5,14 +5,15 @@
 use super::{
     AppState,
     types::{
-        BatchIngestRequest, BatchIngestResponse, ExportResponse, HealthResponse, IngestRequest,
-        IngestResponse, PropertyJson, QueryRequest, QueryResponse, RetractRequest, RetractResponse,
-        StageResponse, StatusResponse,
+        BatchIngestRequest, BatchIngestResponse, CertifyResponse, ExportResponse, HealthResponse,
+        IngestRequest, IngestResponse, PropertyJson, QueryRequest, QueryResponse, RetractRequest,
+        RetractResponse, StageResponse, StatusResponse,
     },
 };
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use kremis_core::{
-    Artifact, EdgeWeight, EntityId, KremisError, NodeId, Session,
+    Artifact, EdgeWeight, EntityId, KremisError, NodeId, QueryCertificate, Session,
+    certificate::state_hash,
     export::{canonical_checksum, canonical_crypto_hash, export_canonical},
     primitives::{
         MAX_INTERSECT_NODES, MAX_SEQUENCE_LENGTH, MAX_TRAVERSAL_DEPTH, MIN_INTERSECT_NODES,
@@ -519,4 +520,128 @@ pub async fn export_handler(State(state): State<AppState>) -> impl IntoResponse 
             Json(ExportResponse::error(format!("Export failed: {}", e))),
         ),
     }
+}
+
+// =============================================================================
+// CERTIFY HANDLER
+// =============================================================================
+
+/// Deterministic canonical descriptor for a query, embedded in the certificate.
+fn query_descriptor(request: &QueryRequest) -> String {
+    match request {
+        QueryRequest::Lookup { entity_id } => format!("lookup:{entity_id}"),
+        QueryRequest::Traverse { node_id, depth } => format!("traverse:{node_id}:{depth}"),
+        QueryRequest::TraverseFiltered {
+            node_id,
+            depth,
+            min_weight,
+            top_k,
+        } => format!(
+            "traverse_filtered:{node_id}:{depth}:{min_weight}:{}",
+            top_k.unwrap_or(0)
+        ),
+        QueryRequest::StrongestPath { start, end } => format!("strongest_path:{start}:{end}"),
+        QueryRequest::Intersect { nodes } => {
+            let joined = nodes
+                .iter()
+                .map(u64::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("intersect:{joined}")
+        }
+        QueryRequest::Related { node_id, depth } => format!("related:{node_id}:{depth}"),
+        QueryRequest::Properties { node_id } => format!("properties:{node_id}"),
+    }
+}
+
+/// Execute a query and return a Verifiable Query Certificate.
+///
+/// Reuses the same query path as `/query`, then serializes the result into a
+/// deterministic, independently re-verifiable certificate. An empty result
+/// with `grounding = unknown` yields a proof of absence.
+pub async fn certify_handler(
+    State(state): State<AppState>,
+    Json(request): Json<QueryRequest>,
+) -> impl IntoResponse {
+    let session = state.session.read().await;
+
+    let response = match execute_query_session(&session, &request) {
+        Ok(r) => r,
+        Err(e) => {
+            let status = match &e {
+                KremisError::InvalidSignal => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            return (
+                status,
+                Json(CertifyResponse::error(format!("Query failed: {}", e))),
+            );
+        }
+    };
+
+    let graph = match session.export_graph_snapshot() {
+        Ok(g) => g,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(CertifyResponse::error(format!("Snapshot failed: {}", e))),
+            );
+        }
+    };
+
+    let sh = match state_hash(&graph) {
+        Ok(h) => h,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(CertifyResponse::error(format!("Hash failed: {}", e))),
+            );
+        }
+    };
+
+    let path: Vec<NodeId> = response.path.iter().map(|n| NodeId(*n)).collect();
+    let subgraph: Vec<(NodeId, NodeId, EdgeWeight)> = response
+        .edges
+        .iter()
+        .map(|e| (NodeId(e.from), NodeId(e.to), EdgeWeight::new(e.weight)))
+        .collect();
+    let artifact = if subgraph.is_empty() {
+        Artifact::with_path(path)
+    } else {
+        Artifact::with_subgraph(path, subgraph)
+    };
+
+    let cert = QueryCertificate::new(
+        sh,
+        query_descriptor(&request),
+        response.grounding.clone(),
+        &graph,
+        &artifact,
+    );
+
+    let bytes = match cert.to_canonical_bytes() {
+        Ok(b) => b,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(CertifyResponse::error(format!("Encode failed: {}", e))),
+            );
+        }
+    };
+
+    let certificate = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes);
+    let state_hex: String = sh.iter().map(|b| format!("{b:02x}")).collect();
+
+    (
+        StatusCode::OK,
+        Json(CertifyResponse {
+            success: true,
+            found: response.found,
+            proof_of_absence: cert.is_proof_of_absence(),
+            grounding: response.grounding,
+            state_hash: Some(state_hex),
+            certificate: Some(certificate),
+            error: None,
+        }),
+    )
 }

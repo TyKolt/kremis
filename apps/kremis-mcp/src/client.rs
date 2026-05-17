@@ -145,4 +145,13 @@ impl KremisClient {
         let resp = self.send(req).await?;
         self.handle_response(resp).await
     }
+
+    /// POST /certify → execute a query and return a Verifiable Query Certificate.
+    pub async fn certify(&self, request: Value) -> Result<Value, ClientError> {
+        let req = self
+            .request(reqwest::Method::POST, "/certify")
+            .json(&request);
+        let resp = self.send(req).await?;
+        self.handle_response(resp).await
+    }
 }

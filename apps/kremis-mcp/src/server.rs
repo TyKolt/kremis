@@ -1,6 +1,6 @@
 //! # Kremis MCP Server
 //!
-//! Implements `ServerHandler` with 9 MCP tools that proxy to the Kremis HTTP API.
+//! Implements `ServerHandler` with 10 MCP tools that proxy to the Kremis HTTP API.
 
 use crate::client::KremisClient;
 use rmcp::{
@@ -82,6 +82,13 @@ pub struct PropertiesParams {
     /// The node ID to get properties for.
     #[schemars(description = "The node ID to get properties for")]
     pub node_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CertifyParams {
+    /// The entity ID to certify (proves a fact, or proves absence).
+    #[schemars(description = "The entity ID to certify (proves a fact, or proves absence)")]
+    pub entity_id: u64,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -279,6 +286,25 @@ impl KremisMcp {
             Err(e) => Err(mcp_err(e)),
         }
     }
+
+    #[tool(
+        description = "Produce a Verifiable Query Certificate for an entity lookup: a reproducible proof of a fact, or a proof of absence when the entity is not in the graph"
+    )]
+    async fn kremis_certify(
+        &self,
+        params: Parameters<CertifyParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let query = serde_json::json!({
+            "type": "lookup",
+            "entity_id": params.0.entity_id,
+        });
+        match self.client.certify(query).await {
+            Ok(resp) => Ok(CallToolResult::success(vec![Content::text(
+                format_certify_response(&resp),
+            )])),
+            Err(e) => Err(mcp_err(e)),
+        }
+    }
 }
 
 // =============================================================================
@@ -292,7 +318,9 @@ impl ServerHandler for KremisMcp {
         info.instructions = Some(
             "Kremis knowledge graph server. Use tools to ingest entities, \
              query relationships, traverse the graph, inspect properties, \
-             retract edges, and verify graph integrity via BLAKE3 hash."
+             retract edges, verify graph integrity via BLAKE3 hash, and \
+             produce Verifiable Query Certificates (reproducible proofs, \
+             including proof of absence)."
                 .into(),
         );
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
@@ -402,13 +430,54 @@ fn format_query_response(resp: &serde_json::Value) -> String {
     }
 }
 
+/// Format a certify response JSON into human-readable text.
+///
+/// The HTTP `POST /certify` endpoint returns
+/// `{ success, found, grounding, proof_of_absence, state_hash, certificate, error }`.
+fn format_certify_response(resp: &serde_json::Value) -> String {
+    let success = resp
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !success && let Some(err) = resp.get("error").and_then(|v| v.as_str()) {
+        return format!("Certify error: {err}");
+    }
+
+    let grounding = resp
+        .get("grounding")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let proof_of_absence = resp
+        .get("proof_of_absence")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let state_hash = resp
+        .get("state_hash")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let cert_len = resp
+        .get("certificate")
+        .and_then(|v| v.as_str())
+        .map_or(0, str::len);
+
+    let verdict = if proof_of_absence {
+        "Proof of absence (entity not in graph)".to_string()
+    } else {
+        format!("Grounding: {grounding}")
+    };
+
+    format!(
+        "{verdict}\nState hash: {state_hash}\nCertificate: {cert_len} base64 chars (re-verifiable offline)"
+    )
+}
+
 // =============================================================================
 // TESTS
 // =============================================================================
 
 #[cfg(test)]
 mod tests {
-    use super::{format_query_response, format_retract_response};
+    use super::{format_certify_response, format_query_response, format_retract_response};
     use serde_json::json;
 
     // --- format_retract_response ---
@@ -463,6 +532,35 @@ mod tests {
             json!({ "found": false, "grounding": "unknown", "diagnostic": "no such entity" });
         let text = format_query_response(&resp);
         assert!(text.contains("no such entity"));
+    }
+
+    // --- format_certify_response ---
+
+    #[test]
+    fn certify_proof_of_absence() {
+        let resp = json!({
+            "success": true, "found": false, "grounding": "unknown",
+            "proof_of_absence": true, "state_hash": "abcd", "certificate": "S1ZRQw=="
+        });
+        let text = format_certify_response(&resp);
+        assert!(text.contains("Proof of absence"));
+        assert!(text.contains("abcd"));
+    }
+
+    #[test]
+    fn certify_fact() {
+        let resp = json!({
+            "success": true, "found": true, "grounding": "fact",
+            "proof_of_absence": false, "state_hash": "ef01", "certificate": "S1ZRQw=="
+        });
+        let text = format_certify_response(&resp);
+        assert!(text.contains("Grounding: fact"));
+    }
+
+    #[test]
+    fn certify_error() {
+        let resp = json!({ "success": false, "error": "Query failed: bad" });
+        assert!(format_certify_response(&resp).starts_with("Certify error:"));
     }
 
     #[test]

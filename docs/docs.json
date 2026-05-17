@@ -58,7 +58,9 @@
             "pages": [
               "concepts/signals",
               "concepts/graph-engine",
-              "concepts/stages"
+              "concepts/stages",
+              "concepts/proof-carrying-knowledge",
+              "concepts/certificate-spec"
             ]
           },
           {
@@ -116,6 +118,7 @@
           {
             "group": "Observability",
             "pages": [
+              "api/certify",
               "api/hash",
               "api/metrics"
             ]

@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.18.1
+  version: 0.19.0
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.18.1"
+                version: "0.19.0"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -479,6 +479,84 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /certify:
+    post:
+      operationId: certifyQuery
+      summary: Query the graph and return a Verifiable Query Certificate
+      description: |
+        Executes the same query as `/query`, then returns a Verifiable Query
+        Certificate (VQC): a deterministic, base64-encoded object that a third
+        party re-derives offline to re-verify the result.
+
+        The certificate is reproducible by construction. An empty result with
+        `grounding = unknown` sets `proof_of_absence`, demonstrating the graph
+        does not contain the queried data at `state_hash`.
+
+        Certificate bytes: `[cert_len: u32][header][postcard body]`,
+        magic `KVQC`, version 1. See the Certificate Specification.
+      tags: [observability]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+            examples:
+              lookup:
+                summary: Certify a lookup
+                value:
+                  type: lookup
+                  entity_id: 12345678901234567
+              absent:
+                summary: Certify absence (no such entity)
+                value:
+                  type: lookup
+                  entity_id: 999999999999
+      responses:
+        "200":
+          description: Certificate produced. Check `proof_of_absence` for certified absence.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CertifyResponse"
+              examples:
+                fact:
+                  summary: Certified fact
+                  value:
+                    success: true
+                    found: true
+                    grounding: fact
+                    proof_of_absence: false
+                    state_hash: "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8"
+                    certificate: "S1ZRQw..."
+                    error: null
+                absence:
+                  summary: Proof of absence
+                  value:
+                    success: true
+                    found: false
+                    grounding: unknown
+                    proof_of_absence: true
+                    state_hash: "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8"
+                    certificate: "S1ZRQw..."
+                    error: null
+        "400":
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CertifyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Snapshot, hash, or encoding failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CertifyResponse"
+
   /hash:
     get:
       operationId: getHash
@@ -637,7 +715,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.18.1"
+          example: "0.19.0"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -1167,6 +1245,49 @@ components:
     # -------------------------------------------------------------------------
     # Export
     # -------------------------------------------------------------------------
+
+    CertifyResponse:
+      type: object
+      description: Verifiable Query Certificate for a query result.
+      required: [success, found, grounding, proof_of_absence]
+      properties:
+        success:
+          type: boolean
+          description: Whether the certificate was produced.
+          example: true
+        found:
+          type: boolean
+          description: Whether the query found supporting data.
+          example: true
+        grounding:
+          type: string
+          enum: [fact, inference, unknown]
+          description: Epistemic status of the certified result.
+          example: fact
+        proof_of_absence:
+          type: boolean
+          description: |
+            True when a certified `unknown` result with empty evidence proves
+            the graph does not contain the queried data at `state_hash`.
+          example: false
+        state_hash:
+          type: ["string", "null"]
+          description: |
+            BLAKE3 hex digest (64 chars) of the canonical (`KREX`) export of
+            the graph state the certificate was produced against.
+          example: "a3b4c5d6e7f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8"
+        certificate:
+          type: ["string", "null"]
+          contentEncoding: base64
+          description: |
+            Base64-encoded canonical certificate bytes.
+            Format: `[cert_len: u32][header][postcard body]`, magic `KVQC`,
+            version 1.
+          example: "S1ZRQw..."
+        error:
+          type: ["string", "null"]
+          description: Error message, present only when `success` is `false`.
+          example: null
 
     ExportResponse:
       type: object

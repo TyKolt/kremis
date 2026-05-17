@@ -26,6 +26,7 @@
 // MODULES
 // =============================================================================
 
+pub mod certificate;
 pub mod compositor;
 pub mod confidence;
 pub mod export;
@@ -54,6 +55,7 @@ pub use types::{
 // RE-EXPORTS: Graph Engine
 // =============================================================================
 
+pub use certificate::{CERT_MAGIC, CERT_VERSION, CertBody, CertHeader, QueryCertificate};
 pub use compositor::Compositor;
 pub use confidence::ConfidenceScore;
 pub use export::{

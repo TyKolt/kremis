@@ -376,6 +376,41 @@ pub struct EdgeJson {
 }
 
 // =============================================================================
+// CERTIFY RESPONSE
+// =============================================================================
+
+/// Verifiable Query Certificate response.
+///
+/// `certificate` is the base64-encoded canonical (`KVQC`) bytes; a third party
+/// re-derives the result from these offline. `proof_of_absence` is true when a
+/// certified `unknown` result demonstrates the graph does not contain the
+/// queried data at `state_hash`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CertifyResponse {
+    pub success: bool,
+    pub found: bool,
+    pub grounding: String,
+    pub proof_of_absence: bool,
+    pub state_hash: Option<String>,
+    pub certificate: Option<String>,
+    pub error: Option<String>,
+}
+
+impl CertifyResponse {
+    pub fn error(msg: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            found: false,
+            grounding: "unknown".to_string(),
+            proof_of_absence: false,
+            state_hash: None,
+            certificate: None,
+            error: Some(msg.into()),
+        }
+    }
+}
+
+// =============================================================================
 // EXPORT RESPONSE
 // =============================================================================
 

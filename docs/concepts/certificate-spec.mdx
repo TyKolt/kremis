@@ -1,0 +1,70 @@
+---
+title: "Certificate Specification"
+description: "Byte-exact format of the Verifiable Query Certificate and its test vectors."
+icon: "file-binary"
+---
+
+<Warning>
+  **Status: design specification.** This document freezes the certificate
+  contract so an independent implementation can reproduce it. The format is
+  versioned; changes require a version increment and updated test vectors.
+</Warning>
+
+This page defines the on-the-wire format of the Verifiable Query Certificate
+(VQC) introduced in [Proof-Carrying Knowledge](/concepts/proof-carrying-knowledge).
+It exists so the reproducibility claim is checkable rather than asserted.
+
+## Layout
+
+The certificate reuses the canonical export framing documented in the
+[Graph Engine](/concepts/graph-engine):
+
+```
+[cert_len: u32 LE] [CertHeader: postcard] [CertBody: postcard]
+```
+
+- Magic: `b"KVQC"`, version 1
+- Encoding: `postcard`, the same deterministic codec used by `KREX`
+- No timestamp, no randomness, no floating-point value appears in any field
+
+### CertHeader
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `magic` | `[u8; 4]` | `b"KVQC"` |
+| `version` | `u8` | Format version (`1`) |
+| `state_hash` | `[u8; 32]` | BLAKE3 over the canonical `KREX` export of the graph state |
+
+### CertBody
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | canonical query | The query, normalized to its canonical form |
+| `evidence_subgraph` | nodes + edges | Minimal dependency set, `BTreeMap`-ordered |
+| `traversal_trace` | ordered steps | Deterministic step list, as produced by the engine |
+| `grounding` | `fact` \| `inference` \| `unknown` | Honest verdict; `unknown` is a valid, certified outcome |
+
+## Determinism contract
+
+A conforming implementation MUST satisfy: for a fixed graph state and a fixed
+query, the produced certificate bytes are identical across runs, machines,
+and implementations. Divergent bytes indicate a defect.
+
+This holds because each input to the certificate is itself deterministic: the
+state via canonical `KREX`, the traversal via `BTreeMap` iteration order, and
+the hash via BLAKE3 over the canonical bytes.
+
+## Test vectors
+
+The implementation ships frozen vectors as integration tests so the contract
+can be verified without trusting any single run:
+
+```
+crates/kremis-core/tests/certificate_vectors.rs
+```
+
+Each vector builds a fixed graph, produces a certificate, and asserts the
+bytes are reproducible and round-trip through the canonical decoder. At least
+one case uses `grounding = unknown` with an empty result, exercising the
+proof-of-absence path (`QueryCertificate::is_proof_of_absence`). A divergence
+between two runs, or against the decoded form, fails the build.

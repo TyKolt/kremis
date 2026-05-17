@@ -4,7 +4,7 @@ description: "Available MCP tools for AI assistant integration."
 icon: "wrench"
 ---
 
-The MCP server exposes 9 tools that map directly to Kremis HTTP API endpoints.
+The MCP server exposes 10 tools that map directly to Kremis HTTP API endpoints.
 
 | Tool | HTTP Equivalent | Description |
 |------|----------------|-------------|
@@ -17,6 +17,7 @@ The MCP server exposes 9 tools that map directly to Kremis HTTP API endpoints.
 | `kremis_properties` | `POST /query` (properties) | Get properties of a node |
 | `kremis_retract` | `POST /signal/retract` | Decrement edge weight between two entities |
 | `kremis_hash` | `GET /hash` | Get the canonical BLAKE3 hash of the graph |
+| `kremis_certify` | `POST /certify` (lookup) | Verifiable Query Certificate: reproducible proof of a fact, or proof of absence |
 
 ## Tool Details
 
@@ -107,3 +108,16 @@ The weight decrements by 1, floored at 0 (never negative).
 
 No parameters required. Returns the canonical BLAKE3 hash of the current graph state.
 Use to verify graph integrity or detect state changes between sessions.
+
+### kremis_certify
+
+Produce a Verifiable Query Certificate for an entity lookup. Returns the
+grounding verdict, the canonical state hash, and a base64 certificate a third
+party re-derives offline. When the entity is absent, the result is a proof of
+absence. See [Proof-Carrying Knowledge](/concepts/proof-carrying-knowledge).
+
+```json
+{
+  "entity_id": 1
+}
+```
