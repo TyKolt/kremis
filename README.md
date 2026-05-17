@@ -51,6 +51,7 @@
 - **CLI + HTTP API + MCP bridge** — Three interfaces to the same engine: terminal, REST, and AI assistants
 - **BLAKE3 hashing** — Cryptographic hash of the full graph state for integrity verification at any point
 - **Canonical export (KREX)** — Deterministic binary snapshot for provenance, audit trails, and reproducibility
+- **Proof-carrying knowledge (KVQC)** — `POST /certify` returns a reproducible Verifiable Query Certificate: a portable proof of a fact, or proof of its absence
 - **Zero baked-in knowledge** — Kremis starts empty. Every node comes from a real signal
 - **ACID persistence** — Default `redb` backend with crash-safe transactions
 
