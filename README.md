@@ -167,6 +167,7 @@ Full reference at **[kremis.mintlify.app](https://kremis.mintlify.app)**:
 | API Reference | [kremis.mintlify.app/api/overview](https://kremis.mintlify.app/api/overview) |
 | MCP Server | [kremis.mintlify.app/mcp/overview](https://kremis.mintlify.app/mcp/overview) |
 | Philosophy | [kremis.mintlify.app/philosophy](https://kremis.mintlify.app/philosophy) |
+| The Name | [kremis.mintlify.app/the-name](https://kremis.mintlify.app/the-name) |
 
 ---
 
