@@ -175,7 +175,8 @@ Committed files that contain the version (all must be updated together):
 | `Cargo.toml` | `[workspace.package] version` |
 | `docs/api/overview.mdx` | Version in description |
 | `apps/kremis/tests/types_tests.rs` | Version assertion |
-| `docs/openapi.yml` | `info.version` field |
+| `docs/openapi.yml` | `info.version` field (plus health response examples) |
+| `docs/api/health.mdx` | Version in the response example |
 | `CHANGELOG.md` | Regenerate with `git-cliff --config .github/cliff.toml --output CHANGELOG.md` |
 
 ---
