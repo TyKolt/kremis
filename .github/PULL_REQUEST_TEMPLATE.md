@@ -31,7 +31,7 @@
 ## Version bump (feat/fix only)
 
 - [ ] Not applicable (docs/refactor/chore)
-- [ ] Version bumped in `Cargo.toml`, `docs/api/overview.mdx`, `apps/kremis/tests/types_tests.rs`, `docs/openapi.yml`
+- [ ] Version bumped in `Cargo.toml`, `docs/api/overview.mdx`, `apps/kremis/tests/types_tests.rs`, `docs/openapi.yml`, `docs/api/health.mdx`
 
 ## Documentation
 
