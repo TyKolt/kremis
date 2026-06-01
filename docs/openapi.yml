@@ -494,6 +494,9 @@ paths:
 
         Certificate bytes: `[cert_len: u32][header][postcard body]`,
         magic `KVQC`, version 1. See the Certificate Specification.
+
+        The `properties` variant is not certifiable (the format carries no
+        property evidence) and returns `400`.
       tags: [observability]
       requestBody:
         required: true

@@ -10,9 +10,9 @@
 use axum::http::HeaderValue;
 use axum_test::TestServer;
 use kremis::api::{
-    AppState, BatchIngestRequest, BatchIngestResponse, ExportResponse, HealthResponse,
-    IngestRequest, IngestResponse, QueryRequest, QueryResponse, RetractRequest, RetractResponse,
-    StageResponse, StatusResponse, create_router,
+    AppState, BatchIngestRequest, BatchIngestResponse, CertifyResponse, ExportResponse,
+    HealthResponse, IngestRequest, IngestResponse, QueryRequest, QueryResponse, RetractRequest,
+    RetractResponse, StageResponse, StatusResponse, create_router,
 };
 use kremis_core::Session;
 use serde_json::json;
@@ -1513,4 +1513,82 @@ async fn test_batch_ingest_enables_strongest_path() {
         path_response.found,
         "strongest_path must find a path after batch ingest creates edges"
     );
+}
+
+// =============================================================================
+// CERTIFY ENDPOINT TESTS
+// =============================================================================
+
+fn decode_cert(b64: &str) -> kremis_core::QueryCertificate {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .expect("base64 decode");
+    kremis_core::QueryCertificate::from_canonical_bytes(&bytes).expect("decode cert")
+}
+
+#[tokio::test]
+async fn test_certify_lookup_carries_node_evidence() {
+    let (server, _guard) = create_populated_test_server();
+
+    let resp: CertifyResponse = server
+        .post("/certify")
+        .json(&QueryRequest::Lookup { entity_id: 1 })
+        .await
+        .json();
+
+    assert!(resp.success);
+    assert!(resp.found);
+    assert_eq!(resp.grounding, "fact");
+
+    // A certified fact must carry the evidence needed to re-derive it.
+    let cert = decode_cert(resp.certificate.as_ref().expect("certificate present"));
+    assert!(
+        !cert.evidence_nodes.is_empty(),
+        "a lookup 'fact' certificate must carry node evidence"
+    );
+    assert!(!cert.is_proof_of_absence());
+}
+
+#[tokio::test]
+async fn test_certify_lookup_absent_is_proof_of_absence() {
+    let (server, _guard) = create_populated_test_server();
+
+    let resp: CertifyResponse = server
+        .post("/certify")
+        .json(&QueryRequest::Lookup { entity_id: 99999 })
+        .await
+        .json();
+
+    assert!(resp.success);
+    assert!(!resp.found);
+    assert!(resp.proof_of_absence);
+    let cert = decode_cert(resp.certificate.as_ref().expect("certificate present"));
+    assert!(cert.is_proof_of_absence());
+}
+
+#[tokio::test]
+async fn test_certify_rejects_properties_query() {
+    let (server, _guard) = create_populated_test_server();
+
+    // Properties results have no graph-structural evidence the KVQC format can
+    // carry, so /certify must reject them rather than emit a "fact" with empty
+    // evidence. Regression guard for the P1 finding.
+    let lookup: QueryResponse = server
+        .post("/query")
+        .json(&QueryRequest::Lookup { entity_id: 1 })
+        .await
+        .json();
+    let node_id = lookup.path[0];
+
+    let response = server
+        .post("/certify")
+        .json(&QueryRequest::Properties { node_id })
+        .await;
+
+    response.assert_status_bad_request();
+    let resp: CertifyResponse = response.json();
+    assert!(!resp.success);
+    assert!(resp.certificate.is_none());
+    assert!(resp.error.is_some());
 }

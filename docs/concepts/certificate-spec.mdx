@@ -40,7 +40,8 @@ The certificate reuses the canonical export framing documented in the
 | Field | Type | Description |
 |-------|------|-------------|
 | `query` | canonical query | The query, normalized to its canonical form |
-| `evidence_subgraph` | nodes + edges | Minimal dependency set, `BTreeMap`-ordered |
+| `evidence_nodes` | `Vec<CanonicalNode>` | Minimal node dependency set, sorted by `NodeId` |
+| `evidence_edges` | `Vec<CanonicalEdge>` | Minimal edge dependency set, sorted by `(from, to)` |
 | `traversal_trace` | ordered steps | Deterministic step list, as produced by the engine |
 | `grounding` | `fact` \| `inference` \| `unknown` | Honest verdict; `unknown` is a valid, certified outcome |
 

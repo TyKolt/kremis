@@ -12,9 +12,12 @@ icon: "certificate"
 
 Most grounded systems answer a query and cite a source: "trust this, it was
 retrieved." Kremis takes a different approach. A query result can carry a
-**Verifiable Query Certificate (VQC)** — a self-contained object that a third
-party re-executes to obtain the identical answer, offline, without trusting
-the server that produced it.
+**Verifiable Query Certificate (VQC)** — an object that a third party
+re-executes against the same graph state to obtain the identical answer,
+offline, without trusting the server that produced it. Re-verification ties
+the result to `state_hash`, so the verifier needs a graph whose canonical
+export hashes to that value; the certificate is not a standalone proof in
+isolation.
 
 A citation says _this exists_. A certificate says _here is how to re-derive
 it_.
@@ -27,7 +30,8 @@ timestamp, no randomness, and no floating-point value.
 | Field | Content |
 |-------|---------|
 | `query` | The query in canonical form |
-| `evidence_subgraph` | The minimal set of nodes and edges the result depends on |
+| `evidence_nodes` | The minimal set of nodes the result depends on, sorted |
+| `evidence_edges` | The minimal set of edges the result depends on, sorted |
 | `traversal_trace` | The ordered, deterministic steps taken |
 | `state_hash` | BLAKE3 hash of the canonical (KREX) export of the graph state |
 | `grounding` | The honest verdict: fact, inference, or unknown |

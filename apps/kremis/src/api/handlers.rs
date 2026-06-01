@@ -559,10 +559,26 @@ fn query_descriptor(request: &QueryRequest) -> String {
 /// Reuses the same query path as `/query`, then serializes the result into a
 /// deterministic, independently re-verifiable certificate. An empty result
 /// with `grounding = unknown` yields a proof of absence.
+///
+/// `Properties` queries are rejected: the `KVQC` format carries only canonical
+/// node/edge evidence, with no field for property values, so a `Properties`
+/// certificate could only assert a verdict it cannot let a verifier re-derive.
 pub async fn certify_handler(
     State(state): State<AppState>,
     Json(request): Json<QueryRequest>,
 ) -> impl IntoResponse {
+    // The certificate format has no property-evidence field, so a Properties
+    // result cannot be honestly certified. Reject it rather than emit a hollow
+    // "fact" with empty evidence. See docs/concepts/certificate-spec.mdx.
+    if matches!(request, QueryRequest::Properties { .. }) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(CertifyResponse::error(
+                "Properties queries are not certifiable: the certificate format carries no property evidence",
+            )),
+        );
+    }
+
     let session = state.session.read().await;
 
     let response = match execute_query_session(&session, &request) {
