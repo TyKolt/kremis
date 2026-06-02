@@ -4,12 +4,6 @@ description: "Query results that carry the evidence needed to re-derive them."
 icon: "certificate"
 ---
 
-<Warning>
-  **Status: design specification.** The Verifiable Query Certificate is under
-  implementation. This page defines the contract; it does not describe a
-  shipped feature. Sections marked _Implemented_ reference existing behavior.
-</Warning>
-
 Most grounded systems answer a query and cite a source: "trust this, it was
 retrieved." Kremis takes a different approach. A query result can carry a
 **Verifiable Query Certificate (VQC)** — an object that a third party
@@ -45,12 +39,11 @@ Reproducibility here is structural, not a logging side effect. It follows
 from the same constraints documented in the
 [Graph Engine](/concepts/graph-engine):
 
-- _Implemented._ All core collections use `BTreeMap` — iteration order is
-  deterministic, no `HashMap` anywhere in `kremis-core`.
-- _Implemented._ The canonical export (`KREX`, magic `b"KREX"`, version 2,
-  postcard) is bit-exact; the same state serializes to the same bytes.
-- _Implemented._ `GET /hash` already returns a BLAKE3 hash over that
-  canonical form.
+- All core collections use `BTreeMap` — iteration order is deterministic, no
+  `HashMap` anywhere in `kremis-core`.
+- The canonical export (`KREX`, magic `b"KREX"`, version 2, postcard) is
+  bit-exact; the same state serializes to the same bytes.
+- `GET /hash` returns a BLAKE3 hash over that canonical form.
 
 Because the answer is a deterministic function of the serialized state, the
 certificate is too. Re-running it yields the same bytes.
