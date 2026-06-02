@@ -2,20 +2,31 @@
 
 All notable changes to Kremis are documented in this file.
 
-## [0.19.0] - 2026-05-17
+## [0.19.0] - 2026-06-02
 
 ### Features
 
-- *(certify)* Add Proof-Carrying Knowledge — Verifiable Query Certificate ([`ab94e6f`](https://github.com/TyKolt/kremis/commit/ab94e6f5f045386c729af7e2c7ae567e9190f35d))
+- *(certify)* Add Proof-Carrying Knowledge — Verifiable Query Certificate ([`d0fdd91`](https://github.com/TyKolt/kremis/commit/d0fdd91e36948eb878027dee33adfe62baccbf88))
+
+### Refactoring
+
+- *(certify)* Reject non-certifiable Properties queries and align docs ([`14a9995`](https://github.com/TyKolt/kremis/commit/14a9995fcb415ac10d134bf3343361fac79841e2))
 
 ### Documentation
 
 - *(mcp)* Note kremis-mcp binary now ships in release tarball ([`82bd072`](https://github.com/TyKolt/kremis/commit/82bd0725ee81ee968f0f36cc7f0e7f505dac4f69))
-- Add note on API key auth disabled warning in quickstart ([`79f4179`](https://github.com/TyKolt/kremis/commit/79f417919cad3274291b0f99d22b2d537ab81dd5))
+- Document /certify endpoint and align MCP tool references ([`78d06f6`](https://github.com/TyKolt/kremis/commit/78d06f64cb0069f9aeebf629d71acf707d7272d6))
+- Add "The Name" page explaining Kremis pronunciation and origin ([`5a93828`](https://github.com/TyKolt/kremis/commit/5a93828f01e2cd5ca59d83d0accc1ad059495785))
+- Add missing health.mdx row to CONTRIBUTING version-bump table ([`56daa19`](https://github.com/TyKolt/kremis/commit/56daa196625243a2ca5e6c7218d0ee7311318a2d))
+- Add health.mdx to PR template version-bump checklist ([`ec5da70`](https://github.com/TyKolt/kremis/commit/ec5da70304591244da110af20e7e5c8cc08ef643))
+- Add note on API key auth disabled warning in quickstart ([`b574025`](https://github.com/TyKolt/kremis/commit/b57402590e81fd5f76e32ac230fc67643155ecfd))
 
 ### Dependencies
 
 - *(deps)* Bump the rust-all-updates group with 2 updates ([#48](https://github.com/TyKolt/kremis/issues/48)) ([`60038d0`](https://github.com/TyKolt/kremis/commit/60038d0682f471765fe979ed17be4fe31e9bdcd9))
+- *(deps)* Bump rmcp from 1.6.0 to 1.7.0 in the rust-all-updates group ([#49](https://github.com/TyKolt/kremis/issues/49)) ([`87de264`](https://github.com/TyKolt/kremis/commit/87de26459179c5bbafd1a60e15076df86c2a8b53))
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#50](https://github.com/TyKolt/kremis/issues/50)) ([`45ea45b`](https://github.com/TyKolt/kremis/commit/45ea45b5d54bf86833abac44d2310b4733d84cb8))
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#51](https://github.com/TyKolt/kremis/issues/51)) ([`7364cf2`](https://github.com/TyKolt/kremis/commit/7364cf252841b0a3bd5299a51aa805ad93b9b90a))
 
 ## [0.18.1] - 2026-05-10
 
