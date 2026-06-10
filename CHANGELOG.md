@@ -2,6 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.1] - 2026-06-10
+
+### Bug Fixes
+
+- *(ingest)* Reject control characters in signal attribute and value ([`08d1f14`](https://github.com/TyKolt/kremis/commit/08d1f14a8106f00189b36f3bc1328c9ea1eb955a))
+
+### Documentation
+
+- Drop pre-release 'design specification' banners now that /certify ships in v0.19.0 ([`130a246`](https://github.com/TyKolt/kremis/commit/130a246257a19fbd83100ed77a43256bd7679520))
+- Correct stale rmcp version in MCP overview (0.15 -> 1.7) ([`7fa2e56`](https://github.com/TyKolt/kremis/commit/7fa2e56fb084969f974a65b89a502186a1a146fc))
+
 ## [0.19.0] - 2026-06-02
 
 ### Features
