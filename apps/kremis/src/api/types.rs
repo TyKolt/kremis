@@ -73,11 +73,14 @@ impl IngestRequest {
     /// # Validation (H2/H3 fix)
     ///
     /// This method validates:
-    /// - `attribute` is non-empty and within `MAX_ATTRIBUTE_LENGTH` (256 bytes)
-    /// - `value` is non-empty and within `MAX_VALUE_LENGTH` (65536 bytes)
+    /// - `attribute` is non-empty, within `MAX_ATTRIBUTE_LENGTH` (256 bytes),
+    ///   and free of control characters
+    /// - `value` is non-empty, within `MAX_VALUE_LENGTH` (65536 bytes), and
+    ///   free of control characters except `\n`, `\r`, `\t`
     ///
-    /// This prevents DoS attacks via oversized payloads at the API boundary,
-    /// before data reaches the Core ingestor.
+    /// This prevents DoS attacks via oversized payloads and log/terminal
+    /// escape injection at the API boundary, before data reaches the Core
+    /// ingestor.
     pub fn to_signal(&self) -> Result<Signal, KremisError> {
         // H2 FIX: Validate attribute length
         if self.attribute.is_empty() {
@@ -90,6 +93,11 @@ impl IngestRequest {
                 MAX_ATTRIBUTE_LENGTH
             )));
         }
+        if self.attribute.chars().any(char::is_control) {
+            return Err(KremisError::SerializationError(
+                "Attribute must not contain control characters".to_string(),
+            ));
+        }
 
         // H3 FIX: Validate value length
         if self.value.is_empty() {
@@ -101,6 +109,15 @@ impl IngestRequest {
                 self.value.len(),
                 MAX_VALUE_LENGTH
             )));
+        }
+        if self
+            .value
+            .chars()
+            .any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'))
+        {
+            return Err(KremisError::SerializationError(
+                "Value must not contain control characters (except \\n, \\r, \\t)".to_string(),
+            ));
         }
 
         Ok(Signal::new(

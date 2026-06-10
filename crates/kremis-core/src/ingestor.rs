@@ -26,8 +26,13 @@ impl Ingestor {
     ///
     /// A signal is valid if:
     /// - Entity ID is present
-    /// - Attribute is non-empty and within length limits
-    /// - Value is non-empty and within length limits
+    /// - Attribute is non-empty, within length limits, and free of control characters
+    /// - Value is non-empty, within length limits, and free of control characters
+    ///   (except `\n`, `\r`, `\t`, which are legitimate in multiline text)
+    ///
+    /// Control characters are rejected to prevent log injection and terminal
+    /// escape-sequence injection (e.g. ANSI `\x1b`) when signals are later
+    /// printed or logged.
     ///
     /// Returns `KremisError::InvalidSignal` if validation fails.
     pub fn validate(signal: &Signal) -> Result<(), KremisError> {
@@ -44,6 +49,11 @@ impl Ingestor {
             return Err(KremisError::InvalidSignal);
         }
 
+        // Attributes are identifiers: no control characters at all
+        if attr.chars().any(char::is_control) {
+            return Err(KremisError::InvalidSignal);
+        }
+
         // Value must be non-empty
         if val.is_empty() {
             return Err(KremisError::InvalidSignal);
@@ -51,6 +61,14 @@ impl Ingestor {
 
         // Value length check
         if val.len() > MAX_VALUE_LENGTH {
+            return Err(KremisError::InvalidSignal);
+        }
+
+        // Values are free text: allow whitespace controls, reject the rest
+        if val
+            .chars()
+            .any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'))
+        {
             return Err(KremisError::InvalidSignal);
         }
 
@@ -173,6 +191,34 @@ mod tests {
     #[test]
     fn validate_accepts_valid_signal() {
         let signal = make_signal(1, "name", "Alice");
+        assert!(Ingestor::validate(&signal).is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_control_chars_in_attribute() {
+        for attr in ["na\nme", "na\tme", "na\rme", "na\x1bme", "na\0me"] {
+            let signal = make_signal(1, attr, "value");
+            assert!(
+                Ingestor::validate(&signal).is_err(),
+                "attribute {attr:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_rejects_dangerous_control_chars_in_value() {
+        for val in ["va\x1b[31mlue", "va\0lue", "va\x07lue"] {
+            let signal = make_signal(1, "attr", val);
+            assert!(
+                Ingestor::validate(&signal).is_err(),
+                "value {val:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_accepts_whitespace_controls_in_value() {
+        let signal = make_signal(1, "notes", "line one\nline two\r\n\tindented");
         assert!(Ingestor::validate(&signal).is_ok());
     }
 

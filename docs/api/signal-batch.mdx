@@ -47,8 +47,8 @@ queries always return `found: false`.
 |-------|------|----------|-------------|-------------|
 | `signals` | array | Yes | Max 10,000 items | Ordered list of signals. |
 | `signals[].entity_id` | integer (u64) | Yes | — | Entity identifier. |
-| `signals[].attribute` | string | Yes | Max 256 bytes, non-empty | Attribute name. |
-| `signals[].value` | string | Yes | Max 64 KB, non-empty | Attribute value. |
+| `signals[].attribute` | string | Yes | Max 256 bytes, non-empty, no control characters | Attribute name. |
+| `signals[].value` | string | Yes | Max 64 KB, non-empty, no control characters except `\n`, `\r`, `\t` | Attribute value. |
 
 An empty array `{"signals": []}` is a valid no-op.
 
@@ -125,3 +125,5 @@ returns `found: true`.
 | Max request body | 2 MB |
 | Max attribute length | 256 bytes |
 | Max value length | 64 KB (65,536 bytes) |
+| Attribute characters | No control characters |
+| Value characters | No control characters except `\n`, `\r`, `\t` |

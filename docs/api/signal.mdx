@@ -25,8 +25,8 @@ Ingest a signal representing a grounded observation: **Entity | Attribute | Valu
 | Field | Type | Required | Constraints | Description |
 |-------|------|----------|-------------|-------------|
 | `entity_id` | integer (u64) | Yes | — | Entity identifier. |
-| `attribute` | string | Yes | Max 256 bytes, non-empty | Attribute name. |
-| `value` | string | Yes | Max 64 KB, non-empty | Attribute value. |
+| `attribute` | string | Yes | Max 256 bytes, non-empty, no control characters | Attribute name. |
+| `value` | string | Yes | Max 64 KB, non-empty, no control characters except `\n`, `\r`, `\t` | Attribute value. |
 
 ## Response
 

@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.19.0
+  version: 0.19.1
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.19.0"
+                version: "0.19.1"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -134,8 +134,8 @@ paths:
         ingested again, its edge weight is incremented (idempotent by design).
 
         **Limits** (enforced server-side):
-        - `attribute`: 1–256 bytes
-        - `value`: 1–65536 bytes (64 KB)
+        - `attribute`: 1–256 bytes, no control characters
+        - `value`: 1–65536 bytes (64 KB), no control characters except `\n`, `\r`, `\t`
         - Request body: 2 MB maximum
       tags: [signals]
       requestBody:
@@ -283,7 +283,8 @@ paths:
         **Use this endpoint** when you want to build a connected graph via HTTP.
 
         **Limits** (enforced server-side):
-        - Each signal: `attribute` 1–256 bytes, `value` 1–65536 bytes
+        - Each signal: `attribute` 1–256 bytes (no control characters),
+          `value` 1–65536 bytes (no control characters except `\n`, `\r`, `\t`)
         - Sequence: max 10,000 signals (`MAX_SEQUENCE_LENGTH`)
         - Request body: 2 MB maximum
 
@@ -718,7 +719,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.19.0"
+          example: "0.19.1"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -818,7 +819,7 @@ components:
           maxLength: 256
           description: |
             The attribute or relation type (e.g. `name`, `knows`, `role`).
-            Maximum 256 bytes.
+            Maximum 256 bytes. Control characters are rejected.
           example: name
         value:
           type: string
@@ -826,7 +827,8 @@ components:
           maxLength: 65536
           description: |
             The attribute value (e.g. `Alice`, `engineer`).
-            Maximum 65,536 bytes (64 KB).
+            Maximum 65,536 bytes (64 KB). Control characters are rejected,
+            except `\n`, `\r`, `\t`.
           example: Alice
 
     IngestResponse:
