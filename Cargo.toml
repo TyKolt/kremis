@@ -25,6 +25,7 @@ dead_code = "deny"
 # Critical denials — inherited by ALL crates
 float_arithmetic = "deny"
 unwrap_used = "deny"
+expect_used = "deny"
 panic = "deny"
 # Allowed across workspace for ergonomics
 missing_errors_doc = "allow"

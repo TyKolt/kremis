@@ -1,0 +1,9 @@
+# Clippy configuration — workspace-wide.
+#
+# The restriction lints `unwrap_used`, `expect_used` and `panic` are denied in
+# `[workspace.lints.clippy]` (Cargo.toml) to keep production code panic-free
+# (4th Law — Security). Test and `#[cfg(test)]` code is exempt: tests legitimately
+# use `.unwrap()` / `.expect()` to assert invariants and fail loudly.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

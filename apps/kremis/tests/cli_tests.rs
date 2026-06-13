@@ -3,7 +3,7 @@
 //! Uses tempfile for testing file-based operations.
 
 // Allow unwrap and panic in tests - these are standard for test code
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use kremis::cli::{
     cmd_export, cmd_import, cmd_ingest, cmd_init, cmd_query, cmd_stage, cmd_status,

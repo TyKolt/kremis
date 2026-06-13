@@ -8,6 +8,9 @@
 //! vectors verify the certificate format and the absence path, not the BLAKE3
 //! derivation, which is covered by the `crypto-hash` unit test.
 
+// Top-level fixture helpers use `.expect()`; this is test code, not production.
+#![allow(clippy::expect_used)]
+
 use kremis_core::graph::GraphStore;
 use kremis_core::{Artifact, EdgeWeight, EntityId, Graph, QueryCertificate};
 

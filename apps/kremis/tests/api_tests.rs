@@ -5,7 +5,12 @@
 // Allow unwrap and panic in tests - these are standard for test code
 // Allow holding MutexGuard across await in auth tests - tests are serialized
 // intentionally to avoid env var conflicts
-#![allow(clippy::unwrap_used, clippy::panic, clippy::await_holding_lock)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::await_holding_lock
+)]
 
 use axum::http::HeaderValue;
 use axum_test::TestServer;

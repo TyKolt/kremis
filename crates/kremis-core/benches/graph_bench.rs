@@ -4,6 +4,9 @@
 //!
 //! Run with: `cargo bench -p kremis-core`
 
+// Benchmarks legitimately use `.expect()` for setup; they are not production code.
+#![allow(clippy::expect_used)]
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use kremis_core::graph::{Graph, GraphStore};
 use kremis_core::{
