@@ -207,7 +207,7 @@ The brand assets in [`docs/logo/`](docs/logo/) (logo, icon, favicon) are proprie
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. The architecture is still evolving — open an [issue](https://github.com/TyKolt/kremis/issues) before submitting a PR.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines. The architecture is still evolving — open an [issue](https://github.com/TyKolt/kremis/issues) before submitting a PR.
 
 ## Acknowledgments
 

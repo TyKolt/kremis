@@ -50,7 +50,7 @@
     "files": [
       {
         "scope": ["**/*.rs"],
-        "path": "CONTRIBUTING.md",
+        "path": ".github/CONTRIBUTING.md",
         "description": "Project structure, 4 Fundamental Laws, development workflow, and commit conventions"
       }
     ],
