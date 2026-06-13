@@ -270,6 +270,53 @@ pub async fn run_server(
     );
 
     axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .map_err(|e| KremisError::IoError(format!("Server error: {}", e)))
+}
+
+/// Resolves when the process receives a shutdown signal.
+///
+/// Listens for `Ctrl+C` on all platforms and, additionally, `SIGTERM` on Unix
+/// (the signal sent by `docker stop`, `systemd`, and most orchestrators).
+///
+/// Handler installation is panic-free: if a handler cannot be installed, that
+/// branch is disabled (replaced by a future that never resolves) and a warning
+/// is logged, so the server keeps serving rather than crashing at startup.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {}
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to install Ctrl+C handler");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut sigterm) => {
+                sigterm.recv().await;
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to install SIGTERM handler");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {}
+        _ = terminate => {}
+    }
+
+    tracing::info!(
+        event = "server_shutdown",
+        "Shutdown signal received, draining in-flight requests"
+    );
 }
