@@ -2,11 +2,25 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.2] - 2026-06-13
+
+### Bug Fixes
+
+- *(api)* Graceful shutdown drains in-flight requests on SIGTERM/Ctrl+C ([`97369dc`](https://github.com/TyKolt/kremis/commit/97369dcc3677f7b7e6f54ff5bd150124e254fb29))
+
+### Security
+
+- *(lint)* Deny clippy::expect_used in production code ([`20614e7`](https://github.com/TyKolt/kremis/commit/20614e7e82ebb0cec2fbc790b7910fd8f38ee272))
+
+### Miscellaneous
+
+- Move community health files to .github/ to declutter root ([`6f9bf49`](https://github.com/TyKolt/kremis/commit/6f9bf49413b3b1c7bbb6a261fdf18c75863404bf))
+
 ## [0.19.1] - 2026-06-10
 
 ### Bug Fixes
 
-- *(ingest)* Reject control characters in signal attribute and value ([`08d1f14`](https://github.com/TyKolt/kremis/commit/08d1f14a8106f00189b36f3bc1328c9ea1eb955a))
+- *(ingest)* Reject control characters in signal attribute and value ([`ed2effd`](https://github.com/TyKolt/kremis/commit/ed2effd356a9552ab0b5e6ee5b14c176e2a1feb9))
 
 ### Documentation
 
