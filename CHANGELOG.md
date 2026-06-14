@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.3] - 2026-06-14
+
+### Bug Fixes
+
+- *(core)* Cap distinct properties per node to prevent slow DoS ([`590b988`](https://github.com/TyKolt/kremis/commit/590b9882192f0ba4486720e4031814f991ef20cf))
+
 ## [0.19.2] - 2026-06-13
 
 ### Bug Fixes
