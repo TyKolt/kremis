@@ -72,6 +72,17 @@ pub const MAX_VALUE_LENGTH: usize = 65536;
 /// Sequences longer than this will be rejected to prevent DoS.
 pub const MAX_SEQUENCE_LENGTH: usize = 10000;
 
+/// Maximum number of distinct `(attribute, value)` properties per node.
+///
+/// Each node accumulates properties across successive ingestions. Length and
+/// batch-size limits cap individual inputs, but without a per-node ceiling a
+/// single targeted node could grow without bound, bloating the B-tree / entity
+/// cache and exhausting disk/memory (slow DoS).
+///
+/// Adding a *new* property beyond this limit is rejected; idempotent re-inserts
+/// of an already-stored pair remain allowed (they do not grow the node).
+pub const MAX_PROPERTIES_PER_NODE: usize = 4096;
+
 /// Minimum number of nodes in an Intersect query.
 ///
 /// Intersection requires at least two sets to be meaningful.

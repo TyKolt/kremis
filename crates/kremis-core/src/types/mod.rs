@@ -342,6 +342,10 @@ pub enum KremisError {
     /// An I/O error occurred.
     #[error("I/O error: {0}")]
     IoError(String),
+
+    /// A node has reached its maximum number of distinct properties.
+    #[error("Property limit exceeded for node {0:?}: maximum {1} properties per node")]
+    PropertyLimitExceeded(NodeId, usize),
 }
 
 // =============================================================================

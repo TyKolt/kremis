@@ -37,6 +37,14 @@ const METADATA: TableDefinition<&str, u64> = TableDefinition::new("metadata");
 /// We use attr_hash (u64) as part of the key to enable range queries per node.
 const PROPERTIES: TableDefinition<(u64, u64), &[u8]> = TableDefinition::new("properties");
 
+/// Table for per-node distinct property counts: node_id -> count.
+///
+/// Maintained incrementally so `store_property` can enforce
+/// `MAX_PROPERTIES_PER_NODE` in O(1) instead of scanning every bucket of the
+/// node on each insert (which would be O(N²) and hold the write lock).
+/// Properties are never removed, so the count is monotonic.
+const PROPERTY_COUNTS: TableDefinition<u64, u64> = TableDefinition::new("property_counts");
+
 /// Compute a stable, cross-version attribute hash for use as a PROPERTIES table sub-key.
 ///
 /// Uses FNV-1a 64-bit: a fixed, publicly documented algorithm guaranteed to produce
@@ -113,6 +121,9 @@ impl RedbGraph {
             let _ = write_txn
                 .open_table(PROPERTIES)
                 .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let _ = write_txn
+                .open_table(PROPERTY_COUNTS)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
             write_txn
                 .commit()
                 .map_err(|e| KremisError::IoError(e.to_string()))?;
@@ -180,7 +191,7 @@ impl RedbGraph {
     /// - Any signal is invalid (all signals are validated before the transaction opens)
     pub fn ingest_batch(&mut self, signals: &[Signal]) -> Result<Vec<NodeId>, KremisError> {
         use crate::ingestor::Ingestor;
-        use crate::primitives::{ASSOCIATION_WINDOW, MAX_SEQUENCE_LENGTH};
+        use crate::primitives::{ASSOCIATION_WINDOW, MAX_PROPERTIES_PER_NODE, MAX_SEQUENCE_LENGTH};
 
         if signals.is_empty() {
             return Ok(Vec::new());
@@ -217,6 +228,9 @@ impl RedbGraph {
                 .map_err(|e| KremisError::IoError(e.to_string()))?;
             let mut props_table = write_txn
                 .open_table(PROPERTIES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut counts_table = write_txn
+                .open_table(PROPERTY_COUNTS)
                 .map_err(|e| KremisError::IoError(e.to_string()))?;
             let mut meta_table = write_txn
                 .open_table(METADATA)
@@ -271,16 +285,37 @@ impl RedbGraph {
                     })
                     .transpose()?
                     .unwrap_or_default();
-                // Set semantics: identical (attribute, value) pairs are idempotent.
-                if !values.contains(&signal.value) {
-                    values.push(signal.value.clone());
-                }
 
-                let prop_bytes = postcard::to_allocvec(&(signal.attribute.clone(), values))
-                    .map_err(|e| KremisError::SerializationError(e.to_string()))?;
-                props_table
-                    .insert((node_id.0, attr_hash), prop_bytes.as_slice())
-                    .map_err(|e| KremisError::IoError(e.to_string()))?;
+                // Set semantics: identical (attribute, value) pairs are idempotent
+                // and never grow the node, so they are skipped (and allowed at cap).
+                if !values.contains(&signal.value) {
+                    // Per-node property cap (DoS guard), enforced via the O(1)
+                    // maintained counter. Reads-your-writes within this txn means
+                    // earlier signals in the same batch are already reflected.
+                    let count = counts_table
+                        .get(node_id.0)
+                        .map_err(|e| KremisError::IoError(e.to_string()))?
+                        .map(|v| v.value())
+                        .unwrap_or(0) as usize;
+                    if count >= MAX_PROPERTIES_PER_NODE {
+                        // Returning aborts the txn: the whole batch is rejected.
+                        return Err(KremisError::PropertyLimitExceeded(
+                            node_id,
+                            MAX_PROPERTIES_PER_NODE,
+                        ));
+                    }
+
+                    values.push(signal.value.clone());
+
+                    let prop_bytes = postcard::to_allocvec(&(signal.attribute.clone(), values))
+                        .map_err(|e| KremisError::SerializationError(e.to_string()))?;
+                    props_table
+                        .insert((node_id.0, attr_hash), prop_bytes.as_slice())
+                        .map_err(|e| KremisError::IoError(e.to_string()))?;
+                    counts_table
+                        .insert(node_id.0, (count as u64) + 1)
+                        .map_err(|e| KremisError::IoError(e.to_string()))?;
+                }
 
                 node_ids.push(node_id);
             }
@@ -661,6 +696,8 @@ impl GraphStore for RedbGraph {
         attribute: Attribute,
         value: Value,
     ) -> Result<(), KremisError> {
+        use crate::primitives::MAX_PROPERTIES_PER_NODE;
+
         // Verify node exists
         if !self.contains_node(node)? {
             return Err(KremisError::NodeNotFound(node));
@@ -676,6 +713,9 @@ impl GraphStore for RedbGraph {
         {
             let mut props_table = write_txn
                 .open_table(PROPERTIES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?;
+            let mut counts_table = write_txn
+                .open_table(PROPERTY_COUNTS)
                 .map_err(|e| KremisError::IoError(e.to_string()))?;
 
             // Read existing values for this (node, attribute) pair
@@ -701,18 +741,37 @@ impl GraphStore for RedbGraph {
                 .transpose()?
                 .unwrap_or_default();
 
-            // Set semantics: identical (attribute, value) pairs are idempotent.
-            let mut values = existing;
-            if !values.contains(&value) {
-                values.push(value);
-            }
+            // Set semantics: an already-stored pair is idempotent and never
+            // grows the node, so it is allowed even when the node is at its cap.
+            if !existing.contains(&value) {
+                // Bound the number of distinct properties per node (DoS guard),
+                // using the O(1) maintained counter rather than scanning buckets.
+                let count = counts_table
+                    .get(node.0)
+                    .map_err(|e| KremisError::IoError(e.to_string()))?
+                    .map(|v| v.value())
+                    .unwrap_or(0) as usize;
+                if count >= MAX_PROPERTIES_PER_NODE {
+                    // Returning drops the tables + txn without commit (abort).
+                    return Err(KremisError::PropertyLimitExceeded(
+                        node,
+                        MAX_PROPERTIES_PER_NODE,
+                    ));
+                }
 
-            // Serialize and store
-            let prop_bytes = postcard::to_allocvec(&(attribute, values))
-                .map_err(|e| KremisError::SerializationError(e.to_string()))?;
-            props_table
-                .insert((node.0, attr_hash), prop_bytes.as_slice())
-                .map_err(|e| KremisError::IoError(e.to_string()))?;
+                let mut values = existing;
+                values.push(value);
+
+                // Serialize and store the new property, then bump the counter.
+                let prop_bytes = postcard::to_allocvec(&(attribute, values))
+                    .map_err(|e| KremisError::SerializationError(e.to_string()))?;
+                props_table
+                    .insert((node.0, attr_hash), prop_bytes.as_slice())
+                    .map_err(|e| KremisError::IoError(e.to_string()))?;
+                counts_table
+                    .insert(node.0, (count as u64) + 1)
+                    .map_err(|e| KremisError::IoError(e.to_string()))?;
+            }
         }
         write_txn
             .commit()
@@ -1546,6 +1605,75 @@ mod tests {
 
         let result = graph.store_property(NodeId(999), Attribute::new("name"), Value::new("Test"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn store_property_enforces_per_node_limit() {
+        use crate::primitives::MAX_PROPERTIES_PER_NODE;
+
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        // Fill the node exactly to its cap with a single batch (one commit),
+        // which also exercises the batch path's counter maintenance.
+        let fill: Vec<Signal> = (0..MAX_PROPERTIES_PER_NODE)
+            .map(|i| {
+                Signal::new(
+                    EntityId(1),
+                    Attribute::new(format!("p{i}")),
+                    Value::new("v"),
+                )
+            })
+            .collect();
+        let node = graph.ingest_batch(&fill).expect("batch fill")[0];
+
+        // One more distinct pair via the single-property path must be rejected.
+        let over = graph.store_property(node, Attribute::new("overflow"), Value::new("v"));
+        assert!(matches!(
+            over,
+            Err(KremisError::PropertyLimitExceeded(n, lim))
+                if n == node && lim == MAX_PROPERTIES_PER_NODE
+        ));
+
+        // Idempotent re-insert of an existing pair stays allowed at the cap.
+        graph
+            .store_property(node, Attribute::new("p0"), Value::new("v"))
+            .expect("idempotent re-insert at cap");
+
+        assert_eq!(
+            graph.get_properties(node).expect("get").len(),
+            MAX_PROPERTIES_PER_NODE
+        );
+    }
+
+    #[test]
+    fn ingest_batch_enforces_per_node_limit() {
+        use crate::primitives::MAX_PROPERTIES_PER_NODE;
+
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+        let mut graph = RedbGraph::open(&db_path).expect("open db");
+
+        // A single batch that would push one node past its cap is rejected
+        // atomically (the transaction aborts, no partial state is committed).
+        let over: Vec<Signal> = (0..=MAX_PROPERTIES_PER_NODE)
+            .map(|i| {
+                Signal::new(
+                    EntityId(1),
+                    Attribute::new(format!("p{i}")),
+                    Value::new("v"),
+                )
+            })
+            .collect();
+        let result = graph.ingest_batch(&over);
+        assert!(matches!(
+            result,
+            Err(KremisError::PropertyLimitExceeded(_, lim)) if lim == MAX_PROPERTIES_PER_NODE
+        ));
+
+        // Nothing from the aborted batch persisted.
+        assert_eq!(graph.node_count().expect("count"), 0);
     }
 
     #[test]

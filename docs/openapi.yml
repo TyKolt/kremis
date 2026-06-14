@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.19.2
+  version: 0.19.3
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.19.2"
+                version: "0.19.3"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -137,6 +137,8 @@ paths:
         - `attribute`: 1–256 bytes, no control characters
         - `value`: 1–65536 bytes (64 KB), no control characters except `\n`, `\r`, `\t`
         - Request body: 2 MB maximum
+        - Per node: at most 4096 distinct `(attribute, value)` properties
+          (`MAX_PROPERTIES_PER_NODE`); a new property beyond this cap returns 400.
       tags: [signals]
       requestBody:
         required: true
@@ -287,6 +289,9 @@ paths:
           `value` 1–65536 bytes (no control characters except `\n`, `\r`, `\t`)
         - Sequence: max 10,000 signals (`MAX_SEQUENCE_LENGTH`)
         - Request body: 2 MB maximum
+        - Per node: at most 4096 distinct `(attribute, value)` properties
+          (`MAX_PROPERTIES_PER_NODE`); a batch that would exceed this cap on any
+          node is rejected atomically with 400.
 
         An empty array `{"signals": []}` is a valid no-op and returns
         `{"success": true, "ingested": 0, "node_ids": []}`.
@@ -719,7 +724,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.19.2"
+          example: "0.19.3"
 
     # -------------------------------------------------------------------------
     # Graph state

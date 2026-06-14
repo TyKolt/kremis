@@ -88,6 +88,14 @@ An empty array `{"signals": []}` is a valid no-op.
   the entire request is rejected with `400`. No signals are ingested.
 </Warning>
 
+<Warning>
+  Each node accepts at most 4,096 distinct `(attribute, value)` properties
+  (`MAX_PROPERTIES_PER_NODE`). A batch that would push any node past this cap is
+  rejected atomically with `400` and `error: "Ingest failed: Property limit
+  exceeded ..."` — no signals are ingested. Re-sending an already-stored pair is
+  idempotent and never counts against the cap.
+</Warning>
+
 ## Example
 
 ```bash
@@ -125,5 +133,6 @@ returns `found: true`.
 | Max request body | 2 MB |
 | Max attribute length | 256 bytes |
 | Max value length | 64 KB (65,536 bytes) |
+| Max distinct properties per node | 4,096 (`MAX_PROPERTIES_PER_NODE`) |
 | Attribute characters | No control characters |
 | Value characters | No control characters except `\n`, `\r`, `\t` |

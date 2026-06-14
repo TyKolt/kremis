@@ -56,6 +56,13 @@ Ingest a signal representing a grounded observation: **Entity | Attribute | Valu
 | `node_id` | integer or null | Created/existing node ID (if successful). |
 | `error` | string or null | Error message (if failed). |
 
+<Warning>
+  Each node accepts at most 4,096 distinct `(attribute, value)` properties
+  (`MAX_PROPERTIES_PER_NODE`). Storing a new property beyond this cap returns
+  `400`. Re-sending an already-stored pair is idempotent and never counts
+  against the cap.
+</Warning>
+
 ## Example
 
 ```bash

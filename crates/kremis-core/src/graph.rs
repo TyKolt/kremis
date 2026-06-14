@@ -708,19 +708,42 @@ impl GraphStore for Graph {
         attribute: Attribute,
         value: Value,
     ) -> Result<(), KremisError> {
+        use crate::primitives::MAX_PROPERTIES_PER_NODE;
+
         if !self.nodes.contains_key(&node) {
             return Err(KremisError::NodeNotFound(node));
         }
-        let values = self
+
+        // Set semantics: an already-stored pair is idempotent and never grows
+        // the node, so it is allowed even when the node is at its cap.
+        let already_present = self
             .properties
+            .get(&node)
+            .and_then(|attrs| attrs.get(&attribute))
+            .is_some_and(|values| values.contains(&value));
+        if already_present {
+            return Ok(());
+        }
+
+        // Bound the number of distinct properties per node (DoS guard). Counted
+        // before any mutation so a rejection leaves the node untouched.
+        let current = self
+            .properties
+            .get(&node)
+            .map_or(0, |attrs| attrs.values().map(Vec::len).sum());
+        if current >= MAX_PROPERTIES_PER_NODE {
+            return Err(KremisError::PropertyLimitExceeded(
+                node,
+                MAX_PROPERTIES_PER_NODE,
+            ));
+        }
+
+        self.properties
             .entry(node)
             .or_default()
             .entry(attribute)
-            .or_default();
-        // Set semantics: identical (attribute, value) pairs are idempotent.
-        if !values.contains(&value) {
-            values.push(value);
-        }
+            .or_default()
+            .push(value);
         Ok(())
     }
 
@@ -1278,6 +1301,39 @@ mod tests {
         let mut graph = Graph::new();
         let result = graph.store_property(NodeId(999), Attribute::new("name"), Value::new("Test"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn store_property_enforces_per_node_limit() {
+        use crate::primitives::MAX_PROPERTIES_PER_NODE;
+
+        let mut graph = Graph::new();
+        let node = graph.insert_node(EntityId(1)).expect("insert");
+
+        // Fill the node exactly to its property cap.
+        for i in 0..MAX_PROPERTIES_PER_NODE {
+            graph
+                .store_property(node, Attribute::new("p"), Value::new(i.to_string()))
+                .expect("store within limit");
+        }
+
+        // One more distinct pair must be rejected.
+        let over = graph.store_property(node, Attribute::new("p"), Value::new("overflow"));
+        assert!(matches!(
+            over,
+            Err(KremisError::PropertyLimitExceeded(n, lim))
+                if n == node && lim == MAX_PROPERTIES_PER_NODE
+        ));
+
+        // Idempotent re-insert of an existing pair stays allowed at the cap.
+        graph
+            .store_property(node, Attribute::new("p"), Value::new("0"))
+            .expect("idempotent re-insert at cap");
+
+        assert_eq!(
+            graph.get_properties(node).expect("get").len(),
+            MAX_PROPERTIES_PER_NODE
+        );
     }
 
     #[test]

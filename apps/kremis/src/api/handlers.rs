@@ -95,10 +95,16 @@ pub async fn ingest_handler(
     let mut session = state.session.write().await;
     match session.ingest(&signal) {
         Ok(node_id) => (StatusCode::OK, Json(IngestResponse::success(node_id))),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(IngestResponse::error(format!("Ingest failed: {}", e))),
-        ),
+        Err(e) => {
+            let status = match &e {
+                KremisError::PropertyLimitExceeded(_, _) => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (
+                status,
+                Json(IngestResponse::error(format!("Ingest failed: {}", e))),
+            )
+        }
     }
 }
 
@@ -140,10 +146,16 @@ pub async fn batch_ingest_handler(
     let mut session = state.session.write().await;
     match session.ingest_sequence(&signals) {
         Ok(node_ids) => (StatusCode::OK, Json(BatchIngestResponse::success(node_ids))),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(BatchIngestResponse::error(format!("Ingest failed: {}", e))),
-        ),
+        Err(e) => {
+            let status = match &e {
+                KremisError::PropertyLimitExceeded(_, _) => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (
+                status,
+                Json(BatchIngestResponse::error(format!("Ingest failed: {}", e))),
+            )
+        }
     }
 }
 
