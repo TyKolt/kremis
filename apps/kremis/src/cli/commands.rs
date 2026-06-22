@@ -959,9 +959,24 @@ pub fn load_or_create_session(
     match backend {
         "redb" => match Session::with_redb(db_path) {
             Ok(session) => Ok((session, "redb")),
-            Err(_) if db_path.exists() => {
-                // redb failed on an existing file — try file-backend formats
-                load_file_backend(db_path).map(|s| (s, "file"))
+            Err(redb_err) if db_path.exists() => {
+                // redb could not open an existing file. Two legitimate causes:
+                //  (a) it is an older file-backend DB (canonical/JSON) — migrate by
+                //      loading it through the file backend;
+                //  (b) it is a redb file that is locked by another process (e.g. a
+                //      running `kremis server`) or corrupted — the file-backend parse
+                //      will fail, so surface the real redb error instead of a
+                //      misleading "could not parse database file".
+                match load_file_backend(db_path) {
+                    Ok(session) => Ok((session, "file")),
+                    Err(_) => Err(KremisError::IoError(format!(
+                        "could not open redb database at {} ({redb_err}). \
+                         redb allows only one process at a time: if a `kremis server` \
+                         is running on this database, stop it or mutate via the HTTP API \
+                         (set KREMIS_URL). Otherwise the file may be corrupted.",
+                        db_path.display()
+                    ))),
+                }
             }
             Err(e) => Err(e),
         },

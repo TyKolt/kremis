@@ -141,6 +141,36 @@ fn test_load_redb_session() {
     assert!(result.is_ok());
 }
 
+#[test]
+fn test_load_redb_unopenable_reports_real_cause() {
+    // Regression: when an existing file cannot be opened as redb AND is not a
+    // valid file-backend format (the situation a CLI hits when a `kremis server`
+    // holds the redb lock, or the file is corrupted), the error must surface the
+    // real redb cause with actionable guidance — not the misleading
+    // "could not parse database file".
+    let temp = create_temp_dir();
+    let db_path = temp.path().join("locked_or_corrupt.redb");
+
+    // Non-empty bytes that are neither a valid redb file nor canonical/JSON.
+    std::fs::write(
+        &db_path,
+        b"not a redb database and not a file backend either",
+    )
+    .expect("write garbage db file");
+
+    let err = load_or_create_session(&db_path, "redb")
+        .expect_err("opening a non-redb, non-file-backend file must fail");
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("redb allows only one process"),
+        "error should explain the redb single-process constraint, got: {msg}"
+    );
+    assert!(
+        !msg.contains("Could not parse database file"),
+        "error must not surface the misleading parse message, got: {msg}"
+    );
+}
+
 // =============================================================================
 // STATUS COMMAND TESTS
 // =============================================================================
