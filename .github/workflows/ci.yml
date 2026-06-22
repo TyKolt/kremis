@@ -48,6 +48,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      # Windows-only: the default MSVC linker is single-threaded and dominates
+      # the per-test-binary link time. rust-lld links those binaries in
+      # parallel. Scoped to this CI job (debug, no LTO) so it never touches
+      # release builds or local dev. Set before rust-cache so the flag is
+      # folded into the Windows cache key.
+      - name: Use rust-lld on Windows
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: echo "RUSTFLAGS=-C linker-features=+lld" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
           key: test
