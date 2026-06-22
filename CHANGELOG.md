@@ -2,6 +2,12 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.4] - 2026-06-22
+
+### Bug Fixes
+
+- *(cli)* Report real cause when redb database cannot be opened ([`40638ba`](https://github.com/TyKolt/kremis/commit/40638bafd97911ef2d07358cb4b2de6dc8c74832))
+
 ## [0.19.3] - 2026-06-14
 
 ### Bug Fixes
