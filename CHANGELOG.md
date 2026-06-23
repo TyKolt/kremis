@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.19.5] - 2026-06-23
+
+### Bug Fixes
+
+- *(deps)* Bump quinn-proto to 0.11.15 (RUSTSEC-2026-0185) ([`67f0f54`](https://github.com/TyKolt/kremis/commit/67f0f547ca75fa8930479f9ac8acff732860c741))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#55](https://github.com/TyKolt/kremis/issues/55)) ([`f56353e`](https://github.com/TyKolt/kremis/commit/f56353ed0d3eb8599c0b723910eaa70636fa9953))
+
 ## [0.19.4] - 2026-06-22
 
 ### Bug Fixes
