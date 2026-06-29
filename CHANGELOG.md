@@ -2,11 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.20.0] - 2026-06-29
+
+### Bug Fixes
+
+- [**breaking**] Mark KremisError as non_exhaustive for downstream forward-compat ([`54f972b`](https://github.com/TyKolt/kremis/commit/54f972ba4414fcef0a49b5aceacda94d12ad0e2d))
+
 ## [0.19.5] - 2026-06-23
 
 ### Bug Fixes
 
-- *(deps)* Bump quinn-proto to 0.11.15 (RUSTSEC-2026-0185) ([`67f0f54`](https://github.com/TyKolt/kremis/commit/67f0f547ca75fa8930479f9ac8acff732860c741))
+- *(deps)* Bump quinn-proto to 0.11.15 (RUSTSEC-2026-0185) ([`e2f2525`](https://github.com/TyKolt/kremis/commit/e2f25252e1930f2375358a2515c2f619c99190da))
 
 ### Dependencies
 
