@@ -310,6 +310,7 @@ pub trait Facet: Send + Sync {
 /// - Use `Result<T, KremisError>` for fallible operations
 /// - The CORE should never panic; all errors must be recoverable
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum KremisError {
     /// The input signal format is invalid and cannot be parsed.
     #[error("Invalid signal format")]
