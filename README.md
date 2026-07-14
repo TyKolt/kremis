@@ -103,9 +103,36 @@ python benchmark/run.py --model qwen2.5:3b --runs 3
 python benchmark/run.py --skip-llm              # Kremis alone, no Ollama needed
 ```
 
-Caveats, the counter-experiment, and the ground truth are in
-[`benchmark/README.md`](benchmark/README.md). A larger model resists this partition:
-`qwen3-coder-next` scored 0 % across 3 runs.
+**A larger model resists this partition.** `qwen3-coder-next` (80B), holding the same
+registry, scored 0 % across 3 runs. A world you can hold in your head is a world a big
+model can hold in its head — so the benchmark ships a second one.
+
+### Long horizon
+
+420 services, 330 one-way dependencies, and the answer is a composition of up to 10
+steps. Half the chains have exactly one link withheld: `N-1` of the `N` links are in
+the registry, one is not, and there is no chain. The model is handed all 330
+dependencies anyway — the link is missing from the *world*, not from the context.
+
+`qwen3-coder-next` (80B), temperature 0, 60 questions with no answer:
+
+| System | False assertion | Answer accuracy |
+|--------|----------------:|----------------:|
+| **Kremis** (`/query` + `/certify`) | **0.00 %** | **100 %** |
+| LLM holding the entire registry | 21.67 % | 83 % |
+| LLM + naive retrieval | 0.00 % | 20 % |
+| LLM, no context | 31.67 % | 0 % |
+
+At `N = 10` the model asserts 4 of the 6 chains that do not exist, and recovers 2 of
+the 6 that do — more fabricated chains than correct ones. Kremis is `0/6` and `6/6` at
+every horizon, and certifies all 60 absences against a BLAKE3 state hash.
+
+```bash
+python benchmark/run.py --world horizon
+```
+
+Caveats, the counter-experiment, the noise in the curve, and the ground truth are in
+[`benchmark/README.md`](benchmark/README.md).
 
 ---
 

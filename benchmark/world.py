@@ -123,6 +123,15 @@ UNANSWERABLE = [
 
 QUESTIONS = ANSWERABLE + UNANSWERABLE
 
+CATEGORIES = ["reverse_edge", "reverse_path", "cross_component",
+              "isolated", "absent_service"]
+
+# Shown only with --hint. It tells the model, in advance, about the very trap
+# it is about to walk into. See the README: this exists so a skeptic can run
+# the obvious counter-experiment without editing a line of code.
+HINT = ("\nNote: dependencies are directional. "
+        "\"a depends on b\" does NOT mean \"b depends on a\".\n")
+
 
 def question_text(source: str, target: str) -> str:
     """The natural-language form. Note what it does NOT do: it never asks the
