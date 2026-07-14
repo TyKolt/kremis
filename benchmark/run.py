@@ -360,8 +360,49 @@ QUESTION: {question}
 {fmt}"""
 
 
-def ollama(model: str, prompt: str, num_ctx: int) -> tuple[str, int | None]:
+class Cache:
+    """Replies already obtained, so a rate-limit does not burn the ones we paid
+    for. Keyed by everything that could change an answer: model, arm, hint,
+    world, run index, and the question. A cached reply is the model's ACTUAL
+    reply, stored verbatim — resuming re-asks nothing and rewrites nothing. It
+    is not a way to keep a number we liked: delete the file and the run is
+    identical, minus the waiting.
+    """
+
+    def __init__(self, path: Path | None):
+        self.path = path
+        self.data: dict[str, list] = {}
+        if path and path.exists():
+            self.data = json.loads(path.read_text())
+
+    def key(self, *parts) -> str:
+        return "|".join(str(p) for p in parts)
+
+    def get(self, k: str):
+        return self.data.get(k)
+
+    def put(self, k: str, reply: str, tokens: int | None) -> None:
+        if not self.path:
+            return
+        self.data[k] = [reply, tokens]
+        self.path.write_text(json.dumps(self.data))
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+
+_last_call = [0.0]
+
+
+def ollama(model: str, prompt: str, num_ctx: int,
+           pace: float = 0.0) -> tuple[str, int | None]:
     """Returns the reply and how many prompt tokens the model actually read.
+
+    `pace` is the minimum seconds between calls. Hosted models meter requests,
+    and the honest way to live inside a quota is to stay under it rather than
+    to sprint into it and retry the wreckage — a burst that trips the limit
+    mid-sweep is how a 3-run stability measurement turns into one run and an
+    apology.
 
     That second number is not a diagnostic — it is a guard. ollama silently
     TRUNCATES a prompt that does not fit the context window, and the default
@@ -381,9 +422,13 @@ def ollama(model: str, prompt: str, num_ctx: int) -> tuple[str, int | None]:
     # fabrication, it just gets one. What would be dishonest is retrying a
     # reply we did not LIKE — we never do that. Only transport errors are
     # retried; a reply that arrives is scored, whatever it says.
-    attempts, delay = 9, 2.0
+    attempts, delay = 9, 5.0
     for attempt in range(attempts):
         try:
+            wait = pace - (time.monotonic() - _last_call[0])
+            if wait > 0:
+                time.sleep(wait)
+            _last_call[0] = time.monotonic()
             r = http(f"{OLLAMA}/api/generate", body, timeout=600)
             return r.get("response", ""), r.get("prompt_eval_count")
         except (urllib.error.HTTPError, urllib.error.URLError,
@@ -426,7 +471,7 @@ def retrieve(world: World, source: str, target: str) -> str:
 
 
 def run_llm(world: World, model: str, arm: str, hint: bool, num_ctx: int,
-            verbose: bool) -> dict:
+            verbose: bool, cache: Cache, run_idx: int, pace: float) -> dict:
     rows = []
     read: list[int] = []
     for category, source, target, truth in world.questions:
@@ -445,7 +490,15 @@ def run_llm(world: World, model: str, arm: str, hint: bool, num_ctx: int,
         else:
             prompt = PROMPT_BARE.format(question=question, fmt=fmt)
 
-        reply, prompt_tokens = ollama(model, prompt, num_ctx)
+        ck = cache.key(world.key, model, arm, hint, num_ctx, run_idx,
+                       source, target)
+        hit = cache.get(ck)
+        if hit is not None:
+            reply, prompt_tokens = hit[0], hit[1]
+        else:
+            reply, prompt_tokens = ollama(model, prompt, num_ctx, pace)
+            cache.put(ck, reply, prompt_tokens)
+
         if prompt_tokens:
             read.append(prompt_tokens)
         verdict, chain = classify(world, reply, source, target)
@@ -456,7 +509,8 @@ def run_llm(world: World, model: str, arm: str, hint: bool, num_ctx: int,
             "answer": chain, "raw": reply.strip()[:300],
         })
         if verbose:
-            print(f"    [{fmt_verdict(truth, verdict, chain):<9}] "
+            mark = "." if hit is not None else " "
+            print(f"   {mark}[{fmt_verdict(truth, verdict, chain):<9}] "
                   f"{source} -> {target}: "
                   f"{' -> '.join(chain) if chain else verdict}")
 
@@ -802,6 +856,13 @@ def main() -> None:
                    help="context window for the LLM arms. MUST fit the whole "
                         "registry, or llm-context is a strawman — the runner "
                         "aborts if the model reports reading less")
+    p.add_argument("--pace", type=float, default=0.0,
+                   help="minimum seconds between LLM calls. Hosted models meter "
+                        "requests; pacing stays inside the quota instead of "
+                        "sprinting into it and losing the sweep")
+    p.add_argument("--cache", default=None,
+                   help="file to store replies in, so a rate-limit does not "
+                        "burn the calls already answered. Re-running resumes")
     p.add_argument("--out", default=None)
     args = p.parse_args()
 
@@ -853,6 +914,10 @@ def main() -> None:
             print("  ollama serve  &&  ollama pull qwen3:4b")
             print("  python benchmark/run.py --model qwen3:4b")
         else:
+            cache = Cache(ROOT / args.cache if args.cache else None)
+            if len(cache):
+                print(f"\nresuming from {args.cache}: "
+                      f"{len(cache)} replies already on disk")
             for arm in [a.strip() for a in args.arms.split(",") if a.strip()]:
                 scores, tokens = [], []
                 for i in range(args.runs):
@@ -860,7 +925,7 @@ def main() -> None:
                     print(f"\n{arm} ({args.model}, temp 0, "
                           f"num_ctx {args.num_ctx}){label}:")
                     r = run_llm(world, args.model, arm, args.hint,
-                                args.num_ctx, verbose=True)
+                                args.num_ctx, True, cache, i, args.pace)
                     scores.append(score(world, r["rows"]))
                     tokens += r["prompt_tokens"]
                 results[arm] = scores[0]

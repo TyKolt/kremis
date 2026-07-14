@@ -290,8 +290,19 @@ Read these before quoting any number above.
   the 31.67 % are each a single draw of 60 questions. Two independent draws, both
   non-zero — which is the contrast with the base world, where three consecutive draws
   all *were* zero. Whether the floor here is 20 % or 35 %, two runs cannot tell you,
-  and this README will not pretend otherwise. `--runs 3` is there if your quota is
-  better than ours.
+  and this README will not pretend otherwise.
+
+  This is an open hole, not a closed question, and the tooling to close it ships with
+  it. `--pace` throttles the sweep to stay inside a quota instead of sprinting into
+  it, and `--cache` stores every reply as it arrives, so a rate-limit interrupts a run
+  instead of destroying it — re-run the same command tomorrow and it resumes:
+
+  ```bash
+  python benchmark/run.py --world horizon --runs 3 \
+      --pace 6 --cache benchmark/results-cache.json
+  ```
+
+  If you close it before we do, the number that matters is whether any run reaches 0.
 - **One task shape.** This measures dependency reachability in a closed registry. It is
   not a general hallucination rate and does not claim to be.
 - **Two models, one provider.** Frontier models are not tested here. Run your own.
