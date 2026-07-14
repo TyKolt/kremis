@@ -2,6 +2,24 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.1] - 2026-07-14
+
+### Features
+
+- *(core)* Expose the reverse entity mapping (NodeId -> EntityId) ([`845bf0f`](https://github.com/TyKolt/kremis/commit/845bf0f85cbb821b0280cc471ab60a889f050eb9))
+
+### Performance
+
+- *(core)* Build certificate evidence by lookup, not by materializing the graph ([`743dcfe`](https://github.com/TyKolt/kremis/commit/743dcfec0a1bceffd402d9ae48e32a4ceb018510))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 2 updates ([`b9f3b89`](https://github.com/TyKolt/kremis/commit/b9f3b89054fdb59c48f031426c5cef48e0464b0f))
+- *(deps)* Bump anyhow 1.0.102 -> 1.0.103 (RUSTSEC-2026-0190) ([`b71d307`](https://github.com/TyKolt/kremis/commit/b71d307fb73c3ca547e6020ee9ce9cec0b24f8bc))
+- *(deps)* Bump rmcp from 1.8.0 to 2.1.0 in the rust-all-updates group ([#66](https://github.com/TyKolt/kremis/issues/66)) ([`b2f7421`](https://github.com/TyKolt/kremis/commit/b2f74213c3f3498e6afd61453c3dee288bfc8ca7))
+- *(deps)* Bump crossbeam-epoch 0.9.18 -> 0.9.20 (RUSTSEC-2026-0204) ([#68](https://github.com/TyKolt/kremis/issues/68)) ([`4688641`](https://github.com/TyKolt/kremis/commit/4688641fc7b79bde771742ee18b08d60121a06e1))
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#69](https://github.com/TyKolt/kremis/issues/69)) ([`aaefe62`](https://github.com/TyKolt/kremis/commit/aaefe626e650f18bf522270d1a583e7836430933))
+
 ## [0.20.0] - 2026-06-29
 
 ### Bug Fixes
