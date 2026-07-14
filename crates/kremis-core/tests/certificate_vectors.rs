@@ -45,6 +45,41 @@ fn vector_fact_is_reproducible() {
     assert_eq!(decoded.evidence_edges.len(), 2);
 }
 
+/// Frozen bytes: these are the exact encodings the published format produces.
+///
+/// Reproducibility alone (two runs agreeing) cannot catch a change that alters
+/// the bytes *consistently*. These literals pin the wire format itself, so any
+/// refactor of the evidence projection has to reproduce it byte for byte.
+#[test]
+fn vector_bytes_are_frozen() {
+    let g = fixture_graph();
+    let ids: Vec<_> = g.nodes().map(|n| n.id).collect();
+
+    // subgraph = Some (traverse): evidence edges come from the artifact.
+    let traverse = Artifact::with_subgraph(ids.clone(), g.edges().collect());
+    let bytes = QueryCertificate::new(FIXED_HASH, "traverse:1:2", "fact", &g, &traverse)
+        .to_canonical_bytes()
+        .expect("encode traverse");
+    assert_eq!(
+        hex(&bytes),
+        "250000004b5651430107070707070707070707070707070707070707070707070707070707070707070c74726176657273653a313a320300010102020302000114010228030001020466616374"
+    );
+
+    // subgraph = None (path only): evidence edges are induced by the path.
+    let path = Artifact::with_path(vec![ids[0], ids[2]]);
+    let bytes = QueryCertificate::new(FIXED_HASH, "path:1:3", "inference", &g, &path)
+        .to_canonical_bytes()
+        .expect("encode path");
+    assert_eq!(
+        hex(&bytes),
+        "250000004b56514301070707070707070707070707070707070707070707070707070707070707070708706174683a313a3302000102030002000209696e666572656e6365"
+    );
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 #[test]
 fn vector_proof_of_absence_is_reproducible() {
     let g = fixture_graph();

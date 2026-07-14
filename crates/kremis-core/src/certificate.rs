@@ -13,7 +13,7 @@
 //!
 //! Specification: `docs/concepts/certificate-spec.mdx`.
 
-use crate::export::{CanonicalEdge, CanonicalGraph, CanonicalNode};
+use crate::export::{CanonicalEdge, CanonicalNode};
 use crate::graph::Graph;
 use crate::{Artifact, KremisError, NodeId};
 use serde::{Deserialize, Serialize};
@@ -100,15 +100,18 @@ impl QueryCertificate {
             }
         }
 
-        // Reuse the canonical projection: nodes carry their entity id and are
-        // already sorted deterministically.
-        let canonical = CanonicalGraph::from_graph(graph);
-
-        let evidence_nodes: Vec<CanonicalNode> = canonical
-            .nodes
+        // Evidence is a *local* projection: it is built by direct lookup of the
+        // ids the result touches, never by materializing the whole graph. The
+        // canonical order comes for free — `id_set` iterates ascending, and so
+        // do a node's neighbours — so nothing needs sorting here.
+        let evidence_nodes: Vec<CanonicalNode> = id_set
             .iter()
-            .filter(|n| id_set.contains(&n.id))
-            .cloned()
+            .filter_map(|&id| {
+                graph.entity_of(NodeId(id)).map(|entity| CanonicalNode {
+                    id,
+                    entity: entity.0,
+                })
+            })
             .collect();
 
         let evidence_edges: Vec<CanonicalEdge> = match &artifact.subgraph {
@@ -120,11 +123,14 @@ impl QueryCertificate {
                 edges.sort();
                 edges
             }
-            None => canonical
-                .edges
+            None => id_set
                 .iter()
-                .filter(|e| id_set.contains(&e.from) && id_set.contains(&e.to))
-                .cloned()
+                .flat_map(|&from| {
+                    graph
+                        .neighbors_internal(NodeId(from))
+                        .filter(|(to, _)| id_set.contains(&to.0))
+                        .map(move |(to, weight)| CanonicalEdge::new(NodeId(from), to, weight))
+                })
                 .collect(),
         };
 
