@@ -26,7 +26,7 @@
 > **Alpha** — Functional and tested. Breaking changes may still occur before v1.0.
 
 <p align="center">
-  <img src="assets/demo.svg" alt="Kremis Honesty Demo" width="800">
+  <img src="assets/demo.svg" alt="Kremis fabrication benchmark" width="800">
 </p>
 
 ---
@@ -65,7 +65,7 @@ Give Claude, Cursor, or any MCP-compatible assistant a verifiable memory layer. 
 
 ### LLM fact-checking
 
-Ingest your data, let an LLM generate claims, then validate each claim against the graph. Kremis labels every statement as `[FACT]` or `[NOT IN GRAPH]` — no confidence scores, no ambiguity.
+Ingest your data, let an LLM generate claims, then check each claim against the graph. Every response carries a `grounding` field — `fact`, `inference`, or `unknown` — and `POST /certify` turns an `unknown` into a certificate bound to a BLAKE3 hash of the graph state. No confidence scores, no ambiguity.
 
 ### Provenance and audit trail
 
@@ -73,28 +73,39 @@ Export the full graph as a deterministic binary snapshot, compute its BLAKE3 has
 
 ---
 
-## Honesty Demo
+## Fabrication Benchmark
 
-Ingest a few facts, let an LLM generate claims, and Kremis validates each one:
+A closed registry of 9 fictional services and 5 one-way dependencies. 24 questions of
+the form *"does A depend on B, directly or transitively?"* — 8 have an answer, 16 do
+not, and no answer exists for them anywhere. Nothing in the prompt asks any model to
+invent: the facts are supplied and `UNKNOWN` is offered.
 
-```
-[FACT]          Alice is an engineer.              ← Kremis: "engineer"
-[FACT]          Alice works on the Kremis project. ← Kremis: "Kremis"
-[FACT]          Alice knows Bob.                   ← Kremis: "Bob"
-[NOT IN GRAPH]  Alice holds a PhD from MIT.        ← Kremis: None
-[NOT IN GRAPH]  Alice previously worked at DeepMind. ← Kremis: None
-[NOT IN GRAPH]  Alice manages a team of 8.         ← Kremis: None
+`qwen2.5:3b`, temperature 0, 3 runs:
 
-Confirmed by graph: 3/6
-Not in graph:       3/6
-```
+| System | False assertion | Answer accuracy |
+|--------|----------------:|----------------:|
+| **Kremis** (`/query` + `/certify`) | **0.00 %** | 100 % |
+| LLM holding the entire registry | 12.50 % | 50 % |
+| LLM + naive retrieval | 6.25 % | 75 % |
+| LLM, no context | 0.00 % | 0 % |
 
-Three facts grounded. Three fabricated. No ambiguity.
+Given every fact it needs, the model still asserts `marn-ledger -> quoll-auth` — the
+reverse of a stated dependency — on every run. Kremis stores dependencies as one-way
+edges, so the reverse path is not there to find: it returns `grounding: "unknown"` and
+`/certify` issues a certificate carrying no evidence, bound to a BLAKE3 hash of the
+graph state. The zero is structural, not measured.
+
+The bottom row is the control: a model that answers `UNKNOWN` to everything fabricates
+nothing and is useless. Abstention counts only alongside accuracy.
 
 ```bash
-python examples/demo_honesty.py            # mock LLM (no external deps)
-python examples/demo_honesty.py --ollama   # real LLM via Ollama
+python benchmark/run.py --model qwen2.5:3b --runs 3
+python benchmark/run.py --skip-llm              # Kremis alone, no Ollama needed
 ```
+
+Caveats, the counter-experiment, and the ground truth are in
+[`benchmark/README.md`](benchmark/README.md). A larger model resists this partition:
+`qwen3-coder-next` scored 0 % across 3 runs.
 
 ---
 
