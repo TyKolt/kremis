@@ -420,6 +420,16 @@ impl RedbGraph {
         Ok(nodes)
     }
 
+    /// Get every `(entity, node)` pair, ordered by [`EntityId`].
+    ///
+    /// Served from the in-memory entity cache (loaded from `ENTITY_INDEX` at
+    /// open), so this is infallible and needs no read transaction.
+    pub fn entities(&self) -> impl Iterator<Item = (EntityId, NodeId)> + '_ {
+        self.entity_cache
+            .iter()
+            .map(|(entity, node)| (*entity, *node))
+    }
+
     /// Get stable edge count (edges with weight >= threshold).
     pub fn stable_edge_count(&self, threshold: i64) -> Result<usize, KremisError> {
         let read_txn = self
@@ -848,6 +858,31 @@ mod tests {
 
         assert_eq!(node1, node2);
         assert_eq!(graph.node_count().expect("count"), 1);
+    }
+
+    #[test]
+    fn entities_survive_a_reopen() {
+        let temp = tempdir().expect("temp dir");
+        let db_path = temp.path().join("test.redb");
+
+        let node = {
+            let mut graph = RedbGraph::open(&db_path).expect("open db");
+            graph.insert_node(EntityId(7)).expect("insert node");
+            graph.insert_node(EntityId(3)).expect("insert node")
+        };
+
+        // Reopened by a process that never saw the ingest: the reverse mapping
+        // must come back from ENTITY_INDEX, not from memory.
+        let graph = RedbGraph::open(&db_path).expect("reopen db");
+
+        assert_eq!(
+            graph.entities().map(|(e, _)| e).collect::<Vec<_>>(),
+            vec![EntityId(3), EntityId(7)]
+        );
+        assert_eq!(
+            graph.lookup(node).expect("lookup").map(|n| n.entity),
+            Some(EntityId(3))
+        );
     }
 
     #[test]

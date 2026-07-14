@@ -423,6 +423,27 @@ impl Graph {
         })
     }
 
+    /// Get the [`EntityId`] a node stands for — the reverse of the entity index.
+    ///
+    /// This is the inverse direction of [`GraphStore::get_node_by_entity`]:
+    /// given an internal `NodeId` (as carried by an [`Artifact`] path, a
+    /// certificate trace, or a canonical export), recover the external entity
+    /// it was ingested under. Returns `None` if the node does not exist.
+    #[must_use]
+    pub fn entity_of(&self, id: NodeId) -> Option<EntityId> {
+        self.nodes.get(&id).map(|node| node.entity)
+    }
+
+    /// Get every `(entity, node)` pair, ordered by [`EntityId`].
+    ///
+    /// The order comes from the `BTreeMap` entity index, so it is deterministic
+    /// across runs and platforms (Law 1).
+    pub fn entities(&self) -> impl Iterator<Item = (EntityId, NodeId)> + '_ {
+        self.entity_index
+            .iter()
+            .map(|(entity, node)| (*entity, *node))
+    }
+
     /// Get the next node ID that would be assigned.
     #[must_use]
     pub fn next_node_id(&self) -> u64 {
@@ -1011,6 +1032,46 @@ mod tests {
 
         assert!(node.is_some());
         assert_eq!(node.map(|n| n.entity), Some(entity));
+    }
+
+    #[test]
+    fn entity_of_inverts_the_entity_index() {
+        let mut graph = Graph::new();
+        let node = graph.insert_node(EntityId(42)).expect("insert");
+
+        assert_eq!(graph.get_node_by_entity(EntityId(42)), Some(node));
+        assert_eq!(graph.entity_of(node), Some(EntityId(42)));
+        assert_eq!(graph.entity_of(NodeId(999)), None);
+    }
+
+    #[test]
+    fn entities_are_ordered_by_entity_id() {
+        let mut graph = Graph::new();
+        graph.insert_node(EntityId(7)).expect("insert");
+        graph.insert_node(EntityId(3)).expect("insert");
+
+        let pairs: Vec<_> = graph.entities().collect();
+
+        assert_eq!(
+            pairs.iter().map(|(e, _)| *e).collect::<Vec<_>>(),
+            vec![EntityId(3), EntityId(7)]
+        );
+        for (entity, node) in pairs {
+            assert_eq!(graph.entity_of(node), Some(entity));
+        }
+    }
+
+    #[test]
+    fn entity_of_survives_a_canonical_roundtrip() {
+        // The import path is where a consumer loses the entity mapping: it did
+        // not perform the ingest, so it never saw the NodeIds being assigned.
+        let mut original = Graph::new();
+        let node = original.insert_node(EntityId(1234)).expect("insert");
+
+        let canonical = crate::export::CanonicalGraph::from_graph(&original);
+        let imported = Graph::from_canonical(&canonical);
+
+        assert_eq!(imported.entity_of(node), Some(EntityId(1234)));
     }
 
     #[test]

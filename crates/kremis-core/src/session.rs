@@ -356,6 +356,36 @@ impl Session {
         }
     }
 
+    /// Resolve a node back to the entity it represents — the reverse of
+    /// [`Session::lookup_entity`].
+    ///
+    /// Query results ([`Artifact`] paths, certificate traces, canonical
+    /// exports) speak in internal `NodeId`s. This is the only way for a caller
+    /// that did not perform the ingest — an importer, an external adapter — to
+    /// map those ids back to the entities it knows.
+    ///
+    /// Returns `Ok(None)` when the node does not exist (intentional absence).
+    /// Returns `Err` only on storage failures.
+    pub fn entity_of(&self, node: NodeId) -> Result<Option<EntityId>, KremisError> {
+        match &self.backend {
+            StorageBackend::InMemory(graph) => Ok(graph.entity_of(node)),
+            StorageBackend::Persistent(redb) => Ok(redb.lookup(node)?.map(|n| n.entity)),
+        }
+    }
+
+    /// Get every `(entity, node)` pair, ordered by [`EntityId`].
+    ///
+    /// Deterministic on both backends (both index entities in a `BTreeMap`).
+    /// Use this to build a full reverse map in one pass instead of calling
+    /// [`Session::entity_of`] per node.
+    #[must_use]
+    pub fn entities(&self) -> Vec<(EntityId, NodeId)> {
+        match &self.backend {
+            StorageBackend::InMemory(graph) => graph.entities().collect(),
+            StorageBackend::Persistent(redb) => redb.entities().collect(),
+        }
+    }
+
     /// Get edge weight between two nodes.
     ///
     /// Returns `Ok(None)` when the edge does not exist (intentional absence).
@@ -522,6 +552,40 @@ mod tests {
 
         assert!(session.is_active(&node));
         assert_eq!(session.active_count(), 1);
+    }
+
+    #[test]
+    fn entity_of_is_the_inverse_of_lookup_entity() {
+        let mut session = Session::new();
+        let node = session
+            .ingest(&make_signal(42, "name", "Alice"))
+            .expect("ingest");
+
+        assert_eq!(session.lookup_entity(EntityId(42)), Some(node));
+        assert_eq!(
+            session.entity_of(node).expect("entity_of"),
+            Some(EntityId(42))
+        );
+
+        // A missing node is an honest absence, not a storage error.
+        assert_eq!(session.entity_of(NodeId(999)).expect("entity_of"), None);
+    }
+
+    #[test]
+    fn entities_lists_every_pair_in_entity_order() {
+        let mut session = Session::new();
+        session.ingest(&make_signal(7, "a", "1")).expect("ingest");
+        session.ingest(&make_signal(3, "b", "2")).expect("ingest");
+
+        let pairs = session.entities();
+
+        assert_eq!(
+            pairs.iter().map(|(e, _)| *e).collect::<Vec<_>>(),
+            vec![EntityId(3), EntityId(7)]
+        );
+        for (entity, node) in pairs {
+            assert_eq!(session.entity_of(node).expect("entity_of"), Some(entity));
+        }
     }
 
     #[test]
