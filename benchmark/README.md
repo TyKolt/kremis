@@ -285,6 +285,11 @@ at this specific hash, does not contain that dependency."* The benchmark checks 
 60 of them and **aborts** if any absence comes back uncertified — the mechanism is
 under test, not assumed.
 
+**The zero on its own would be unremarkable** — no graph of one-way edges can invent
+an edge, and saying so proves nothing. The certificate is the part that is not free:
+an absence you can hand to someone else, bound to a hash they can recompute, without
+having to trust the system that issued it. See the first caveat below.
+
 And the ground truth is not asserted either: before a single question is asked, the
 runner walks the registry and proves that every answerable chain is a real, unique
 path and that every unanswerable one has no path at any length. If that fails, nothing
@@ -294,8 +299,23 @@ Run it twice, run it a hundred times: same input, same output.
 
 ## Caveats
 
-Read these before quoting any number above.
+Read these before quoting any number above. The first one is the one that matters.
 
+- **kremis is not answering the same question, and its 0 % is not a victory over
+  language understanding.** The LLM is handed English — *"does vask-gate depend on
+  quor-daemon?"* — and has to find the services, follow the edges and compose the
+  answer itself. kremis is handed `strongest_path(42, 87)`, with the ids already
+  resolved by the harness. That is not a like-for-like race, and nobody should read
+  it as one: a graph of one-way edges can no more fabricate a dependency than a
+  calculator can misspell a word. If the claim were "a database does not
+  hallucinate", it would be true and worthless.
+
+  What the comparison actually shows is what the graph adds *on top of* not
+  fabricating. Every one of the 60 absences comes back with a **certificate**: not
+  "I found nothing", but *"this state, at this BLAKE3 hash, does not contain that
+  dependency"* — a claim that can be handed to someone else and checked without
+  trusting the system that made it. An LLM cannot issue one. Nor can an ordinary
+  database. That, and not the zero, is the point.
 - **The scoring is rigged in the LLM's favour.** A reply counts as a fabrication only
   if it asserts a chain running `source → target`. Prose, hedging, and chains that
   wander off (`malformed` — **18** of them for the 80B here) are scored as

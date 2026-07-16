@@ -95,6 +95,12 @@ edges, so the reverse path is not there to find: it returns `grounding: "unknown
 `/certify` issues a certificate carrying no evidence, bound to a BLAKE3 hash of the
 graph state. The zero is structural, not measured.
 
+**It is also not a like-for-like race, and should not be read as one.** The LLM gets
+English and has to find the services itself; Kremis gets `strongest_path(42, 87)` with
+the ids already resolved. A graph of one-way edges cannot fabricate an edge — saying so
+proves nothing. What is not free is the certificate: an absence bound to a hash, which
+someone else can check without trusting the system that issued it.
+
 The bottom row is the control: a model that answers `UNKNOWN` to everything fabricates
 nothing and is useless. Abstention counts only alongside accuracy.
 
