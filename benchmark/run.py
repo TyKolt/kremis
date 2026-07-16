@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import re
 import shutil
 import socket
@@ -65,6 +66,17 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parent.parent
 OLLAMA = "http://localhost:11434"
+
+# A second provider, so "does this model fabricate?" is not answered by one
+# vendor's endpoint. OpenAI-compatible; the token is read from the environment
+# (never written anywhere), and the entry is (url, env var). NVIDIA's hosted
+# API is used because its free tier meters by request, not by tokens/day —
+# which is what a benchmark of long, registry-sized prompts needs. To add
+# another OpenAI-compatible endpoint, add a line here; nothing else changes.
+OPENAI_COMPAT = {
+    "nvidia": ("https://integrate.api.nvidia.com/v1/chat/completions",
+               "NVIDIA_API_KEY"),
+}
 
 WORLD_MODULE = {"base": "world", "horizon": "world_lh"}
 
@@ -180,11 +192,14 @@ def verify(world: World) -> None:
 
 # ── plumbing ────────────────────────────────────────────────────────────────
 
-def http(url: str, payload=None, timeout: int = 300):
+def http(url: str, payload=None, timeout: int = 300, headers=None):
     data = json.dumps(payload).encode() if payload is not None else None
-    req = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}
-    )
+    # Hosted routers sit behind a CDN that rejects urllib's default user agent
+    # with a 403 — which looks exactly like an auth failure and is not one.
+    head = {"Content-Type": "application/json",
+            "User-Agent": "kremis-benchmark",
+            **(headers or {})}
+    req = urllib.request.Request(url, data=data, headers=head)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
@@ -223,9 +238,15 @@ class Server:
     def __enter__(self) -> "Server":
         base = [str(self.binary), "--database", str(self.db), "--backend", "file"]
         subprocess.run(base + ["init"], check=True, capture_output=True)
+        # Ingesting the world is 750 signals in a burst, and kremis rate-limits
+        # its HTTP API to 100 req/s by default — a production defence, not part
+        # of what this benchmark measures. Lift it for this throwaway server so
+        # the setup is deterministic instead of racing the token bucket; the
+        # fabrication arms that follow are unaffected either way.
+        env = {**os.environ, "KREMIS_RATE_LIMIT": "100000"}
         self.proc = subprocess.Popen(
             base + ["server", "--port", str(self.port)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env,
         )
         for _ in range(100):
             try:
@@ -394,8 +415,39 @@ class Cache:
 _last_call = [0.0]
 
 
-def ollama(model: str, prompt: str, num_ctx: int,
-           pace: float = 0.0) -> tuple[str, int | None]:
+def _request(provider: str, model: str, prompt: str, num_ctx: int):
+    """One prompt, one provider. Returns (reply, prompt tokens the model read).
+
+    Two kinds of backend, because "does this model fabricate?" should not have
+    to be answered by a single vendor's endpoint — and because when one meters
+    you out of a measurement, another is still standing.
+
+      ollama       local models and ollama's hosted ones. num_ctx is set here.
+      nvidia       an OpenAI-compatible router. Hosted models carry their own
+                   (large) context, so there is nothing to set — the truncation
+                   guard still checks what actually arrived.
+    """
+    if provider == "ollama":
+        body = {"model": model, "prompt": prompt, "stream": False,
+                "think": False,
+                "options": {"temperature": 0, "num_ctx": num_ctx}}
+        r = http(f"{OLLAMA}/api/generate", body, timeout=600)
+        return r.get("response", ""), r.get("prompt_eval_count")
+
+    url, env = OPENAI_COMPAT[provider]
+    token = os.environ.get(env, "")
+    if not token:
+        sys.exit(f"--provider {provider} needs {env} in the environment.")
+    body = {"model": model, "temperature": 0, "max_tokens": 600,
+            "messages": [{"role": "user", "content": prompt}]}
+    r = http(url, body, timeout=600,
+             headers={"Authorization": f"Bearer {token}"})
+    reply = r["choices"][0]["message"].get("content") or ""
+    return reply, r.get("usage", {}).get("prompt_tokens")
+
+
+def llm(provider: str, model: str, prompt: str, num_ctx: int,
+        pace: float = 0.0) -> tuple[str, int | None]:
     """Returns the reply and how many prompt tokens the model actually read.
 
     `pace` is the minimum seconds between calls. Hosted models meter requests,
@@ -404,24 +456,20 @@ def ollama(model: str, prompt: str, num_ctx: int,
     mid-sweep is how a 3-run stability measurement turns into one run and an
     apology.
 
-    That second number is not a diagnostic — it is a guard. ollama silently
-    TRUNCATES a prompt that does not fit the context window, and the default
-    window is small enough that the long-horizon registry could be cut in half
-    without a word of warning. A truncated llm-context arm is not the baseline
-    this benchmark claims it is: it is a strawman, and its fabrications would
-    be OUR bug, not the model's. So we set the window explicitly, and then we
-    check what the model says it read.
-    """
-    body = {"model": model, "prompt": prompt, "stream": False,
-            "think": False,
-            "options": {"temperature": 0, "num_ctx": num_ctx}}
+    The token count is not a diagnostic — it is a guard. A backend silently
+    TRUNCATES a prompt that does not fit the context window, and a default
+    window can be small enough to cut the long-horizon registry in half without
+    a word of warning. A truncated llm-context arm is not the baseline this
+    benchmark claims it is: it is a strawman, and its fabrications would be OUR
+    bug, not the model's. So we ask what the model says it read, and check.
 
-    # Cloud-hosted models rate-limit (429) and occasionally time out. That is
-    # infrastructure, not model behaviour: retrying the same prompt at
-    # temperature 0 does not push the answer towards or away from a
-    # fabrication, it just gets one. What would be dishonest is retrying a
-    # reply we did not LIKE — we never do that. Only transport errors are
-    # retried; a reply that arrives is scored, whatever it says.
+    Hosted models rate-limit (429) and occasionally time out. That is
+    infrastructure, not model behaviour: retrying the same prompt at
+    temperature 0 does not push the answer towards or away from a fabrication,
+    it just gets one. What would be dishonest is retrying a reply we did not
+    LIKE — we never do that. Only transport errors are retried; a reply that
+    arrives is scored, whatever it says.
+    """
     attempts, delay = 9, 5.0
     for attempt in range(attempts):
         try:
@@ -429,8 +477,7 @@ def ollama(model: str, prompt: str, num_ctx: int,
             if wait > 0:
                 time.sleep(wait)
             _last_call[0] = time.monotonic()
-            r = http(f"{OLLAMA}/api/generate", body, timeout=600)
-            return r.get("response", ""), r.get("prompt_eval_count")
+            return _request(provider, model, prompt, num_ctx)
         except (urllib.error.HTTPError, urllib.error.URLError,
                 TimeoutError, OSError) as e:
             code = getattr(e, "code", None)
@@ -470,8 +517,9 @@ def retrieve(world: World, source: str, target: str) -> str:
     return "\n".join(ranked[:world.rag_k(source, target)])
 
 
-def run_llm(world: World, model: str, arm: str, hint: bool, num_ctx: int,
-            verbose: bool, cache: Cache, run_idx: int, pace: float) -> dict:
+def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
+            num_ctx: int, verbose: bool, cache: Cache, run_idx: int,
+            pace: float) -> dict:
     rows = []
     read: list[int] = []
     for category, source, target, truth in world.questions:
@@ -490,13 +538,13 @@ def run_llm(world: World, model: str, arm: str, hint: bool, num_ctx: int,
         else:
             prompt = PROMPT_BARE.format(question=question, fmt=fmt)
 
-        ck = cache.key(world.key, model, arm, hint, num_ctx, run_idx,
-                       source, target)
+        ck = cache.key(world.key, provider, model, arm, hint, num_ctx,
+                       run_idx, source, target)
         hit = cache.get(ck)
         if hit is not None:
             reply, prompt_tokens = hit[0], hit[1]
         else:
-            reply, prompt_tokens = ollama(model, prompt, num_ctx, pace)
+            reply, prompt_tokens = llm(provider, model, prompt, num_ctx, pace)
             cache.put(ck, reply, prompt_tokens)
 
         if prompt_tokens:
@@ -825,12 +873,27 @@ def caveats(world: World, model: str, hint: bool) -> None:
 
 # ── main ────────────────────────────────────────────────────────────────────
 
-def ollama_up() -> bool:
+def provider_up(provider: str) -> bool:
+    if provider in OPENAI_COMPAT:
+        return bool(os.environ.get(OPENAI_COMPAT[provider][1]))
     try:
         http(f"{OLLAMA}/api/tags", timeout=5)
         return True
     except Exception:
         return False
+
+
+def skip_hint(provider: str) -> None:
+    if provider in OPENAI_COMPAT:
+        env = OPENAI_COMPAT[provider][1]
+        print(f"\n{env} is not set — LLM arms skipped.")
+        print(f"  export {env}=...  &&  python benchmark/run.py "
+              f"--provider {provider} --model <id>")
+    else:
+        print("\nollama is not running — LLM arms skipped. The comparison")
+        print("is the point of this benchmark, so: start ollama, pull a model.")
+        print("  ollama serve  &&  ollama pull qwen3:4b")
+        print("  python benchmark/run.py --model qwen3:4b")
 
 
 def main() -> None:
@@ -840,8 +903,15 @@ def main() -> None:
     p.add_argument("--world", choices=list(WORLD_MODULE), default="base",
                    help="'base' = 9 services, a lookup. 'horizon' = 420 "
                         "services and answers that must compose up to 10 steps")
+    p.add_argument("--provider", choices=["ollama", "nvidia"],
+                   default="ollama",
+                   help="where the LLM arms run. 'nvidia' uses an "
+                        "OpenAI-compatible router and reads NVIDIA_API_KEY "
+                        "from the environment — a second provider, so a "
+                        "finding does not rest on one vendor's endpoint")
     p.add_argument("--model", default="qwen3-coder-next:cloud",
-                   help="ollama model tag for the LLM arms")
+                   help="model id for the LLM arms (an ollama tag, or a hosted "
+                        "id such as meta/llama-3.3-70b-instruct)")
     p.add_argument("--hint", "--hint-direction", action="store_true", dest="hint",
                    help="warn the models about the traps in advance, then see "
                         "whether they walk into them anyway")
@@ -908,11 +978,8 @@ def main() -> None:
         ]
 
     if not args.skip_llm:
-        if not ollama_up():
-            print("\nollama is not running — LLM arms skipped. The comparison is")
-            print("the point of this benchmark, so: start ollama, pull a model.")
-            print("  ollama serve  &&  ollama pull qwen3:4b")
-            print("  python benchmark/run.py --model qwen3:4b")
+        if not provider_up(args.provider):
+            skip_hint(args.provider)
         else:
             cache = Cache(ROOT / args.cache if args.cache else None)
             if len(cache):
@@ -922,10 +989,13 @@ def main() -> None:
                 scores, tokens = [], []
                 for i in range(args.runs):
                     label = f" run {i + 1}/{args.runs}" if args.runs > 1 else ""
-                    print(f"\n{arm} ({args.model}, temp 0, "
-                          f"num_ctx {args.num_ctx}){label}:")
-                    r = run_llm(world, args.model, arm, args.hint,
-                                args.num_ctx, True, cache, i, args.pace)
+                    ctx = (f", num_ctx {args.num_ctx}"
+                           if args.provider == "ollama" else "")
+                    print(f"\n{arm} ({args.provider}: {args.model}, "
+                          f"temp 0{ctx}){label}:")
+                    r = run_llm(world, args.provider, args.model, arm,
+                                args.hint, args.num_ctx, True, cache, i,
+                                args.pace)
                     scores.append(score(world, r["rows"]))
                     tokens += r["prompt_tokens"]
                 results[arm] = scores[0]
@@ -941,8 +1011,9 @@ def main() -> None:
     default_out = ("benchmark/results.json" if world.key == "base"
                    else f"benchmark/results-{world.key}.json")
     out = ROOT / (args.out or default_out)
-    out.write_text(json.dumps({"world": world.key, "model": args.model,
-                               "hint": args.hint, "num_ctx": args.num_ctx,
+    out.write_text(json.dumps({"world": world.key, "provider": args.provider,
+                               "model": args.model, "hint": args.hint,
+                               "num_ctx": args.num_ctx,
                                "results": results}, indent=2))
     print(f"\nwrote {out}")
 

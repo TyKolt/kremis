@@ -191,6 +191,32 @@ What survives the noise is not a trend line. It is two facts:
 - the **N=10 cell** — 4 / 6 fabricated against 2 / 6 recovered, which is not a near
   miss and not a rounding error.
 
+### A second model, a second vendor, the same collapse
+
+The obvious rejoinder to everything above is *"you tested one model, on one endpoint."*
+So here is another one: `llama-3.3-70b-instruct` (Meta), served by a different
+provider (NVIDIA's hosted API), same world, same prompts, one run, temperature 0. It
+read **6629–6637 prompt tokens** — the whole registry, uncut.
+
+| system | fabricated | false-assertion | answer accuracy | malformed |
+|--------|-----------:|----------------:|----------------:|----------:|
+| **kremis** | **0 / 60** | **0.00 %** | **100.00 %** | 0 |
+| qwen3-coder-next 80B | 13 / 60 | 21.67 % | 83.33 % | 18 |
+| **llama-3.3-70b** | **37 / 60** | **61.67 %** | **100.00 %** | 17 |
+
+Read the Llama row against the one above it. A different family (Meta, not Alibaba),
+a different vendor (NVIDIA, not ollama's cloud), and it fabricates **nearly three
+times as often** — 37 of the 60 chains that do not exist. And it does this while
+answering **every** answerable chain correctly: 100 % accuracy, not the 3B's collapse
+to 3 %. It is not confused. It resolves the real chains perfectly and invents the
+missing ones with the same confidence, which is the worst combination on offer: a
+model too capable to dismiss and too loose to trust. Its 61.67 % is a lower bound —
+17 more replies degenerated into 80-hop chains looping through the whole registry, and
+those are scored as abstentions, not fabrications.
+
+Two capable models, two families, two providers. Both fabricate at long horizon; the
+graph does not. That is the point the second row was there to make, now made twice.
+
 If you want the trend nailed down, raise `INSTANCES` in `world_lh.py` and burn the
 compute. The knob is right there and it is one integer.
 
@@ -305,7 +331,12 @@ Read these before quoting any number above.
   If you close it before we do, the number that matters is whether any run reaches 0.
 - **One task shape.** This measures dependency reachability in a closed registry. It is
   not a general hallucination rate and does not claim to be.
-- **Two models, one provider.** Frontier models are not tested here. Run your own.
+- **Three models, two families, two vendors — and none of them frontier.** qwen2.5:3b
+  (local), qwen3-coder-next 80B (ollama's cloud) and llama-3.3-70b (NVIDIA) cover two
+  model families across three endpoints, and the long-horizon result holds on all
+  three: the small one collapses, both large ones fabricate. The genuinely frontier
+  models — the ones behind the paid APIs — are still untested here. Run your own; the
+  runner speaks to any OpenAI-compatible endpoint via `--provider`.
 - **kremis's honesty has a price, and it is the same mechanism.** It answers from what
   was ingested and refuses everything else. It will not infer, will not generalise, and
   will not help you with a question whose answer isn't in the graph. The property that
@@ -345,7 +376,16 @@ python benchmark/run.py --world horizon --model qwen2.5:3b        # the 3B curve
 python benchmark/run.py --world horizon --hint                    # the counter-experiment
 python benchmark/run.py --world horizon --runs 3                  # watch it move
 python benchmark/run.py --world horizon --skip-llm                # kremis alone
+
+# A second model on a second vendor. --provider speaks to any OpenAI-compatible
+# endpoint; the key is read from the environment and never written anywhere.
+NVIDIA_API_KEY=... python benchmark/run.py --world horizon --arms llm-context \
+    --provider nvidia --model meta/llama-3.3-70b-instruct \
+    --pace 2 --cache benchmark/results-cache.json
 ```
+
+`--pace` keeps a metered endpoint from tripping its rate limit; `--cache` records
+every reply as it arrives, so an interrupted run resumes instead of restarting.
 
 ## The claim, stated exactly
 
@@ -355,16 +395,20 @@ loud.
 Stretch the answer to ten hops and it does: 13 chains out of 60, holding every fact it
 needed to refuse — and at N=10 it asserts twice as many chains that do not exist as it
 recovers of the ones that do. Warn it in advance and the number does not go away.
-Shrink the model instead and fabrication vanishes, along with the ability to answer
-anything at all.
+Swap in a second capable model from another vendor and it fabricates harder, not
+softer — 37 out of 60, while still answering every real chain correctly. Shrink the
+model instead and fabrication vanishes, along with the ability to answer anything at
+all.
 
-So the claim is not *"models are wrong and kremis is right."* The 80B is right most of
-the time, and where it is right it is genuinely right.
+So the claim is not *"models are wrong and kremis is right."* Both large models are
+right most of the time, and where they are right they are genuinely right.
 
-The claim is that **it cannot tell you when.** Every run is a sample. kremis's `0 / 60`
-is not a sample — it is the shape of the storage, and it comes with a certificate
-naming the state hash it was computed against. That is a guarantee, and a guarantee is
-a different object from a good average.
+The claim is that **it cannot tell you when.** Every run is a sample, and the two large
+models disagree by a factor of three on how often they invent — 21 % against 61 % —
+which is itself the point: nothing on the model side is a fixed quantity you can plan
+around. kremis's `0 / 60` is not a sample — it is the shape of the storage, and it
+comes with a certificate naming the state hash it was computed against. That is a
+guarantee, and a guarantee is a different object from a good average.
 
 ---
 

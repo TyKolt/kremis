@@ -127,6 +127,10 @@ At `N = 10` the model asserts 4 of the 6 chains that do not exist, and recovers 
 the 6 that do — more fabricated chains than correct ones. Kremis is `0/6` and `6/6` at
 every horizon, and certifies all 60 absences against a BLAKE3 state hash.
 
+A second capable model on a different vendor collapses the same way, harder:
+`llama-3.3-70b` (Meta, via NVIDIA) fabricates **37 / 60 (61.67 %)** while answering
+every real chain correctly (100 %). Two families, two providers, one result.
+
 ```bash
 python benchmark/run.py --world horizon
 ```
