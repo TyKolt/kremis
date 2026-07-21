@@ -909,9 +909,16 @@ def main() -> None:
                         "OpenAI-compatible router and reads NVIDIA_API_KEY "
                         "from the environment — a second provider, so a "
                         "finding does not rest on one vendor's endpoint")
-    p.add_argument("--model", default="qwen3-coder-next:cloud",
+    # The default is a SMALL LOCAL model on purpose. A hosted tag makes a
+    # better headline and a worse benchmark: hosted models get retired, and a
+    # comparison whose adversary no longer exists cannot be re-run by anyone,
+    # including us. A local default is a number a reader can still reproduce
+    # next year. For the strong adversary, pass one explicitly.
+    p.add_argument("--model", default="qwen3:4b",
                    help="model id for the LLM arms (an ollama tag, or a hosted "
-                        "id such as meta/llama-3.3-70b-instruct)")
+                        "id such as meta/llama-3.3-70b-instruct). The default "
+                        "is local so the run stays reproducible; hosted tags "
+                        "disappear")
     p.add_argument("--hint", "--hint-direction", action="store_true", dest="hint",
                    help="warn the models about the traps in advance, then see "
                         "whether they walk into them anyway")
@@ -934,10 +941,33 @@ def main() -> None:
                    help="file to store replies in, so a rate-limit does not "
                         "burn the calls already answered. Re-running resumes")
     p.add_argument("--out", default=None)
+    p.add_argument("--scale", type=int, default=0,
+                   help="add N services that no question asks about (horizon "
+                        "world only). The answers do not change; the size of "
+                        "the prompt does. This is how you leave the regime "
+                        "where the whole world fits in a context window")
+    p.add_argument("--world-stats", action="store_true",
+                   help="print the size of the world and exit. No server, no "
+                        "LLM, no cost — the cheap half of a scaling sweep")
     args = p.parse_args()
+
+    if args.scale:
+        if args.world != "horizon":
+            sys.exit("--scale applies to --world horizon only.")
+        # Must be set BEFORE World() imports the module: the world is built at
+        # import time so that it stays a pure function of this number.
+        os.environ["KREMIS_BENCH_SCALE"] = str(args.scale)
 
     world = World(args.world)
     verify(world)
+
+    if args.world_stats:
+        chars = len(world.registry)
+        print(f"scale {args.scale}: {len(world.services)} services, "
+              f"{len(world.dependencies)} dependencies, "
+              f"{chars} registry chars, ~{chars // 4} tokens, "
+              f"{len(world.questions)} questions")
+        return
 
     print(f"closed world [{world.key}]: {len(world.services)} services, "
           f"{len(world.dependencies)} one-way dependencies, "
