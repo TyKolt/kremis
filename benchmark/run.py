@@ -963,17 +963,25 @@ def main() -> None:
 
     if args.world_stats:
         chars = len(world.registry)
-        # Characters are a fact; tokens are not. The usual chars/4 rule of
-        # thumb UNDERSTATES this world by about 45%: the service names are
-        # nonsense, so a tokeniser shreds them. 2.2 chars/token is what
-        # gemma4 actually reported reading at --scale 3000 (57,071 tokens for
-        # 125,636 chars), and the base world's ~6,600 reported tokens agree.
-        # Size a sweep on the measured figure, not the rule of thumb.
+        # Characters are a fact; tokens are not, and they are not a property
+        # of this world either — they are a property of whichever tokeniser
+        # reads it. Measured on the same registry at --scale 3000:
+        #
+        #     gemma4        2.20 chars/token   (57,071 tokens)
+        #     gemma3:4b     3.16 chars/token   (39,803 tokens)
+        #     llama3.2:3b   3.28 chars/token   (38,365 tokens)
+        #
+        # A 49% spread between the extremes, on identical text. The usual
+        # chars/4 rule of thumb is outside that range and understates every
+        # one of them, because nonsense service names shred under a tokeniser.
+        # So the range is printed, not a single number: size a sweep against
+        # the worst case for the model you intend to run.
+        lo, hi = int(chars / 3.3), int(chars / 2.2)
         print(f"scale {args.scale}: {len(world.services)} services, "
               f"{len(world.dependencies)} dependencies, "
-              f"{chars} registry chars, ~{int(chars / 2.2)} tokens "
-              f"(measured 2.2 chars/token; the chars/4 rule of thumb would "
-              f"say {chars // 4} and be wrong), "
+              f"{chars} registry chars, ~{lo}-{hi} tokens "
+              f"(measured 3.3-2.2 chars/token across models; the chars/4 rule "
+              f"of thumb would say {chars // 4} and be wrong for all of them), "
               f"{len(world.questions)} questions")
         return
 
