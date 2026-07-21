@@ -142,9 +142,14 @@ Capability is also not uniform — `llama-3.3-70b` (Meta, via NVIDIA) invents 37
 60 chains while answering every real chain correctly, and the 3B stops fabricating
 only by ceasing to answer at all.
 
-One caveat is ours, not theirs: 420 services is ~3.9k tokens, so the whole world fits
+One caveat is ours, not theirs: 420 services is ~6.6k tokens, so the whole world fits
 in the prompt. That is the single regime where an LLM can compete on this task at all.
 `--scale` leaves it — the questions stay identical and only the prompt grows.
+
+And it matters. At `--scale 3000` (~57k tokens, measured) `gemma4` fabricates **1 / 60**
+where it fabricated **0 / 60** at the default size, inventing a ten-hop chain. One event
+is not a trend — the benchmark is blind below ~2 points — but the parity in the table
+above is a property of a small world, not of the model. Kremis is `0 / 60` at both sizes.
 
 ```bash
 python benchmark/run.py --world horizon

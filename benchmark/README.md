@@ -339,12 +339,19 @@ Read these before quoting any number above. The first one is the one that matter
   is the finding. Run your own; the runner speaks to any OpenAI-compatible endpoint
   via `--provider`.
 - **The whole world fits in the prompt, and that flatters the LLM.** 420 services is
-  about 3.9k tokens — every model here was handed the entire registry. That is the one
+  about 6.6k tokens — every model here was handed the entire registry. That is the one
   regime where holding the world in context is possible at all, and it is not the
   regime the substrate is built for. `--scale N` leaves it: it adds services no
   question asks about, so the answers are unchanged and only the size of the prompt
-  moves (`--scale 13500` ≈ 128k tokens, `--scale 108000` ≈ 1M). Use `--world-stats` to
-  size a sweep before paying for it.
+  moves (`--scale 3000` ≈ 57k tokens, measured; `--scale 13500` ≈ 232k). Use
+  `--world-stats` to size a sweep before paying for it — and note that the usual
+  chars/4 rule of thumb **understates this world by 45%**, because nonsense service
+  names shred under a tokeniser. The figures here are the measured ones.
+- **Scale moves the frontier models off zero.** `gemma4`, which fabricates nothing at
+  the default size, fabricates **1 / 60** at `--scale 3000` — a ten-hop chain, invented
+  whole, with the registry in front of it. One event is not a trend and this benchmark
+  is blind below ~2 points, so it is reported as what it is: the model that matched
+  kremis at 6.6k tokens no longer matches it at 57k. kremis is 0/60 at both.
 - **kremis's honesty has a price, and it is the same mechanism.** It answers from what
   was ingested and refuses everything else. It will not infer, will not generalise, and
   will not help you with a question whose answer isn't in the graph. The property that

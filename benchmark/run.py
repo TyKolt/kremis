@@ -963,9 +963,17 @@ def main() -> None:
 
     if args.world_stats:
         chars = len(world.registry)
+        # Characters are a fact; tokens are not. The usual chars/4 rule of
+        # thumb UNDERSTATES this world by about 45%: the service names are
+        # nonsense, so a tokeniser shreds them. 2.2 chars/token is what
+        # gemma4 actually reported reading at --scale 3000 (57,071 tokens for
+        # 125,636 chars), and the base world's ~6,600 reported tokens agree.
+        # Size a sweep on the measured figure, not the rule of thumb.
         print(f"scale {args.scale}: {len(world.services)} services, "
               f"{len(world.dependencies)} dependencies, "
-              f"{chars} registry chars, ~{chars // 4} tokens, "
+              f"{chars} registry chars, ~{int(chars / 2.2)} tokens "
+              f"(measured 2.2 chars/token; the chars/4 rule of thumb would "
+              f"say {chars // 4} and be wrong), "
               f"{len(world.questions)} questions")
         return
 
