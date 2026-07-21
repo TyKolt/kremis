@@ -109,9 +109,9 @@ python benchmark/run.py --model qwen2.5:3b --runs 3
 python benchmark/run.py --skip-llm              # Kremis alone, no Ollama needed
 ```
 
-**A larger model resists this partition.** `qwen3-coder-next` (80B), holding the same
-registry, scored 0 % across 3 runs. A world you can hold in your head is a world a big
-model can hold in its head — so the benchmark ships a second one.
+**A larger model resists this partition.** `gemma4`, holding the same registry, scored
+0 % and answered every answerable question. A world you can hold in your head is a
+world a big model can hold in its head — so the benchmark ships a second one.
 
 ### Long horizon
 
@@ -120,22 +120,31 @@ steps. Half the chains have exactly one link withheld: `N-1` of the `N` links ar
 the registry, one is not, and there is no chain. The model is handed all 330
 dependencies anyway — the link is missing from the *world*, not from the context.
 
-`qwen3-coder-next` (80B), temperature 0, 60 questions with no answer:
+Temperature 0, 60 questions with no answer, each model holding the entire registry:
 
 | System | False assertion | Answer accuracy |
 |--------|----------------:|----------------:|
 | **Kremis** (`/query` + `/certify`) | **0.00 %** | **100 %** |
-| LLM holding the entire registry | 21.67 % | 83 % |
-| LLM + naive retrieval | 0.00 % | 20 % |
-| LLM, no context | 31.67 % | 0 % |
+| `gemma4` | 0.00 % | 100 % |
+| `minimax-m3` | 1.67 % | 100 % |
+| `gpt-oss:120b` | 1.67 % | 100 % |
+| `llama-3.3-70b` | 61.67 % | 100 % |
+| `qwen2.5:3b` | 0.00 % | 3 % |
 
-At `N = 10` the model asserts 4 of the 6 chains that do not exist, and recovers 2 of
-the 6 that do — more fabricated chains than correct ones. Kremis is `0/6` and `6/6` at
-every horizon, and certifies all 60 absences against a BLAKE3 state hash.
+**Read the second row before the fifth.** As of July 2026 a frontier model matches
+Kremis on every column of this benchmark — so "LLMs fabricate and Kremis doesn't" is
+not a claim this project makes in the present tense. What is left is narrower: that
+zero is one execution, and it arrives with nothing you can check. Kremis's is a
+property of a graph of one-way edges, and it certifies all 60 absences against a
+BLAKE3 state hash.
 
-A second capable model on a different vendor collapses the same way, harder:
-`llama-3.3-70b` (Meta, via NVIDIA) fabricates **37 / 60 (61.67 %)** while answering
-every real chain correctly (100 %). Two families, two providers, one result.
+Capability is also not uniform — `llama-3.3-70b` (Meta, via NVIDIA) invents 37 of the
+60 chains while answering every real chain correctly, and the 3B stops fabricating
+only by ceasing to answer at all.
+
+One caveat is ours, not theirs: 420 services is ~3.9k tokens, so the whole world fits
+in the prompt. That is the single regime where an LLM can compete on this task at all.
+`--scale` leaves it — the questions stay identical and only the prompt grows.
 
 ```bash
 python benchmark/run.py --world horizon
