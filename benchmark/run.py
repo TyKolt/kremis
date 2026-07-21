@@ -963,25 +963,35 @@ def main() -> None:
 
     if args.world_stats:
         chars = len(world.registry)
-        # Characters are a fact; tokens are not, and they are not a property
-        # of this world either — they are a property of whichever tokeniser
-        # reads it. Measured on the same registry at --scale 3000:
+        # What has to fit in a context window is the PROMPT, not the registry:
+        # `llm-context` also hands over the full service list, which is a
+        # third of the text again. Sizing a sweep on the registry alone
+        # understates it — measure the thing that gets sent.
+        _src, _dst = world.questions[0][1], world.questions[0][2]
+        prompt = PROMPT_CONTEXT.format(
+            services=", ".join(world.services), registry=world.registry,
+            question=world.question_text(_src, _dst), hint="",
+            fmt=FORMAT.format(source=_src, target=_dst))
+        pchars = len(prompt)
+        # Characters are a fact; tokens are a property of the tokeniser AND of
+        # what is being tokenised. Measured on this world:
         #
-        #     gemma4        2.20 chars/token   (57,071 tokens)
-        #     gemma3:4b     3.16 chars/token   (39,803 tokens)
-        #     llama3.2:3b   3.28 chars/token   (38,365 tokens)
+        #   2.94  gemma4, full prompt   (57,071 tok / 167,807 chars)
+        #   3.16  gemma4, registry only (161,962 tok / 511,672 chars)
+        #   3.16  gemma3:4b   3.28  llama3.2:3b   (registry only)
         #
-        # A 49% spread between the extremes, on identical text. The usual
-        # chars/4 rule of thumb is outside that range and understates every
-        # one of them, because nonsense service names shred under a tokeniser.
-        # So the range is printed, not a single number: size a sweep against
-        # the worst case for the model you intend to run.
-        lo, hi = int(chars / 3.3), int(chars / 2.2)
+        # The comma-separated service list shreds worse than the "- a depends
+        # on b" lines, which is why the same model lands on two figures. So a
+        # RANGE is printed, wide enough to contain every measurement above,
+        # and all of it sits below the usual chars/4 rule of thumb. It is a
+        # guide for sizing a sweep, not a guarantee.
+        lo, hi = int(pchars / 3.3), int(pchars / 2.9)
         print(f"scale {args.scale}: {len(world.services)} services, "
               f"{len(world.dependencies)} dependencies, "
-              f"{chars} registry chars, ~{lo}-{hi} tokens "
-              f"(measured 3.3-2.2 chars/token across models; the chars/4 rule "
-              f"of thumb would say {chars // 4} and be wrong for all of them), "
+              f"{chars} registry chars, {pchars} prompt chars, "
+              f"~{lo}-{hi} prompt tokens "
+              f"(measured 3.3-2.9 chars/token; chars/4 would say "
+              f"{pchars // 4} and understate all of them), "
               f"{len(world.questions)} questions")
         return
 

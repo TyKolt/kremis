@@ -343,11 +343,12 @@ Read these before quoting any number above. The first one is the one that matter
   regime where holding the world in context is possible at all, and it is not the
   regime the substrate is built for. `--scale N` leaves it: it adds services no
   question asks about, so the answers are unchanged and only the size of the prompt
-  moves. Use `--world-stats` to size a sweep before paying for it — and treat the token
-  count as a range, not a number: **the same registry is 57k tokens for one model and
-  38k for another** (2.20 vs 3.28 chars/token, measured on identical text at
-  `--scale 3000`). Nonsense service names shred under a tokeniser, and they shred by
-  different amounts. The usual chars/4 rule of thumb understates all of them.
+  moves: `--scale 3000` is ~51-58k prompt tokens, `--scale 13500` is ~206-235k. Use
+  `--world-stats` to size a sweep before paying for it. It reports a **range**, and
+  measures the **prompt** rather than the registry — what has to fit in a window is the
+  whole thing, and the service list is a third of it again. Nonsense service names shred
+  under a tokeniser, so the usual chars/4 rule of thumb understates every model tested
+  by about a quarter.
 - **Scale moves the frontier models off zero.** `gemma4`, which fabricates nothing at
   the default size, fabricates **1 / 60** at `--scale 3000` — a ten-hop chain, invented
   whole, with the registry in front of it. One event is not a trend and this benchmark
