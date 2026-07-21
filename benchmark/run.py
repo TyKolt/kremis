@@ -977,14 +977,15 @@ def main() -> None:
         # what is being tokenised. Measured on this world:
         #
         #   2.94  gemma4, full prompt   (57,071 tok / 167,807 chars)
-        #   3.16  gemma4, registry only (161,962 tok / 511,672 chars)
+        #   3.16  gemma4, registry only (161,962 tok / 511,272 chars)
         #   3.16  gemma3:4b   3.28  llama3.2:3b   (registry only)
+        #   3.19  qwen2.5:3b, full prompt, base world (6,623-6,631 tok)
         #
         # The comma-separated service list shreds worse than the "- a depends
-        # on b" lines, which is why the same model lands on two figures. So a
-        # RANGE is printed, wide enough to contain every measurement above,
-        # and all of it sits below the usual chars/4 rule of thumb. It is a
-        # guide for sizing a sweep, not a guarantee.
+        # on b" lines, which is why the same model lands on two figures. The
+        # RANGE below covers the chars-per-token RATIOS above; it does not
+        # predict a registry-only prompt, which is a different and shorter
+        # text. It is a guide for sizing a sweep, not a guarantee.
         lo, hi = int(pchars / 3.3), int(pchars / 2.9)
         print(f"scale {args.scale}: {len(world.services)} services, "
               f"{len(world.dependencies)} dependencies, "
