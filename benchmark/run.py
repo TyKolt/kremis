@@ -522,6 +522,7 @@ def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
             pace: float) -> dict:
     rows = []
     read: list[int] = []
+    sent: list[int] = []
     for category, source, target, truth in world.questions:
         question = world.question_text(source, target)
         fmt = FORMAT.format(source=source, target=target)
@@ -530,6 +531,7 @@ def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
                 services=", ".join(world.services), registry=world.registry,
                 question=question, hint=world.hint if hint else "", fmt=fmt,
             )
+            sent.append(len(prompt))
         elif arm == "llm-rag":
             prompt = PROMPT_RAG.format(
                 registry=retrieve(world, source, target), question=question,
@@ -564,16 +566,29 @@ def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
 
     # The truncation guard. Only llm-context makes a claim that depends on the
     # whole prompt arriving; the other arms are short by design.
-    if arm == "llm-context" and read:
-        floor = len(world.registry) // 5  # chars/5 is a conservative token floor
+    #
+    # The floor must be derived from the PROMPT, not from the registry. The
+    # registry is ~1.335x shorter than the prompt that carries it, so a
+    # registry-derived floor silently under-demands by that factor: it only
+    # fired below ~47% of the prompt, and a run that read 48% was waved
+    # through while the runner printed "not truncated".
+    #
+    # chars/4 is deliberately below the 2.9-3.3 chars/token measured on this
+    # world (see --world-stats) so an unfamiliar tokeniser cannot abort a
+    # healthy run. That margin is also a blind band: truncation to more than
+    # ~79% of the prompt still passes. It is narrow enough to be stated and
+    # too wide to be called zero.
+    if arm == "llm-context" and read and sent:
+        floor = min(sent) // 4
         if min(read) < floor:
             sys.exit(
                 f"ABORT: the model read only {min(read)} prompt tokens, but the "
-                f"registry alone is at least ~{floor}. ollama truncated the "
-                f"context, so llm-context did NOT see the whole registry and "
-                f"its numbers would be meaningless. Raise --num-ctx."
+                f"prompt is {min(sent)} chars, so it cannot tokenise to fewer "
+                f"than ~{floor}. The context was truncated, so llm-context did "
+                f"NOT see the whole registry and its numbers would be "
+                f"meaningless. Raise --num-ctx."
             )
-    return {"rows": rows, "prompt_tokens": read}
+    return {"rows": rows, "prompt_tokens": read, "guarded": arm == "llm-context"}
 
 
 def classify(world: World, reply: str, source: str,
@@ -1059,9 +1074,14 @@ def main() -> None:
                 results[arm]["runs"] = [s["false_assertion_rate"] for s in scores]
                 if tokens:
                     results[arm]["prompt_tokens_read"] = [min(tokens), max(tokens)]
+                    # Report what was CHECKED, not what would be reassuring.
+                    # Only llm-context is guarded; for the short arms nothing
+                    # tested truncation, so nothing may be claimed about it.
+                    verdict = (" -> above the truncation floor"
+                               if r.get("guarded") else "")
                     print(f"  prompt tokens actually read: "
                           f"{min(tokens)}..{max(tokens)} (window {args.num_ctx})"
-                          f" -> not truncated")
+                          f"{verdict}")
 
     report(world, results, args.model, args.hint)
 
