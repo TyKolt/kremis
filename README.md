@@ -89,15 +89,16 @@ invent: the facts are supplied and `UNKNOWN` is offered.
 | LLM + naive retrieval | 0.00 % | 75 % |
 | LLM, no context | 0.00 % | 0 % |
 
-On a world this small a capable model does not fabricate — not even a local 4B: given
-every fact it needs, `qwen3.5:4b` matches the substrate here, answering all 8 answerable
-questions and abstaining on the 16 that have no answer. (An older `qwen2.5:3b` did invent
-`marn-ledger -> quoll-auth` here — the reverse of a stated dependency — at 12.50 %;
-capability closed that gap on the easy world.) Kremis stores dependencies as one-way
-edges, so a reverse path is not there to find: it returns `grounding: "unknown"` and
-`/certify` issues a certificate carrying no evidence, bound to a BLAKE3 hash of the
-graph state. The zero is structural, not measured — and the interesting failure is the
-long horizon below.
+On a world this small a *capable* model does not fabricate: given every fact it needs,
+`qwen3.5:4b` matches the substrate here, answering all 8 answerable questions and
+abstaining on the 16 that have no answer. But capability is not free with the year on the
+model card — `phi4-mini`, a current local 4B from another lab, holds the identical
+registry and still asserts `marn-ledger -> quoll-auth`, the reverse of a stated
+dependency, on every run (12.50 %). Which model you run already decides it. Kremis stores
+dependencies as one-way edges, so a reverse path is not there to find: it returns
+`grounding: "unknown"` and `/certify` issues a certificate carrying no evidence, bound to
+a BLAKE3 hash of the graph state. The zero is structural, not measured — and the
+interesting failure is the long horizon below.
 
 **It is also not a like-for-like race, and should not be read as one.** The LLM gets
 English and has to find the services itself; Kremis gets `strongest_path(42, 87)` with
@@ -113,29 +114,33 @@ python benchmark/run.py --model qwen3.5:4b --runs 5
 python benchmark/run.py --skip-llm              # Kremis alone, no Ollama needed
 ```
 
-**A larger model resists this partition.** `gemma4`, holding the same registry, scored
-0 % and answered every answerable question. A world you can hold in your head is a
-world a big model can hold in its head — so the benchmark ships a second one.
+So on the lookup the capable models (`qwen3.5:4b`, `gemma4`) score 0 while a weaker
+current 4B (`phi4-mini`) still invents. The base world separates capable from weak — so
+the benchmark ships a second one, where the answer no longer fits in a glance and even
+the capable models start to fail.
 
 ### Long horizon
 
 420 services, 330 one-way dependencies, and the answer is a composition of up to 10
-steps. Half the chains have exactly one link withheld: `N-1` of the `N` links are in
-the registry, one is not, and there is no chain. The model is handed all 330
-dependencies anyway — the link is missing from the *world*, not from the context.
+steps. The 60 questions with no answer come in two traps, 30 each: a chain with exactly
+one link withheld (`N-1` of the `N` links stated, one missing — no chain), and an intact
+chain asked backwards (dependencies are one-way, so the reverse has no answer). The
+model is handed all 330 dependencies anyway — what is missing is missing *in the world*,
+not in the context.
 
 Temperature 0, 60 questions with no answer, each model holding the entire registry:
+
+Two local models you would actually run, two hosted at the extremes of the frontier:
 
 | System | False assertion | Answer accuracy |
 |--------|----------------:|----------------:|
 | **Kremis** (`/query` + `/certify`) | **0.00 %** | **100 %** |
-| `gemma4` | 0.00 % | 100 % |
-| `minimax-m3` | 1.67 % | 100 % |
-| `gpt-oss:120b` | 1.67 % | 100 % |
-| `llama-3.3-70b` | 61.67 % | 100 % |
+| `gemma4` (hosted) | 0.00 % | 100 % |
 | `qwen3.5:4b` (local) | 3.33 % | 20 % |
+| `phi4-mini` (local) | 1.67 % | 6.67 % |
+| `llama-3.3-70b` (hosted) | 61.67 % | 100 % |
 
-**Read the second row before the fifth.** As of July 2026 a frontier model matches
+**Read the second row before the last.** As of July 2026 a frontier model matches
 Kremis on every column of this benchmark — so "LLMs fabricate and Kremis doesn't" is
 not a claim this project makes in the present tense. What is left is narrower: that
 zero is one execution, and it arrives with nothing you can check. Kremis's is a
@@ -143,8 +148,9 @@ property of a graph of one-way edges, and it certifies all 60 absences against a
 BLAKE3 state hash.
 
 Capability is also not uniform — `llama-3.3-70b` (Meta, via NVIDIA) invents 37 of the
-60 chains while answering every real chain correctly, and the local `qwen3.5:4b`
-fabricates a modest 3.33 % — but only where it cannot verify, answering just 20 %.
+60 chains while answering every real one, and the two local 4B models fabricate less but
+still fabricate (`qwen3.5:4b` 3.33 %, `phi4-mini` 1.67 %) while answering almost nothing.
+None of them gives you a way to tell which answer you just got.
 
 One caveat is ours, not theirs: 420 services is ~6.6k tokens, so the whole world fits
 in the prompt. That is the single regime where an LLM can compete on this task at all.
