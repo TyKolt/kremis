@@ -74,41 +74,31 @@ fabricates there, no one can say the context was stripped.
 
 ## The numbers
 
-`qwen2.5:3b`, local, temperature 0, 3 runs — the size of model that actually runs
+`qwen3.5:4b`, local, temperature 0, 5 runs — the size of model that actually runs
 inside a lot of agents:
 
-| system | fabricated | false-assertion | answer accuracy | across 3 runs |
+| system | fabricated | false-assertion | answer accuracy | across 5 runs |
 |--------|-----------:|----------------:|----------------:|---------------|
-| **kremis** | **0 / 16** | **0.00 %** | 100 % | 0 % · 0 % · 0 % |
-| llm-context | 2 / 16 | 12.50 % | 50 % | 12.5 % · 12.5 % · 12.5 % |
-| llm-rag | 1 / 16 | 6.25 % | 75 % | 6.2 % · 6.2 % · 6.2 % |
-| llm-bare | 0 / 16 | 0.00 % | **0 %** | 0 % · 0 % · 0 % |
+| **kremis** | **0 / 16** | **0.00 %** | 100 % | 0 % ×5 |
+| llm-context | 0 / 16 | 0.00 % | 100 % | 0 % ×5 |
+| llm-rag | 0 / 16 | 0.00 % | 75 % | 0 % ×5 |
+| llm-bare | 0 / 16 | 0.00 % | **0 %** | 0 % ×5 |
 
-Holding the complete registry, the 3B invented these — every run, identically:
+**On a world this small, a capable model does not fabricate — not even a local 4B.**
+Handed the complete registry, `qwen3.5:4b` reads it, sees that nothing points back, and
+says `UNKNOWN`. It answers all 8 answerable questions and abstains on all 16
+unanswerable ones — indistinguishable from the substrate here, exactly as the hosted
+frontier models are. Capability closed this gap: an earlier `qwen2.5:3b` did invent on
+this same world (`marn-ledger -> quoll-auth`, the reverse of a stated dependency;
+12.50 % false-assertion, 3 runs), and the current 4B does not. The easy regime is not
+where the interesting failure lives. That is Part 2.
 
-```
-marn-ledger -> quoll-auth
-    the reverse of a stated dependency. It assumed the relationship is symmetric.
-
-drenn-router -> ovic-cache -> pell-queue -> quoll-auth -> veyra-gateway -> sib-indexer
-    three edges that do not exist, invented to bridge two unconnected subsystems.
-```
-
-**And a capable model does not do this.** `gemma4`, same registry, same questions:
-**0 / 16, and 8 / 8 on the answerable ones.** On a world this small, a capable model
-reads the registry, sees that nothing points back, and says `UNKNOWN`. It is not
-wrong to.
-
-One caveat that is easy to skip and shouldn't be: that zero is **one run**. A measured
-zero is a sample, not a floor — nobody, including whoever trained the model, can tell
-you what the second run does. Hold that thought; it is the whole difference between
-the two columns further down.
-
-**Read the `llm-bare` row before you celebrate anyone's zero.** It fabricates nothing —
-and answers nothing. It says `UNKNOWN` to all 24 questions and scores 0 % accuracy.
-That is cowardice, not honesty, and a benchmark that only measured false-assertion
-would have called it perfect. This is why `answer_accuracy` is in every table below:
-abstaining is only a virtue if you still answer the questions that *do* have answers.
+**Read the `llm-bare` row before you celebrate any zero.** It fabricates nothing — and
+answers nothing: `UNKNOWN` to all 24 questions, 0 % accuracy. That is cowardice, not
+honesty, and a benchmark that only measured false-assertion would have called it
+perfect. It is why `answer_accuracy` sits in every table: abstaining is a virtue only if
+you still answer the questions that *do* have answers. Hold that distinction — it is the
+whole difference between the two columns in Part 2.
 
 ---
 
@@ -162,7 +152,7 @@ a strawman and its fabrications would be *our* bug.
 | minimax-m3 | 1 / 60 | 1.67 % | 100.00 % | 0.53 % |
 | gpt-oss:120b | 1 / 60 | 1.67 % | 100.00 % | 1.05 % |
 | llama-3.3-70b | 37 / 60 | **61.67 %** | 100.00 % | — |
-| qwen2.5:3b | 0 / 60 | 0.00 % | **3.33 %** | 0.00 % |
+| qwen3.5:4b (local) | 2 / 60 | 3.33 % | 20.00 % | 5.26 % |
 
 **Read the `gemma4` row against the `kremis` row.** Zero fabrications, perfect
 accuracy, no invented hops, and it does not buy that with cowardice: it answers all 30
@@ -189,7 +179,7 @@ kremis's zero is not a rate at all: `strongest_path` returns nothing because the
 nothing to return. It is not a behaviour that recurs with high probability; it is an
 operation the program does not contain.
 
-### Capability is not uniform, and the collapse is still there
+### Capability is not uniform, and the fabrication is still there
 
 The frontier row is not the whole market. Same world, same prompts:
 
@@ -221,30 +211,50 @@ until the moment it isn't, which is exactly what makes it expensive.
 If you want any cell here nailed down, raise `INSTANCES` in `world_lh.py` and burn the
 compute. The knob is one integer.
 
-## What the 3B does — and why its 0 % is worse than a 61 %
+## What the local 4B does — a working model that still invents
 
-`qwen2.5:3b`, local, same world, same prompts, 6623–6631 prompt tokens read:
+`qwen3.5:4b`, local, same world, same prompts, 5 runs, 6515–6523 prompt tokens read:
 
-| system | fabricated | false-assertion | answer accuracy |
-|--------|-----------:|----------------:|----------------:|
-| **kremis** | **0 / 60** | **0.00 %** | **100.00 %** |
-| llm-context | 0 / 60 | 0.00 % | **3.33 %** |
-| llm-rag | 0 / 60 | 0.00 % | 10.00 % |
-| llm-bare | 0 / 60 | 0.00 % | 0.00 % |
+| system | fabricated | false-assertion | answer accuracy | across 5 runs |
+|--------|-----------:|----------------:|----------------:|---------------|
+| **kremis** | **0 / 60** | **0.00 %** | **100.00 %** | 0 % ×5 |
+| llm-context | 2 / 60 | 3.33 % | 20.00 % | 3.33 % ×5 |
+| llm-rag | 0 / 60 | 0.00 % | 20.00 % | 0 % ×5 |
+| llm-bare | 0 / 60 | 0.00 % | 0.00 % | 0 % ×5 |
 
-The 3B fabricates **nothing**. It also answers nothing: of the 30 chains that genuinely
-exist, it abstains on 28, gets 1 right and 1 wrong. Handed the complete registry, it
-read all 6600 tokens of it and gave up.
+This is the model you would actually run in an agent, and it does not collapse the way
+an older 3B did. It answers 6 of the 30 real chains correctly — and it pays for that
+capability by inventing 2 hops it could not verify. Of every link it asserted, 5.26 %
+do not exist. Every run landed on the same 3.33 %: at temperature 0 this is not a bad
+draw, it is the model's behaviour.
 
-**That zero is not honesty. It is collapse.** It is the `llm-bare` failure wearing an
-honest face, and the only reason you can see it is the accuracy column. A benchmark
-that reported false-assertion alone would have crowned the 3B the winner of this
-table.
+Holding the complete registry, `llm-context` manufactured these — the same two, every
+run:
 
-So at long horizon the small model is not the safe option: you are choosing between a
-model that fabricates (61.67 %) and one that has stopped working (3.33 % accuracy).
-Neither gives you a guarantee — and the frontier models that give you neither failure
-still give you no guarantee either, only a very good sample.
+```
+pryl-relay -> murn-daemon
+  claimed: pryl-relay -> raup-shard -> lerv-warden -> zant-cache -> murn-daemon
+           a four-hop chain for a pair the registry gives no path between:
+           at least one of these links is not stated anywhere in it.
+
+brun-daemon -> milk-proxy
+  claimed: brun-daemon -> quor-shard -> greb-warden -> corv-router -> dask-store
+           -> cedd-worker -> milk-proxy
+           six hops assembled to bridge two services the world does not connect.
+```
+
+**This is the honest counterpart to the 12.50 % on the base world.** There the older
+3B invented because it was too weak to read a lookup; here a *current, working* model
+invents because the answer requires composing a chain and it cannot check that every
+link is real. The failure did not go away with capability — it moved to where
+verification is hard. `llm-rag`, seeing only fragments, cannot compose at all, so it
+invents nothing and answers nothing it wasn't handed (0 % fabrication, 20 % accuracy):
+abstention through incapacity, not honesty.
+
+So at long horizon the small model is not the safe option either. You are choosing
+between the loose frontier model that fabricates (61.67 %) and the local one that
+fabricates less but still fabricates (3.33 %) — and neither hands you a way to tell,
+on any single answer, which kind of answer you just got.
 
 ## Why kremis's zero is not a score
 
@@ -332,12 +342,12 @@ Read these before quoting any number above. The first one is the one that matter
 - **One task shape.** This measures dependency reachability in a closed registry. It is
   not a general hallucination rate and does not claim to be.
 - **Five models, four families, two vendors — and the result is not uniform.**
-  qwen2.5:3b (local), gemma4, minimax-m3 and gpt-oss:120b (ollama's cloud) and
-  llama-3.3-70b (NVIDIA). The small one collapses, `llama-3.3-70b` fabricates in the
-  majority of cases, and the three 2026 frontier models essentially do not fabricate
-  at all. Any sentence of the form "LLMs do X on this benchmark" is false: the spread
-  is the finding. Run your own; the runner speaks to any OpenAI-compatible endpoint
-  via `--provider`.
+  qwen3.5:4b (local), gemma4, minimax-m3 and gpt-oss:120b (ollama's cloud) and
+  llama-3.3-70b (NVIDIA). The local 4B fabricates a little (3.33 %), `llama-3.3-70b`
+  fabricates in the majority of cases (61.67 %), and the three 2026 frontier models
+  essentially do not fabricate at all. Any sentence of the form "LLMs do X on this
+  benchmark" is false: the spread is the finding. Run your own; the runner speaks to
+  any OpenAI-compatible endpoint via `--provider`.
 - **The whole world fits in the prompt, and that flatters the LLM.** 420 services is
   about 6.6k tokens — every model here was handed the entire registry. That is the one
   regime where holding the world in context is possible at all, and it is not the
@@ -370,16 +380,19 @@ model sees a single question:
 > And a dependency chain exists only if EVERY consecutive link in it is stated above.
 > A chain with one link missing is not a chain.
 
-| | base world, qwen2.5:3b |
+| | base world, qwen2.5:3b (older reference) |
 |---|---|
 | no hint | 12.50 % |
 | with hint | 6.25 % |
 
 On the base world the warning **halves** the 3B's fabrication rate — and does not
-remove it. The same counter-experiment was run at long horizon against a hosted 80B
-that has since been retired; it made that model's rate go *up*, not down. The number
-is gone with the model, and the conclusion it supported does not rest on it: halving
-is not removing, and a prompt is not a guarantee either way.
+remove it. (The current `qwen3.5:4b` fabricates nothing on the base world with or
+without the hint, so the measurement that carries the point is the older 3B, which
+still does; it is quoted here as a dated reference, not re-measured.) The same
+counter-experiment was run at long horizon against a hosted 80B that has since been
+retired; it made that model's rate go *up*, not down. The number is gone with the
+model, and the conclusion it supported does not rest on it: halving is not removing,
+and a prompt is not a guarantee either way.
 
 **Do not over-read that increase.** It is one run against one run, and we were rate-
 limited out of the repeat sweep that would have told us whether the difference is real
@@ -391,7 +404,7 @@ Prompting moves the number. It does not make the number zero, and it cannot tell
 which run was the honest one.
 
 ```bash
-python benchmark/run.py --world horizon --model qwen2.5:3b        # the 3B curve
+python benchmark/run.py --world horizon --model qwen3.5:4b        # the local 4B curve
 python benchmark/run.py --world horizon --hint                    # the counter-experiment
 python benchmark/run.py --world horizon --runs 3                  # watch it move
 python benchmark/run.py --world horizon --skip-llm                # kremis alone
@@ -413,9 +426,10 @@ loud.
 
 Stretch the answer to ten hops and it depends entirely on which model you picked.
 `llama-3.3-70b` fabricates 37 chains out of 60 while answering every real chain
-correctly. Shrink the model and fabrication vanishes along with the ability to answer
-anything at all — 3.33 % accuracy. And three 2026 frontier models walk the whole thing
-without inventing a single hop, one of them matching kremis on every column.
+correctly. The local `qwen3.5:4b` you would actually run fabricates a modest 3.33 %,
+but only answers 20 % — it invents where it cannot verify. And three 2026 frontier
+models walk the whole thing without inventing a single hop, one of them matching kremis
+on every column.
 
 So the claim is not *"models are wrong and kremis is right."* On this world the best of
 them is right, all of the time, and where it is right it is genuinely right.

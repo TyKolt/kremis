@@ -80,20 +80,24 @@ the form *"does A depend on B, directly or transitively?"* — 8 have an answer,
 not, and no answer exists for them anywhere. Nothing in the prompt asks any model to
 invent: the facts are supplied and `UNKNOWN` is offered.
 
-`qwen2.5:3b`, temperature 0, 3 runs:
+`qwen3.5:4b`, temperature 0, 5 runs:
 
 | System | False assertion | Answer accuracy |
 |--------|----------------:|----------------:|
 | **Kremis** (`/query` + `/certify`) | **0.00 %** | 100 % |
-| LLM holding the entire registry | 12.50 % | 50 % |
-| LLM + naive retrieval | 6.25 % | 75 % |
+| LLM holding the entire registry | 0.00 % | 100 % |
+| LLM + naive retrieval | 0.00 % | 75 % |
 | LLM, no context | 0.00 % | 0 % |
 
-Given every fact it needs, the model still asserts `marn-ledger -> quoll-auth` — the
-reverse of a stated dependency — on every run. Kremis stores dependencies as one-way
-edges, so the reverse path is not there to find: it returns `grounding: "unknown"` and
+On a world this small a capable model does not fabricate — not even a local 4B: given
+every fact it needs, `qwen3.5:4b` matches the substrate here, answering all 8 answerable
+questions and abstaining on the 16 that have no answer. (An older `qwen2.5:3b` did invent
+`marn-ledger -> quoll-auth` here — the reverse of a stated dependency — at 12.50 %;
+capability closed that gap on the easy world.) Kremis stores dependencies as one-way
+edges, so a reverse path is not there to find: it returns `grounding: "unknown"` and
 `/certify` issues a certificate carrying no evidence, bound to a BLAKE3 hash of the
-graph state. The zero is structural, not measured.
+graph state. The zero is structural, not measured — and the interesting failure is the
+long horizon below.
 
 **It is also not a like-for-like race, and should not be read as one.** The LLM gets
 English and has to find the services itself; Kremis gets `strongest_path(42, 87)` with
@@ -105,7 +109,7 @@ The bottom row is the control: a model that answers `UNKNOWN` to everything fabr
 nothing and is useless. Abstention counts only alongside accuracy.
 
 ```bash
-python benchmark/run.py --model qwen2.5:3b --runs 3
+python benchmark/run.py --model qwen3.5:4b --runs 5
 python benchmark/run.py --skip-llm              # Kremis alone, no Ollama needed
 ```
 
@@ -129,7 +133,7 @@ Temperature 0, 60 questions with no answer, each model holding the entire regist
 | `minimax-m3` | 1.67 % | 100 % |
 | `gpt-oss:120b` | 1.67 % | 100 % |
 | `llama-3.3-70b` | 61.67 % | 100 % |
-| `qwen2.5:3b` | 0.00 % | 3 % |
+| `qwen3.5:4b` (local) | 3.33 % | 20 % |
 
 **Read the second row before the fifth.** As of July 2026 a frontier model matches
 Kremis on every column of this benchmark — so "LLMs fabricate and Kremis doesn't" is
@@ -139,8 +143,8 @@ property of a graph of one-way edges, and it certifies all 60 absences against a
 BLAKE3 state hash.
 
 Capability is also not uniform — `llama-3.3-70b` (Meta, via NVIDIA) invents 37 of the
-60 chains while answering every real chain correctly, and the 3B stops fabricating
-only by ceasing to answer at all.
+60 chains while answering every real chain correctly, and the local `qwen3.5:4b`
+fabricates a modest 3.33 % — but only where it cannot verify, answering just 20 %.
 
 One caveat is ours, not theirs: 420 services is ~6.6k tokens, so the whole world fits
 in the prompt. That is the single regime where an LLM can compete on this task at all.

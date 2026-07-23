@@ -907,8 +907,8 @@ def skip_hint(provider: str) -> None:
     else:
         print("\nollama is not running — LLM arms skipped. The comparison")
         print("is the point of this benchmark, so: start ollama, pull a model.")
-        print("  ollama serve  &&  ollama pull qwen3:4b")
-        print("  python benchmark/run.py --model qwen3:4b")
+        print("  ollama serve  &&  ollama pull qwen3.5:4b")
+        print("  python benchmark/run.py --model qwen3.5:4b")
 
 
 def main() -> None:
@@ -929,7 +929,7 @@ def main() -> None:
     # comparison whose adversary no longer exists cannot be re-run by anyone,
     # including us. A local default is a number a reader can still reproduce
     # next year. For the strong adversary, pass one explicitly.
-    p.add_argument("--model", default="qwen3:4b",
+    p.add_argument("--model", default="qwen3.5:4b",
                    help="model id for the LLM arms (an ollama tag, or a hosted "
                         "id such as meta/llama-3.3-70b-instruct). The default "
                         "is local so the run stays reproducible; hosted tags "
