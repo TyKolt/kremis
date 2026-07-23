@@ -33,3 +33,7 @@ benchmark/results*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Benchmark work artifacts (model analysis + resumable reply caches) — never committed
+MODELS_OLLAMA.md
+cache-*.json

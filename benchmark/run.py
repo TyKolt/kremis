@@ -257,10 +257,18 @@ class Server:
         raise RuntimeError("kremis server did not come up")
 
     def __exit__(self, *exc) -> None:
-        if self.proc:
-            self.proc.terminate()
-            self.proc.wait(timeout=10)
-        shutil.rmtree(self.dir, ignore_errors=True)
+        # Always reach the rmtree, even if the server ignores terminate(): a
+        # hung wait() must not leak the throwaway db dir or orphan the process.
+        try:
+            if self.proc:
+                self.proc.terminate()
+                try:
+                    self.proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    self.proc.kill()
+                    self.proc.wait(timeout=10)
+        finally:
+            shutil.rmtree(self.dir, ignore_errors=True)
 
 
 def build(world: World, url: str) -> dict[str, int]:
@@ -428,9 +436,17 @@ def _request(provider: str, model: str, prompt: str, num_ctx: int):
                    guard still checks what actually arrived.
     """
     if provider == "ollama":
+        # num_predict caps the OUTPUT length, matching the nvidia path's
+        # max_tokens=600. Without it, a model prone to degeneration emits a
+        # thousand-hop runaway chain that costs ~90s to generate and still
+        # scores as a single abstention — 600 is ~10x the longest valid answer
+        # (a 10-hop chain is ~60 tokens), so it truncates only garbage and
+        # changes no verdict, while keeping the benchmark runnable on models
+        # that loop.
         body = {"model": model, "prompt": prompt, "stream": False,
                 "think": False,
-                "options": {"temperature": 0, "num_ctx": num_ctx}}
+                "options": {"temperature": 0, "num_ctx": num_ctx,
+                            "num_predict": 600}}
         r = http(f"{OLLAMA}/api/generate", body, timeout=600)
         return r.get("response", ""), r.get("prompt_eval_count")
 
@@ -540,8 +556,13 @@ def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
         else:
             prompt = PROMPT_BARE.format(question=question, fmt=fmt)
 
-        ck = cache.key(world.key, provider, model, arm, hint, num_ctx,
-                       run_idx, source, target)
+        # len(services) is in the key because --scale changes the prompt (it
+        # adds filler services to the registry) without changing the question.
+        # Omit it and a resumed scaling sweep would serve a reply the model gave
+        # to a differently-sized prompt — corrupting the exact measurement
+        # --scale exists to make.
+        ck = cache.key(world.key, len(world.services), provider, model, arm,
+                       hint, num_ctx, run_idx, source, target)
         hit = cache.get(ck)
         if hit is not None:
             reply, prompt_tokens = hit[0], hit[1]
@@ -573,13 +594,27 @@ def run_llm(world: World, provider: str, model: str, arm: str, hint: bool,
     # fired below ~47% of the prompt, and a run that read 48% was waved
     # through while the runner printed "not truncated".
     #
-    # chars/4 is deliberately below the 2.9-3.3 chars/token measured on this
-    # world (see --world-stats) so an unfamiliar tokeniser cannot abort a
-    # healthy run. That margin is also a blind band: truncation to more than
-    # ~79% of the prompt still passes. It is narrow enough to be stated and
-    # too wide to be called zero.
+    # chars/5 is deliberately below the chars/token any model here achieves, so
+    # a full read always clears it. The horizon registry tokenises at ~2.9-3.3
+    # chars/token, but a SHORT prompt can go higher: phi4-mini reads the base
+    # prompt at 4.08 chars/token, and a chars/4 floor false-aborted it on a
+    # prompt far too small to truncate. chars/5 tolerates up to 5 chars/token.
+    # It still catches every real truncation: ollama cuts an over-long prompt to
+    # num_ctx/2, and truncation only happens when the prompt exceeds num_ctx, so
+    # the truncated read (num_ctx/2 < prompt_tokens/2) always lands below chars/5.
+    # A guard that cannot see its input must not wave the run through: if the
+    # provider returned no prompt-token counts at all, truncation is unverifiable
+    # and a benchmark whose whole point is refusing unchecked claims cannot quietly
+    # report one. (ollama and the NVIDIA router both return counts, so this only
+    # fires for a future endpoint that omits them.)
+    if arm == "llm-context" and sent and not read:
+        sys.exit(
+            "ABORT: llm-context ran but the provider returned no prompt-token "
+            "counts, so context truncation could not be verified. Refusing to "
+            "report a number the guard could not check."
+        )
     if arm == "llm-context" and read and sent:
-        floor = min(sent) // 4
+        floor = min(sent) // 5
         if min(read) < floor:
             sys.exit(
                 f"ABORT: the model read only {min(read)} prompt tokens, but the "
@@ -609,7 +644,7 @@ def classify(world: World, reply: str, source: str,
     ones nobody can argue with — which is the only kind worth reporting.
     """
     text = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL)
-    text = text.replace("→", "->").replace("→", "->")
+    text = text.replace("→", "->")
 
     slots = re.findall(r"ANSWER:\s*(.+)", text, flags=re.IGNORECASE)
     payload = slots[-1].strip() if slots else ""

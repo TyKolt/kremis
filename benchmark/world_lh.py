@@ -97,6 +97,14 @@ _TAILS = [
 ]
 _SPACE = len(_ROOTS) * len(_TAILS)  # 576 unique names
 
+# 137 must be coprime with _SPACE or `_name` repeats — the same invariant the
+# filler pool asserts for its own stride below. Editing _ROOTS/_TAILS changes
+# _SPACE, so fail at import rather than silently generate a world with two
+# services sharing a name.
+assert math.gcd(137, _SPACE) == 1, (
+    f"stride 137 is not coprime with the name space {_SPACE} — "
+    f"service names would repeat")
+
 
 def _name(i: int) -> str:
     """The i-th service name. A bijection on [0, 576) — unique, deterministic,
