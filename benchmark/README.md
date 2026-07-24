@@ -153,7 +153,7 @@ model cannot infer that one service follows another from the name. It has to rea
 ## Four models, one world, and the spread is the finding
 
 `llm-context`, temperature 0. Two local models you would actually run inside an agent
-(5 runs each, ~6.5k prompt tokens), and two hosted models at the extremes of the current
+(5 runs each, ~6.6k prompt tokens), and two hosted models at the extremes of the current
 frontier (one run each, July 2026). Every model read the whole registry — the runner
 aborts if it doesn't, because a truncated `llm-context` is a strawman and its
 fabrications would be *our* bug.
@@ -365,11 +365,17 @@ Read these before quoting any number above. The first one is the one that matter
   whole thing, and the service list is a third of it again. Nonsense service names shred
   under a tokeniser, so the usual chars/4 rule of thumb understates every model tested
   by about a quarter.
-- **Scale moves the frontier models off zero.** `gemma4`, which fabricates nothing at
-  the default size, fabricates **1 / 60** at `--scale 3000` — a ten-hop chain, invented
-  whole, with the registry in front of it. One event is not a trend and this benchmark
-  is blind below ~2 points, so it is reported as what it is: the model that matched
-  kremis at 6.6k tokens no longer matches it at 57k. kremis is 0/60 at both.
+- **Scale moves the LLMs — in different directions — and does not move kremis at all.**
+  `gemma4` (hosted), which fabricates nothing at the default size, fabricates **1 / 60**
+  at `--scale 3000` (57k tokens). The local `qwen3.5:4b` goes the other way: at
+  `--scale 500` (14k prompt tokens, 3 runs, identical) it answers *fewer* questions
+  (accuracy 20 % → 13.33 %) and fabricates no more — 1 / 60, inside the ~2-point blind
+  band, so the fall is not a claim, only the accuracy drop is. A stronger model edges
+  toward inventing as the world grows; a weaker one retreats into silence. Both *move*.
+  kremis is **0 / 60 with 100 % accuracy at every scale measured** — 6.6k, 14k, and (in
+  earlier runs) 128k tokens — because its zero is not a rate that scale can pull on, it
+  is an operation the program does not contain. That invariance is the point the scaling
+  knob exists to show.
 - **kremis's honesty has a price, and it is the same mechanism.** It answers from what
   was ingested and refuses everything else. It will not infer, will not generalise, and
   will not help you with a question whose answer isn't in the graph. The property that

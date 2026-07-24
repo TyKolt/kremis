@@ -156,10 +156,12 @@ One caveat is ours, not theirs: 420 services is ~6.6k tokens, so the whole world
 in the prompt. That is the single regime where an LLM can compete on this task at all.
 `--scale` leaves it — the questions stay identical and only the prompt grows.
 
-And it matters. At `--scale 3000` (57k prompt tokens as `gemma4` reads it) it fabricates **1 / 60**
-where it fabricated **0 / 60** at the default size, inventing a ten-hop chain. One event
-is not a trend — the benchmark is blind below ~2 points — but the parity in the table
-above is a property of a small world, not of the model. Kremis is `0 / 60` at both sizes.
+And it matters. At `--scale 3000` (57k prompt tokens) `gemma4` fabricates **1 / 60**
+where it fabricated **0 / 60** at the default size; the local `qwen3.5:4b` at
+`--scale 500` instead answers *fewer* questions (accuracy 20 % → 13.33 %) without inventing
+more. The LLMs move with scale, in different directions; the parity in the table above is
+a property of a small world, not of the model. Kremis is `0 / 60` with 100 % accuracy at
+every scale measured.
 
 ```bash
 python benchmark/run.py --world horizon
