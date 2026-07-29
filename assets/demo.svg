@@ -32,7 +32,7 @@
 
   <!-- Command -->
   <g style="animation: fadeIn1 14s infinite">
-    <text x="20" y="66" class="t"><tspan class="prompt">$</tspan><tspan class="cmd"> python benchmark/run.py --model qwen2.5:3b --runs 3</tspan></text>
+    <text x="20" y="66" class="t"><tspan class="prompt">$</tspan><tspan class="cmd"> python benchmark/run.py --model qwen3.5:4b --runs 3</tspan></text>
   </g>
 
   <!-- Closed world -->
