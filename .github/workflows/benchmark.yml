@@ -13,6 +13,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
 
 jobs:
   benchmark:
@@ -27,15 +28,16 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/cache@v6
+      # rust-cache, not a hand-rolled actions/cache: the key here used to be
+      # Cargo.lock alone, which does not change when `@stable` moves to a new
+      # release. A benchmark run could then restore `target` built by the
+      # previous compiler and publish those numbers to the README. rust-cache
+      # folds the toolchain version into the key and drops the workspace
+      # crates, so the benched binary is always rebuilt by the compiler that
+      # this run actually resolved.
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ matrix.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-cargo-bench-
+          key: bench
 
       - name: Run benchmarks
         run: cargo bench -p kremis-core --bench graph_bench -- --output-format bencher | tee bench-output.txt
