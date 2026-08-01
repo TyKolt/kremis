@@ -3,6 +3,8 @@
 
     python benchmark/run.py                      # the base world
     python benchmark/run.py --world horizon      # the long-horizon world
+    python benchmark/run.py --arms llm-context --runs 3 \
+        --panel qwen2.5:7b,phi4-mini,granite3.3:8b   # three families, one arm
 
 Four systems answer the SAME questions about the SAME closed world. Some
 questions have an answer. Most do not — and there is no answer to be had,
@@ -422,6 +424,18 @@ class Cache:
 
 _last_call = [0.0]
 
+# The sampling seed handed to ollama. At temperature 0 decoding is greedy, so
+# this should not change a single verdict — and that is exactly why it is worth
+# pinning. It costs nothing and it removes sampling from the list of things that
+# could explain a disagreement between two runs of the same question. What is
+# left after pinning it is not the sampler; measuring what is left is the point
+# of --panel.
+#
+# A list, not a constant, for the same reason as _last_call above: main() sets
+# it once and every call site reads it, without threading one more argument
+# through four signatures that do not otherwise care.
+_seed = [42]
+
 
 def _request(provider: str, model: str, prompt: str, num_ctx: int):
     """One prompt, one provider. Returns (reply, prompt tokens the model read).
@@ -446,7 +460,7 @@ def _request(provider: str, model: str, prompt: str, num_ctx: int):
         body = {"model": model, "prompt": prompt, "stream": False,
                 "think": False,
                 "options": {"temperature": 0, "num_ctx": num_ctx,
-                            "num_predict": 600}}
+                            "num_predict": 600, "seed": _seed[0]}}
         r = http(f"{OLLAMA}/api/generate", body, timeout=600)
         return r.get("response", ""), r.get("prompt_eval_count")
 
@@ -749,6 +763,107 @@ def score(world: World, rows: list[dict]) -> dict:
     return out
 
 
+# ── the panel: three local families, asked the same thing twice ─────────────
+
+def local_families(models: list[str]) -> dict[str, str]:
+    """Which family does each tag belong to — ASKED of ollama, never assumed.
+
+    A panel of N tags is a panel of N families only if the families differ. Two
+    tags of the same lineage agreeing with each other is not corroboration: it
+    is one model answering twice under two names, and it makes a panel look
+    wider than it is.
+
+    The families are read from /api/tags because the tag string does not carry
+    them reliably — `mistral:7b` and `falcon3:7b` both report family `llama`,
+    and a panel that trusted their names would count three families while
+    running two. Refusing here is deliberate: a collision discovered after the
+    sweep costs the sweep.
+    """
+    # ollama also serves HOSTED models, and they are not what this panel is
+    # for. The band was worth measuring in the first place because the local
+    # and hosted populations come out disjoint, so a panel that quietly mixed
+    # one hosted tag in would destroy the contrast it exists to draw — and it
+    # would do it silently, since the tag arrives through the same endpoint.
+    hosted = [t for t in models if t.endswith("-cloud") or t.endswith(":cloud")]
+    if hosted:
+        sys.exit(f"hosted tags in a local panel: {', '.join(hosted)}\n"
+                 f"  they reach the same endpoint but not the same machine.")
+
+    catalogue = {}
+    for entry in http(f"{OLLAMA}/api/tags", timeout=10).get("models", []):
+        catalogue[entry.get("name", "")] = (
+            (entry.get("details") or {}).get("family") or "unknown")
+
+    family, missing = {}, []
+    for tag in models:
+        # ollama reports `name:latest` for a tag pulled without one.
+        hit = tag if tag in catalogue else f"{tag}:latest"
+        if hit not in catalogue:
+            missing.append(tag)
+        else:
+            family[tag] = catalogue[hit]
+    if missing:
+        sys.exit(f"not pulled: {', '.join(missing)}\n"
+                 f"  ollama pull {missing[0]}")
+
+    seen: dict[str, str] = {}
+    for tag, fam in family.items():
+        if fam in seen:
+            sys.exit(f"'{tag}' and '{seen[fam]}' both report family '{fam}'. "
+                     f"A panel of one family is not a panel — pick another tag.")
+        seen[fam] = tag
+    if len(seen) < 3:
+        sys.exit(f"--panel needs at least 3 distinct families, got "
+                 f"{len(seen)}. Two agreeing models are an anecdote.")
+    return family
+
+
+def determinism_band(runs: list[list[dict]]) -> dict:
+    """Asked the SAME question again at temperature 0, does the verdict move?
+
+    Not a fluency measurement and not an accuracy one: this counts how often a
+    system contradicts ITSELF, which is a property the ground truth cannot
+    settle. A model that is wrong the same way every time has a band of zero.
+
+    Two kinds of disagreement, kept apart because they mean different things:
+
+      verdict   the repeat asserted where the first abstained, or the reverse.
+                This changes what the system CLAIMS about the world.
+      form      same verdict, different chain. The claim stands; the wording
+                moved.
+
+    They are reported separately because a measurement that pooled them would
+    hide the distinction that matters — the headline of this benchmark is what
+    a system asserts, so a form-only wobble is noise and a verdict flip is not.
+
+    With zero disagreements the honest output is not "0%": it is a CEILING. The
+    rule of three gives the 95% upper bound for 0 events in n trials, and it is
+    the only number a run of zeroes entitles anyone to quote.
+    """
+    first = runs[0]
+    repeats = verdict_moved = form_moved = 0
+    flips: list[str] = []
+    for i, base in enumerate(first):
+        for other in runs[1:]:
+            row = other[i]
+            repeats += 1
+            if (row["asserted"] != base["asserted"]
+                    or row["malformed"] != base["malformed"]):
+                verdict_moved += 1
+                if len(flips) < 10:
+                    flips.append(
+                        f"{base['source']} -> {base['target']}: "
+                        f"{'asserted' if base['asserted'] else 'abstained'} "
+                        f"then "
+                        f"{'asserted' if row['asserted'] else 'abstained'}")
+            elif row["answer"] != base["answer"]:
+                form_moved += 1
+    return {"repeats": repeats, "verdict_moved": verdict_moved,
+            "form_moved": form_moved, "flips": flips,
+            "rate": (verdict_moved / repeats) if repeats else 0.0,
+            "ceiling": (3.0 / repeats) if repeats and not verdict_moved else None}
+
+
 def by_horizon(world: World, rows: list[dict]) -> dict[str, dict]:
     """The curve: every metric, as a function of how many steps the answer had
     to compose. This is the whole reason the long-horizon world exists — a
@@ -841,6 +956,78 @@ def report(world: World, results: dict[str, dict], model: str,
     caveats(world, model, hint)
 
 
+def report_panel(arm: str, family: dict[str, str], per_model: dict[str, dict],
+                 bands: dict[str, dict], runs: int) -> None:
+    """What a panel buys, and — just as explicitly — what it does not.
+
+    IT BUYS TWO THINGS.
+
+      1. A finding that survives three families is not an artefact of one
+         vendor's post-training. The single-model arms of this benchmark cannot
+         tell those two apart; three families can.
+      2. A self-consistency band. Temperature 0 is not determinism, and this is
+         where that sentence stops being a caveat and becomes a number.
+
+    IT IS NOT A QUALITY SCORE, AND MUST NEVER BE READ AS ONE. A panel that
+    agrees tells you the models share a behaviour, not that the behaviour is
+    good; a panel that splits tells you they disagree, not which one is right.
+    Averaging model judgements into a rating is the specific misuse this
+    function refuses to make possible: it prints rates that the ground truth
+    settles, and a band that measures self-contradiction. Neither is an opinion
+    poll, and no line here may be collapsed into a single figure of merit.
+    """
+    print("\n" + "=" * 78)
+    print(f"PANEL — {len(family)} local families, arm '{arm}', "
+          f"{runs} runs each, temperature 0, seed {_seed[0]}")
+    print("=" * 78)
+
+    print(f"\n{'model':<22} {'family':<12} {'false-assert':>13} "
+          f"{'accuracy':>10} {'abstention':>12}")
+    print("-" * 78)
+    for tag, fam in family.items():
+        s = per_model[tag]
+        print(f"{tag:<22} {fam:<12} {s['false_assertion_rate']:>12.2f}% "
+              f"{s['answer_accuracy']:>9.2f}% {s['abstention_recall']:>11.2f}%")
+
+    if runs < 2:
+        print("\nband: not measured — a single run cannot disagree with itself."
+              "\n  re-run with --runs 2 or more.")
+        print("=" * 78)
+        return
+
+    print(f"\nself-consistency band (same question, asked {runs} times):")
+    print(f"  {'model':<22} {'repeats':>9} {'verdict moved':>15} "
+          f"{'form only':>11}  95% band")
+    pooled_repeats = pooled_moved = 0
+    for tag in family:
+        b = bands[tag]
+        pooled_repeats += b["repeats"]
+        pooled_moved += b["verdict_moved"]
+        band = (f"<= {b['ceiling'] * 100:.2f}% (rule of three)"
+                if b["ceiling"] is not None else f"{b['rate'] * 100:.2f}%")
+        print(f"  {tag:<22} {b['repeats']:>9} {b['verdict_moved']:>15} "
+              f"{b['form_moved']:>11}  {band}")
+
+    pooled = (f"<= {3.0 / pooled_repeats * 100:.2f}% (rule of three)"
+              if pooled_repeats and not pooled_moved
+              else f"{pooled_moved / pooled_repeats * 100:.2f}%"
+              if pooled_repeats else "n/a")
+    print(f"  {'POOLED':<22} {pooled_repeats:>9} {pooled_moved:>15} "
+          f"{'':>11}  {pooled}")
+
+    for tag in family:
+        for line in bands[tag]["flips"]:
+            print(f"    {tag} contradicted itself: {line}")
+
+    print("\n  kremis has no band to report: its two runs are compared and the"
+          "\n  run aborts if they differ, so the number is not measured here —"
+          "\n  it is a precondition of getting this far at all.")
+    print("\n  READ THIS AS: how often a system contradicts ITSELF. It is not a")
+    print("  quality ranking, and the rates above are not votes — they are")
+    print("  settled by the registry, which is the only judge in this file.")
+    print("=" * 78)
+
+
 def report_curve(world: World, results: dict[str, dict]) -> None:
     """The headline of the long-horizon arm."""
     print("\n" + "-" * 78)
@@ -898,6 +1085,11 @@ def caveats(world: World, model: str, hint: bool) -> None:
     print("-" * 78)
     print(f"  - LLM arms ran on '{model}' at temperature 0. A different model")
     print("    will give a different number. Run your own.")
+    print(f"  - ollama arms pinned seed {_seed[0]}. Greedy decoding should make")
+    print("    this inert, and that is the point: whatever still moves between")
+    print("    two runs is not the sampler. Numbers published before this was")
+    print("    added were collected with ollama's default seed, so a repeat of")
+    print("    an old figure is a re-measurement, not a replay.")
     print("  - Scoring favours the LLM. A reply only counts as a fabrication if")
     print("    it asserts a chain running source -> target. Prose, hedging, or a")
     print("    chain that wanders off ('malformed') is scored as an ABSTENTION,")
@@ -979,6 +1171,17 @@ def main() -> None:
     p.add_argument("--runs", type=int, default=1,
                    help="repeat every arm N times. kremis will not move; watch "
                         "whether the LLM does")
+    p.add_argument("--panel", default=None,
+                   help="comma-separated ollama tags from at least 3 DISTINCT "
+                        "families. Runs one arm across all of them and reports "
+                        "a self-consistency band, so a finding does not rest on "
+                        "one model's post-training. Families are read from "
+                        "/api/tags, not guessed from the tag")
+    p.add_argument("--seed", type=int, default=42,
+                   help="sampling seed for the ollama arms. At temperature 0 "
+                        "decoding is greedy so this should change nothing — "
+                        "pinning it removes sampling as an explanation for any "
+                        "disagreement --panel then measures")
     p.add_argument("--num-ctx", type=int, default=16384,
                    help="context window for the LLM arms. MUST fit the whole "
                         "registry, or llm-context is a strawman — the runner "
@@ -1000,6 +1203,20 @@ def main() -> None:
                    help="print the size of the world and exit. No server, no "
                         "LLM, no cost — the cheap half of a scaling sweep")
     args = p.parse_args()
+    _seed[0] = args.seed
+
+    panel = [m.strip() for m in (args.panel or "").split(",") if m.strip()]
+    if panel:
+        # Both refusals are about what the measurement would MEAN, not about
+        # what the code could execute.
+        if args.provider != "ollama":
+            sys.exit("--panel measures LOCAL families; hosted models are the "
+                     "contrast it gets compared against, not the panel itself.")
+        arms = [a.strip() for a in args.arms.split(",") if a.strip()]
+        if len(arms) != 1:
+            sys.exit(f"--panel takes exactly one arm, got {len(arms)}. A band "
+                     f"pooled across arms would mix two causes of disagreement "
+                     f"— pass --arms llm-context.")
 
     if args.scale:
         if args.world != "horizon":
@@ -1084,9 +1301,48 @@ def main() -> None:
             for run in runs[:args.runs]
         ]
 
+    panel_scores: dict[str, dict] = {}
+    panel_bands: dict[str, dict] = {}
+    family: dict[str, str] = {}
+
     if not args.skip_llm:
         if not provider_up(args.provider):
             skip_hint(args.provider)
+        elif panel:
+            arm = args.arms.strip()
+            family = local_families(panel)
+            cache = Cache(ROOT / args.cache if args.cache else None)
+            for tag in panel:
+                run_rows = []
+                for i in range(args.runs):
+                    print(f"\n{arm} (ollama: {tag} [{family[tag]}], temp 0, "
+                          f"seed {args.seed}, num_ctx {args.num_ctx}) "
+                          f"run {i + 1}/{args.runs}:")
+                    r = run_llm(world, "ollama", tag, arm, args.hint,
+                                args.num_ctx, True, cache, i, args.pace)
+                    run_rows.append(r["rows"])
+                    # The truncation guard aborts from inside run_llm either
+                    # way, so the panel is never scored on a cut prompt. It is
+                    # SAID here because a guard that acts without saying so
+                    # reads exactly like a guard that was skipped, and this
+                    # benchmark has already been bitten once by a runner that
+                    # printed reassurance it had not earned.
+                    if r["prompt_tokens"] and r.get("guarded"):
+                        print(f"  prompt tokens read: {min(r['prompt_tokens'])}"
+                              f"..{max(r['prompt_tokens'])} "
+                              f"(window {args.num_ctx}) -> above the "
+                              f"truncation floor")
+                per_run = [score(world, rows) for rows in run_rows]
+                panel_scores[tag] = per_run[0]
+                # The existing cross-run section reads this key; without it the
+                # panel would print a table of empty lists next to a band that
+                # says the opposite. Two views of the same runs must not
+                # disagree because one of them was left unfilled.
+                panel_scores[tag]["runs"] = [
+                    s["false_assertion_rate"] for s in per_run]
+                panel_bands[tag] = determinism_band(run_rows)
+                # Named per model so the JSON keeps every family, not the last.
+                results[f"{arm}@{tag}"] = panel_scores[tag]
         else:
             cache = Cache(ROOT / args.cache if args.cache else None)
             if len(cache):
@@ -1118,14 +1374,19 @@ def main() -> None:
                           f"{min(tokens)}..{max(tokens)} (window {args.num_ctx})"
                           f"{verdict}")
 
-    report(world, results, args.model, args.hint)
+    report(world, results, ", ".join(panel) if panel else args.model, args.hint)
+    if panel and family:
+        report_panel(args.arms.strip(), family, panel_scores, panel_bands,
+                     args.runs)
 
     default_out = ("benchmark/results.json" if world.key == "base"
                    else f"benchmark/results-{world.key}.json")
     out = ROOT / (args.out or default_out)
     out.write_text(json.dumps({"world": world.key, "provider": args.provider,
                                "model": args.model, "hint": args.hint,
-                               "num_ctx": args.num_ctx,
+                               "num_ctx": args.num_ctx, "seed": args.seed,
+                               "panel": {"family": family, "bands": panel_bands}
+                               if panel else None,
                                "results": results}, indent=2))
     print(f"\nwrote {out}")
 

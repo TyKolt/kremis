@@ -287,6 +287,62 @@ runs.
 
 Run it twice, run it a hundred times: same input, same output.
 
+## The panel — three families, and a model that contradicts itself
+
+Every table above rests on one model per row, and a single model cannot tell you whether
+a behaviour belongs to language models or to one lab's post-training. `--panel` runs one
+arm across at least three **distinct local families** and reports two things a
+single-model run cannot produce:
+
+```bash
+python benchmark/run.py --arms llm-context --runs 2 \
+    --panel qwen2.5:7b,phi4-mini,granite3.3:8b
+```
+
+The families are read from ollama's `/api/tags`, never guessed from the tag, and a
+collision is refused before the sweep rather than discovered after it. That refusal is
+not hypothetical: on this machine `mistral:7b`, `falcon3:7b` and `llama3.2:3b` all report
+family `llama`, so a panel that trusted their names would count three families while
+running one lineage three times. Hosted tags are refused for the same class of reason —
+they arrive through the same endpoint but not from the same machine.
+
+Base world, `llm-context`, temperature 0, seed 42, 2 runs each:
+
+| model | family | false-assertion | accuracy | self-consistency band |
+|-------|--------|----------------:|---------:|-----------------------|
+| `qwen2.5:7b` | qwen2 | 12.50 % | 100 % | 0 / 24 → ≤ 12.50 % |
+| `phi4-mini` | phi3 | 18.75 % | 50 % | **1 / 24 = 4.17 %** |
+| `granite3.3:8b` | granite | 25.00 % | 100 % | 0 / 24 → ≤ 12.50 % |
+| **pooled** | | | | **1 / 72 = 1.39 %** |
+
+**All three fabricate on a nine-service lookup**, which is the first thing worth saying:
+the clean 4B in the table further up is not the rule, it is one draw from a spread that
+runs to 25 %.
+
+The second is the band. `phi4-mini` was asked `veyra-gateway -> quoll-auth` twice, at
+temperature 0, with the seed pinned, and answered it correctly the first time and with a
+chain that wandered off the second. **A system that contradicts itself is not measured by
+accuracy at all** — both replies could have been wrong, and the number would look the
+same. A zero in that column is reported as a *ceiling*, never as `0 %`: 24 repeats
+entitle you to `≤ 12.50 %` by the rule of three and to nothing narrower.
+
+kremis has no band here, and the absence is the point: its two runs are compared and the
+run aborts if they differ, so self-consistency is not a result it reports — it is a
+precondition of the run producing output at all.
+
+> **This run does not reproduce `phi4-mini`'s published stability.** The table in Part 1
+> has it at 12.50 % on all five runs; here it lands on 18.75 % and moves a verdict
+> between two. Two things changed at once — the seed is now pinned, and the local tag may
+> have been updated since — so this says the earlier figure did not reproduce, and it does
+> **not** say which of the two caused it. Separating them takes another run, not another
+> paragraph.
+
+**What a panel is not.** It is not a quality ranking and the rows are not votes. Every
+rate in that table is settled by the registry, which is the only judge anywhere in this
+benchmark; models are measured here, never consulted. Averaging model judgements into a
+score is a different instrument with a different failure mode, and this one deliberately
+cannot be read that way.
+
 ## Caveats
 
 Read these before quoting any number above. The first one is the one that matters.
