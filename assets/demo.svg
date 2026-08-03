@@ -21,10 +21,12 @@
     .cursor { animation: blink 1s step-end infinite; fill: #e2e8f0; }
   </style>
 
-  <!-- Window -->
-  <rect width="850" height="520" rx="10" fill="#0f172a"/>
-  <rect width="850" height="36" rx="10" fill="#1e293b"/>
-  <rect y="26" width="850" height="10" fill="#1e293b"/>
+  <!-- Window — brand palette: Carbon ground, Surface title bar.
+       The result colours below (.ok / .warn) are benchmark data, not chrome:
+       they encode abstains vs fabricates and must not be re-themed. -->
+  <rect width="850" height="520" rx="10" fill="#111111"/>
+  <rect width="850" height="36" rx="10" fill="#2a2a2a"/>
+  <rect y="26" width="850" height="10" fill="#2a2a2a"/>
   <circle cx="20" cy="18" r="6" fill="#f87171"/>
   <circle cx="40" cy="18" r="6" fill="#fbbf24"/>
   <circle cx="60" cy="18" r="6" fill="#4ade80"/>

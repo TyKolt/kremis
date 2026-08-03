@@ -9,12 +9,27 @@
   },
   "favicon": "/logo/favicon.svg",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#14B88A",
-    "dark": "#0A7A60"
+    "primary": "#c1440e",
+    "light": "#db4d10",
+    "dark": "#7a2a07"
+  },
+  "fonts": {
+    "heading": {
+      "family": "IBM Plex Mono"
+    },
+    "body": {
+      "family": "Space Grotesk"
+    }
   },
   "appearance": {
     "default": "dark"
+  },
+  "seo": {
+    "metatags": {
+      "og:image": "https://kremis.mintlify.app/logo/og-image.png",
+      "twitter:image": "https://kremis.mintlify.app/logo/og-image.png",
+      "twitter:card": "summary_large_image"
+    }
   },
   "navbar": {
     "links": [
@@ -27,11 +42,6 @@
       "type": "github",
       "href": "https://github.com/TyKolt/kremis"
     }
-  },
-  "feedback": {
-    "thumbsRating": true,
-    "suggestEdit": true,
-    "raiseIssue": true
   },
   "search": {
     "prompt": "Search Kremis docs..."
@@ -184,7 +194,9 @@
       "claude"
     ]
   },
-  "footerSocials": {
-    "github": "https://github.com/TyKolt/kremis"
+  "footer": {
+    "socials": {
+      "github": "https://github.com/TyKolt/kremis"
+    }
   }
 }
