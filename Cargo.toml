@@ -51,6 +51,19 @@ needless_pass_by_value = "allow"
 format_push_string = "allow"
 missing_fields_in_debug = "allow"
 
+# =============================================================================
+# DISTRIBUTION PROFILE
+# =============================================================================
+# Used by the Dockerfile and by release.yml — never by CI's `build` job, which
+# only needs to know whether the workspace compiles and throws the artifact away.
+# Keeping the cost here means slower builds are paid a few times a year on the
+# artifacts that ship, and never on every push across three operating systems.
+[profile.release-dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
 [workspace.dependencies]
 # =============================================================================
 # CORE DEPENDENCIES (THE LOGIC - Pure Determinism)

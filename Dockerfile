@@ -5,8 +5,9 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ crates/
 COPY apps/ apps/
-RUN cargo build --release -p kremis -p kremis-mcp \
- && strip target/release/kremis target/release/kremis-mcp
+# The release-dist profile already strips symbols, so the manual `strip` that
+# used to follow this line is gone — one mechanism, declared in Cargo.toml.
+RUN cargo build --profile release-dist -p kremis -p kremis-mcp
 
 # ---- Runtime ----
 FROM debian:bookworm-slim
@@ -14,8 +15,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r kremis && useradd -r -g kremis kremis
-COPY --from=build /src/target/release/kremis     /usr/local/bin/kremis
-COPY --from=build /src/target/release/kremis-mcp /usr/local/bin/kremis-mcp
+COPY --from=build /src/target/release-dist/kremis     /usr/local/bin/kremis
+COPY --from=build /src/target/release-dist/kremis-mcp /usr/local/bin/kremis-mcp
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
  && mkdir -p /data && chown kremis:kremis /data
