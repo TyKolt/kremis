@@ -2,15 +2,52 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.2] - 2026-08-04
+
+### Bug Fixes
+
+- *(build)* Release and debug did not share the same arithmetic ([`9b962fa`](https://github.com/TyKolt/kremis/commit/9b962fa69fa1f8cbb23e63137bea2e92b24bb71e))
+
+### Documentation
+
+- Replace the honesty demo with a reproducible fabrication benchmark ([`1e52a45`](https://github.com/TyKolt/kremis/commit/1e52a45c77629d268c8dbd27a23c59aee656c81b))
+- *(benchmark)* Add a long-horizon arm where a capable model does fabricate ([`a51ac79`](https://github.com/TyKolt/kremis/commit/a51ac7922a052ab7e7c7a80a8b846265a5fe42cf))
+- *(benchmark)* Pace and resume the LLM sweep, so a quota cannot end a measurement ([`d3f0319`](https://github.com/TyKolt/kremis/commit/d3f031970e560025ddfc3c3132fc4fffde3ae221))
+- *(benchmark)* A second model on a second vendor fabricates harder, not softer ([`cf6a1a6`](https://github.com/TyKolt/kremis/commit/cf6a1a66362a58c887a2160e4b872fd91f1fe856))
+- *(benchmark)* Say plainly that kremis is not answering the same question ([`e3135ef`](https://github.com/TyKolt/kremis/commit/e3135ef6297f475175bdde95470777f09114d580))
+- *(benchmark)* Replace the retired adversary with measured 2026 models ([`c27a154`](https://github.com/TyKolt/kremis/commit/c27a1540088dd6ae6756eb921de437fba1bcc7cf))
+- *(benchmark)* Retire the collapsed 3B for a working local 4B ([`d7b2ae5`](https://github.com/TyKolt/kremis/commit/d7b2ae539eb76b42e943b49dcb28a6f250f39c87))
+- *(benchmark)* Balance the model set to two local and two hosted ([`b835ba9`](https://github.com/TyKolt/kremis/commit/b835ba94a9f78991fa2c59d83b04cfe88d0821d0))
+- *(benchmark)* Record the local model's behaviour at scale ([`7ae98b6`](https://github.com/TyKolt/kremis/commit/7ae98b62d7e8496fadab41bab14f70faab913d48))
+- Repoint the Story badge to the live article ([`50bd437`](https://github.com/TyKolt/kremis/commit/50bd437152d368251900fb9a584c4b0378ccb704))
+- *(assets)* The demo still showed the retired adversary ([`a179b21`](https://github.com/TyKolt/kremis/commit/a179b21b3ff3fdd9edda66645470e870c741ff37))
+- *(mcp)* The protocol line still claimed rmcp 2.1 ([`96a34be`](https://github.com/TyKolt/kremis/commit/96a34be1c1a04688b546dfec4184842f62ab2942))
+- *(brand)* The site ran on Mintlify's starter green ([`16ce606`](https://github.com/TyKolt/kremis/commit/16ce6068c20eba30f699651e8dd3a26e471c713d))
+- The quickstart quoted an image size from an older build ([`23b80e3`](https://github.com/TyKolt/kremis/commit/23b80e3f5e22410eb2839c4db379d6efb6238196))
+- *(core)* The published crate had the weakest guarantees of the three ([`db53ecd`](https://github.com/TyKolt/kremis/commit/db53ecd95bb18143d0e0446c755361ac4860c51b))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 5 updates ([#71](https://github.com/TyKolt/kremis/issues/71)) ([`f080640`](https://github.com/TyKolt/kremis/commit/f08064002949d7abad3eb563de602529b6108917))
+- *(deps)* Bump the rust-all-updates group with 3 updates ([#72](https://github.com/TyKolt/kremis/issues/72)) ([`b33fcb4`](https://github.com/TyKolt/kremis/commit/b33fcb4230cdf2007efb59df0d058c48ff44f5b0))
+- *(deps)* Bump the rust-all-updates group with 3 updates ([#73](https://github.com/TyKolt/kremis/issues/73)) ([`4fdf216`](https://github.com/TyKolt/kremis/commit/4fdf2163fd7a7a1c255e4974c6cacd7036dbb5df))
+
+### Miscellaneous
+
+- The repo now agrees with its own Directory Policy ([`d49c9d6`](https://github.com/TyKolt/kremis/commit/d49c9d6fde4c2093bee997babcdafd02fb21590a))
+- *(ci)* Benchmark.yml caches like ci.yml does ([`978aa95`](https://github.com/TyKolt/kremis/commit/978aa955f680fe9ab8ead48f7fc980f3fb79a74f))
+- *(cargo)* The binaries were publishable to crates.io ([`0cde0b5`](https://github.com/TyKolt/kremis/commit/0cde0b53eb42342e0c30151429fae83db5dc40d6))
+- *(dist)* Shipped binaries carried optimisation nobody asked CI to pay for ([`732fe94`](https://github.com/TyKolt/kremis/commit/732fe940c96c4b1849f5d20aaeb499336a5971ac))
+
 ## [0.21.1] - 2026-07-14
 
 ### Features
 
-- *(core)* Expose the reverse entity mapping (NodeId -> EntityId) ([`845bf0f`](https://github.com/TyKolt/kremis/commit/845bf0f85cbb821b0280cc471ab60a889f050eb9))
+- *(core)* Expose the reverse entity mapping (NodeId -> EntityId) ([`196daff`](https://github.com/TyKolt/kremis/commit/196daff20151c2a712432c70c8803c61368218f6))
 
 ### Performance
 
-- *(core)* Build certificate evidence by lookup, not by materializing the graph ([`743dcfe`](https://github.com/TyKolt/kremis/commit/743dcfec0a1bceffd402d9ae48e32a4ceb018510))
+- *(core)* Build certificate evidence by lookup, not by materializing the graph ([`4d21721`](https://github.com/TyKolt/kremis/commit/4d217216f84fcc186f607e644c302e8dc08e7cdf))
 
 ### Dependencies
 
