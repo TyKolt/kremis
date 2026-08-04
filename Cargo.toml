@@ -7,7 +7,7 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.21.1"
+version = "0.21.2"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/TyKolt/kremis"
@@ -50,6 +50,21 @@ redundant_closure_for_method_calls = "allow"
 needless_pass_by_value = "allow"
 format_push_string = "allow"
 missing_fields_in_debug = "allow"
+
+# =============================================================================
+# RELEASE PROFILE
+# =============================================================================
+# Integer overflow aborts in debug and wraps silently in release, which makes
+# the same source produce two different arithmetics depending on how it was
+# compiled. For an engine whose first law is determinism that is not a
+# trade-off, so release keeps the checks.
+[profile.release]
+overflow-checks = true
+
+# Benchmarks are excluded: their numbers are published, and adding a per-op
+# check would shift them without a single line of logic having changed.
+[profile.bench]
+overflow-checks = false
 
 # =============================================================================
 # DISTRIBUTION PROFILE
