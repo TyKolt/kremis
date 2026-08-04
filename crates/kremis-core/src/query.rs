@@ -15,23 +15,41 @@ pub enum QueryType {
     Lookup(EntityId),
 
     /// Traverse from a starting node up to a depth limit.
-    Traverse { start: NodeId, depth: usize },
+    Traverse {
+        /// Node the traversal starts from.
+        start: NodeId,
+        /// Maximum number of hops to follow away from `start`.
+        depth: usize,
+    },
 
     /// Traverse with minimum weight filter.
     TraverseFiltered {
+        /// Node the traversal starts from.
         start: NodeId,
+        /// Maximum number of hops to follow away from `start`.
         depth: usize,
+        /// Edges weighing less than this are not followed.
         min_weight: EdgeWeight,
     },
 
     /// Find the strongest path between two nodes.
-    StrongestPath { start: NodeId, end: NodeId },
+    StrongestPath {
+        /// Node the path starts from.
+        start: NodeId,
+        /// Node the path must reach.
+        end: NodeId,
+    },
 
     /// Find nodes connected to ALL input nodes.
     Intersect(Vec<NodeId>),
 
     /// Depth-first traversal.
-    TraverseDfs { start: NodeId, depth: usize },
+    TraverseDfs {
+        /// Node the traversal starts from.
+        start: NodeId,
+        /// Maximum number of hops to follow away from `start`.
+        depth: usize,
+    },
 }
 
 /// A structured query with optional timeout.

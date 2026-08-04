@@ -22,6 +22,13 @@
 //! - Never initiates interaction; only reacts to explicit signals or ticks
 //! - Has NO async, NO network dependencies (pure Rust)
 
+// `session.rs` already stated "No unsafe blocks in Core" in a comment. The
+// compiler now enforces it, so the claim is checked rather than asserted.
+#![forbid(unsafe_code)]
+// This crate is the published one. Every public item carries its own
+// explanation, down to struct fields and enum variants.
+#![deny(missing_docs)]
+
 // =============================================================================
 // MODULES
 // =============================================================================

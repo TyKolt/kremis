@@ -372,11 +372,18 @@ impl StageAssessor {
 /// Progress information toward the next stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StageProgress {
+    /// The stage the graph is in now.
     pub current: Stage,
+    /// The stage that follows, or `None` once the last one is reached.
     pub next: Option<Stage>,
+    /// Progress toward `next`, and always `100` when there is no `next`.
     pub percent: u8,
+    /// Stable edges counted in the graph right now.
     pub stable_edges_current: usize,
+    /// Stable edges the next stage requires. Equal to `stable_edges_current`
+    /// on the terminal stage, where nothing further is needed.
     pub stable_edges_needed: usize,
+    /// The measurements these figures were derived from.
     pub metrics: GraphMetrics,
 }
 
@@ -405,15 +412,25 @@ impl StageProgress {
 /// to query the conceptual stage requirement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StageCapability {
+    /// Basic signal segmentation into discrete units. Belongs to `S0`.
     SignalSegmentation,
+    /// Creating directed edges between sequential units. Belongs to `S0`.
     PrimitiveLinking,
+    /// Inducing grammar from patterns. Belongs to `S1`.
     GrammarInduction,
+    /// Generating simple patterns from structure. Belongs to `S1`.
     PatternGeneration,
+    /// Detecting causal relationships. Belongs to `S2`.
     CausalityDetection,
+    /// Accessing temporal memory patterns. Belongs to `S2`.
     TemporalMemory,
+    /// Extracting causal chains from the graph. Belongs to `S2`.
     CausalChainExtraction,
+    /// Planning goals via external systems. Belongs to `S3`.
     GoalPlanning,
+    /// Triggering external facet operations. Belongs to `S3`.
     FacetTriggers,
+    /// Modifying external world state. Belongs to `S3`.
     WorldModification,
 }
 

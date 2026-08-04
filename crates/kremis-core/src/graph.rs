@@ -927,16 +927,23 @@ use serde::{Deserialize, Serialize};
 /// Counts items silently discarded because they reference non-existent nodes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LoadDiagnostics {
+    /// Edges dropped because one of their endpoints was not in the payload.
     pub dangling_edges: usize,
+    /// Properties dropped because the node they belong to was not in the payload.
     pub dangling_properties: usize,
 }
 
 /// Serializable representation of the graph for persistence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializableGraph {
+    /// Every node in the graph, in deterministic order.
     pub nodes: Vec<Node>,
+    /// Edges as `(source, target, weight)` triples.
     pub edges: Vec<(NodeId, NodeId, EdgeWeight)>,
+    /// The identifier the next inserted node will receive.
     pub next_node_id: u64,
+    /// Properties as `(node id, key, value)` triples. Absent in older payloads,
+    /// which deserialise to an empty vector rather than failing.
     #[serde(default)]
     pub properties: Vec<(u64, String, String)>,
 }

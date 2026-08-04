@@ -42,7 +42,11 @@ const MIN_FILE_SIZE: usize = 5;
 /// The persistence header precedes all graph data.
 #[derive(Debug, Clone, Copy)]
 pub struct PersistenceHeader {
+    /// Format marker. A payload whose first four bytes differ is rejected
+    /// rather than parsed.
     pub magic: [u8; 4],
+    /// Format revision, so an older reader refuses a newer payload instead of
+    /// misreading it.
     pub version: u8,
 }
 
