@@ -16,6 +16,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Kremis MCP Server - Model Context Protocol bridge to Kremis API"
+# Same as apps/kremis: shipped as a binary, never as a crate.
+publish = false
 
 [[bin]]
 name = "kremis-mcp"

@@ -25,6 +25,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Kremis Honest AGI Server - THE BINARY"
+# Distribution channel is GitHub Releases + Docker, never crates.io.
+# Only kremis-core is a published crate; the binary is downloaded, not depended on.
+publish = false
 
 [lib]
 name = "kremis"
