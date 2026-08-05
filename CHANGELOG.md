@@ -2,6 +2,17 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.3] - 2026-08-05
+
+### Bug Fixes
+
+- *(core)* A single signal on redb paid for two fsyncs where one sufficed ([`b974738`](https://github.com/TyKolt/kremis/commit/b974738d68b1c561c032d79afc7856d3148cadbd))
+
+### Documentation
+
+- The quickstart quoted an image size from an older build ([`23b80e3`](https://github.com/TyKolt/kremis/commit/23b80e3f5e22410eb2839c4db379d6efb6238196))
+- *(core)* The published crate had the weakest guarantees of the three ([`db53ecd`](https://github.com/TyKolt/kremis/commit/db53ecd95bb18143d0e0446c755361ac4860c51b))
+
 ## [0.21.2] - 2026-08-04
 
 ### Bug Fixes
@@ -23,8 +34,6 @@ All notable changes to Kremis are documented in this file.
 - *(assets)* The demo still showed the retired adversary ([`a179b21`](https://github.com/TyKolt/kremis/commit/a179b21b3ff3fdd9edda66645470e870c741ff37))
 - *(mcp)* The protocol line still claimed rmcp 2.1 ([`96a34be`](https://github.com/TyKolt/kremis/commit/96a34be1c1a04688b546dfec4184842f62ab2942))
 - *(brand)* The site ran on Mintlify's starter green ([`16ce606`](https://github.com/TyKolt/kremis/commit/16ce6068c20eba30f699651e8dd3a26e471c713d))
-- The quickstart quoted an image size from an older build ([`23b80e3`](https://github.com/TyKolt/kremis/commit/23b80e3f5e22410eb2839c4db379d6efb6238196))
-- *(core)* The published crate had the weakest guarantees of the three ([`db53ecd`](https://github.com/TyKolt/kremis/commit/db53ecd95bb18143d0e0446c755361ac4860c51b))
 
 ### Dependencies
 
