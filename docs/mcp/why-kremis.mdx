@@ -81,7 +81,7 @@ A memory framework that includes an LLM in its retrieval path inherits two prope
 Kremis exchanges those properties for a different set:
 
 1. **Determinism** at the storage and retrieval step. The graph is the state; the state is reproducible from the ingest log.
-2. **Visible state**. Every node and edge came from a signal you sent. There are no hidden inferences. Stage classification (`S0`–`S3`) is deterministic and based on edge-confidence thresholds defined in `kremis-core/src/stage.rs`.
+2. **Visible state**. Every node and edge came from a signal you sent. There are no hidden inferences. Stage classification (`S0`–`S3`) is deterministic and based on edge-confidence thresholds defined in `crates/kremis-core/src/system/stage.rs`.
 
 This is the same shape as the trade-off between a database and a search service: a database does less, more predictably; a search service does more, with looser guarantees.
 

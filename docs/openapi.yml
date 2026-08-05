@@ -115,7 +115,7 @@ paths:
               example:
                 stage: S1
                 name: Pattern Crystallization
-                progress_percent: 42
+                progress_percent: 11
                 stable_edges_needed: 1000
                 stable_edges_current: 207
         "401":
@@ -787,7 +787,7 @@ components:
           minimum: 0
           maximum: 100
           description: Progress toward the next stage, expressed as a percentage.
-          example: 42
+          example: 11
         stable_edges_needed:
           type: integer
           format: uint64
