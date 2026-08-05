@@ -2,6 +2,16 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.4] - 2026-08-05
+
+### Bug Fixes
+
+- *(mcp)* The traverse tool promised a depth ceiling the engine never had ([`21b7ab8`](https://github.com/TyKolt/kremis/commit/21b7ab8ed4cddc550141d4fa33d29bab41ef3802))
+
+### Documentation
+
+- Three stage examples described a graph the code cannot produce ([`b3ac5c6`](https://github.com/TyKolt/kremis/commit/b3ac5c677c97fa1fb871f6b5fc26ee1aa7c95bf4))
+
 ## [0.21.3] - 2026-08-05
 
 ### Bug Fixes
