@@ -52,8 +52,8 @@ pub struct TraverseParams {
     /// The starting node ID.
     #[schemars(description = "The starting node ID")]
     pub node_id: u64,
-    /// Traversal depth (default: 2, max: 10).
-    #[schemars(description = "Traversal depth (default: 2, max: 10)")]
+    /// Traversal depth (default: 2, max: 100).
+    #[schemars(description = "Traversal depth (default: 2, max: 100)")]
     pub depth: Option<u64>,
     /// Return only the K highest-weight edges (optional).
     #[schemars(description = "Return only the K highest-weight edges (optional)")]

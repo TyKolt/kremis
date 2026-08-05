@@ -12,6 +12,12 @@ icon: "diamond-turn-right"
 
 Uses DFS with backtracking to find the simple path with maximum total weight between two nodes, correctly handling all graph topologies including cycles.
 
+<Note>
+  The search is bounded: it stops at depth 100 or after 50,000 node visits, whichever
+  comes first, and returns the strongest path found within those bounds. On dense graphs
+  that path may not be the strongest one overall.
+</Note>
+
 ## Request
 
 ```json

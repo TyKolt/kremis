@@ -175,6 +175,14 @@ pub trait GraphStore {
 
     /// Find the simple path with maximum total weight between two nodes.
     /// Uses DFS with backtracking (correct for all graph topologies).
+    ///
+    /// The search is bounded by [`MAX_TRAVERSAL_DEPTH`] and [`MAX_VISIT_COUNT`].
+    /// When either bound is reached the search stops and returns the strongest
+    /// path found within those bounds, which on dense graphs may not be the
+    /// strongest path overall.
+    ///
+    /// [`MAX_TRAVERSAL_DEPTH`]: crate::primitives::MAX_TRAVERSAL_DEPTH
+    /// [`MAX_VISIT_COUNT`]: crate::primitives::MAX_VISIT_COUNT
     fn strongest_path(
         &self,
         start: NodeId,
@@ -245,8 +253,11 @@ pub trait GraphStore {
 
 /// DFS helper for the default `strongest_path` implementation.
 ///
-/// Explores all simple paths from `current` to `end`, tracking the one
-/// with maximum total weight. Works with any `GraphStore` implementor.
+/// Explores simple paths from `current` to `end`, tracking the one with
+/// maximum total weight. Works with any `GraphStore` implementor.
+///
+/// Exploration stops at `MAX_TRAVERSAL_DEPTH` or when `visit_budget` reaches
+/// zero, so on dense graphs the paths explored are a subset of all simple paths.
 #[allow(clippy::too_many_arguments)]
 fn dfs_strongest_path_default<G: GraphStore + ?Sized>(
     store: &G,
@@ -854,8 +865,9 @@ impl Graph {
         }
     }
 
-    /// DFS helper for strongest_path: explores all simple paths from `current`
-    /// to `end`, tracking the one with maximum total weight.
+    /// DFS helper for strongest_path: explores simple paths from `current` to
+    /// `end`, tracking the one with maximum total weight. Exploration stops at
+    /// `MAX_TRAVERSAL_DEPTH` or when `visit_budget` reaches zero.
     #[allow(clippy::too_many_arguments)]
     fn dfs_strongest_path(
         &self,

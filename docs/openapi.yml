@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Kremis API
-  version: 0.21.3
+  version: 0.21.4
   description: |
     Kremis is a deterministic, graph-based memory engine for AI agents.
 
@@ -67,7 +67,7 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
-                version: "0.21.3"
+                version: "0.21.4"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -375,7 +375,7 @@ paths:
         | `lookup` | Resolve entity ID to node ID | — |
         | `traverse` | BFS/DFS from a node | depth ≤ 100 |
         | `traverse_filtered` | Traverse with minimum edge weight | depth ≤ 100 |
-        | `strongest_path` | Highest-weight path between two nodes | — |
+        | `strongest_path` | Highest-weight path between two nodes | depth ≤ 100, ≤ 50,000 node visits |
         | `intersect` | Nodes reachable from all given nodes | ≤ 100 nodes |
         | `related` | Subgraph around a node | depth ≤ 100 |
         | `properties` | Key-value properties of a node | — |
@@ -724,7 +724,7 @@ components:
         version:
           type: string
           description: Server version (semver).
-          example: "0.21.3"
+          example: "0.21.4"
 
     # -------------------------------------------------------------------------
     # Graph state
@@ -1046,7 +1046,12 @@ components:
 
     StrongestPathQuery:
       type: object
-      description: Find the highest-weight path between two nodes.
+      description: |
+        Find the highest-weight path between two nodes.
+
+        The search stops at depth 100 or after 50,000 node visits, whichever comes
+        first, and returns the strongest path found within those bounds. On dense
+        graphs that path may not be the strongest one overall.
       required: [type, start, end]
       properties:
         type:
