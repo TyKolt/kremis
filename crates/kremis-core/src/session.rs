@@ -218,7 +218,18 @@ impl Session {
     pub fn ingest(&mut self, signal: &Signal) -> Result<NodeId, KremisError> {
         let node_id = match &mut self.backend {
             StorageBackend::InMemory(graph) => Ingestor::ingest_signal(graph, signal)?,
-            StorageBackend::Persistent(redb) => Ingestor::ingest_signal(redb, signal)?,
+            // `Ingestor::ingest_signal` is generic over `GraphStore`, so on redb it
+            // issues the node write and the property write as two transactions —
+            // two fsyncs where one suffices. The batch path groups both into a
+            // single transaction; a one-signal batch forms no edge, so the
+            // observable result is identical.
+            StorageBackend::Persistent(redb) => redb
+                .ingest_batch(std::slice::from_ref(signal))?
+                .first()
+                .copied()
+                .ok_or_else(|| {
+                    KremisError::StorageCorruption("one-signal batch returned no node".to_string())
+                })?,
         };
         self.buffer.activate(node_id);
         Ok(node_id)
@@ -694,5 +705,41 @@ mod tests {
 
         let props2 = imported.get_properties(node2).expect("props");
         assert!(props2.contains(&(Attribute::new("role"), Value::new("admin"))));
+    }
+
+    /// `ingest` on the persistent backend routes through the batch path to spend
+    /// one fsync instead of two. This asserts the observable result is unchanged:
+    /// node created, property stored, buffer activated, repeats idempotent.
+    #[test]
+    fn ingest_single_signal_on_redb_matches_in_memory() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let mut session = Session::with_redb(dir.path().join("session.redb")).expect("open");
+        assert!(session.is_persistent());
+
+        let signal = make_signal(7, "name", "Alice");
+        let node = session.ingest(&signal).expect("ingest");
+
+        // Same node as the in-memory backend would produce for the first signal.
+        let mut in_memory = Session::new();
+        assert_eq!(in_memory.ingest(&signal).expect("ingest"), node);
+
+        assert_eq!(session.lookup_entity(EntityId(7)), Some(node));
+        assert_eq!(
+            session.get_properties(node).expect("props"),
+            vec![(Attribute::new("name"), Value::new("Alice"))]
+        );
+        assert!(session.buffer().active_nodes.contains(&node));
+
+        // Re-ingesting the same signal is idempotent: no second node, no duplicate
+        // property — set semantics, matching the single-transaction path it replaced.
+        assert_eq!(session.ingest(&signal).expect("re-ingest"), node);
+        assert_eq!(session.node_count().expect("count"), 1);
+        assert_eq!(session.get_properties(node).expect("props").len(), 1);
+
+        // A distinct attribute on the same entity reuses the node and adds one property.
+        let second = make_signal(7, "role", "admin");
+        assert_eq!(session.ingest(&second).expect("ingest"), node);
+        assert_eq!(session.node_count().expect("count"), 1);
+        assert_eq!(session.get_properties(node).expect("props").len(), 2);
     }
 }
