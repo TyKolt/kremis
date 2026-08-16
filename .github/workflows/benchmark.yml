@@ -99,7 +99,12 @@ jobs:
           def format_measure(ns, dev):
               div, prec, unit = unit_of(ns)
               out = f"{ns / div:.{prec}f} {unit}"
-              if dev:
+              # `is not None`, not truthiness: a deviation of 0 is REPORTED and
+              # zero, which is the strongest thing the table can say about a
+              # figure. Truthiness would render it identically to a deviation
+              # that was never measured -- the same conflation this whole
+              # change exists to remove.
+              if dev is not None:
                   out += f" \u00b1{dev / div:.{prec}f}"
               return out
 
