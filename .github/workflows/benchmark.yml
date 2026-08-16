@@ -84,22 +84,51 @@ jobs:
 
           OS_ORDER = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
-          def format_ns(ns):
+          # Unit is chosen from the value, then reused for its deviation: a band
+          # rendered in a different unit than the figure it qualifies is worse
+          # than no band at all.
+          def unit_of(ns):
               if ns >= 1_000_000_000:
-                  return f"{ns / 1_000_000_000:.1f} s"
+                  return 1_000_000_000, 1, "s"
               if ns >= 1_000_000:
-                  return f"{ns / 1_000_000:.2f} ms"
+                  return 1_000_000, 2, "ms"
               if ns >= 1_000:
-                  return f"{ns / 1_000:.1f} \u00b5s"
-              return f"{ns} ns"
+                  return 1_000, 1, "\u00b5s"
+              return 1, 0, "ns"
 
+          def format_measure(ns, dev):
+              div, prec, unit = unit_of(ns)
+              out = f"{ns / div:.{prec}f} {unit}"
+              # `is not None`, not truthiness: a deviation of 0 is REPORTED and
+              # zero, which is the strongest thing the table can say about a
+              # figure. Truthiness would render it identically to a deviation
+              # that was never measured -- the same conflation this whole
+              # change exists to remove.
+              if dev is not None:
+                  out += f" \u00b1{dev / div:.{prec}f}"
+              return out
+
+          # criterion's bencher format emits the deviation:
+          #     test strongest_path/1000 ... bench:  11,790 ns/iter (+/- 1,918)
+          # Until 2026-08-16 the pattern ended at "ns/iter" and that tail was
+          # dropped, so the README published four significant figures for a
+          # measurement whose own run reported +/- 16%. The uncertainty was
+          # measured, carried all the way here, and discarded at the last step.
+          # The group is optional: a missing deviation degrades to a bare value,
+          # never to a crash.
           def parse_bench(path):
               results = {}
               with open(path) as f:
                   for line in f:
-                      m = re.match(r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter", line)
+                      m = re.match(
+                          r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter"
+                          r"(?:\s+\(\+/-\s+([\d,]+)\))?",
+                          line,
+                      )
                       if m:
-                          results[m.group(1)] = int(m.group(2).replace(",", ""))
+                          ns = int(m.group(2).replace(",", ""))
+                          dev = int(m.group(3).replace(",", "")) if m.group(3) else None
+                          results[m.group(1)] = (ns, dev)
               return results
 
           # Parse results per OS
@@ -125,9 +154,9 @@ jobs:
               values = []
               has_any = False
               for o in os_present:
-                  ns = all_results[o].get(name)
-                  if ns is not None:
-                      values.append(format_ns(ns))
+                  measure = all_results[o].get(name)
+                  if measure is not None:
+                      values.append(format_measure(*measure))
                       has_any = True
                   else:
                       values.append("\u2014")
@@ -145,7 +174,13 @@ jobs:
               "",
               header,
               separator,
-          ] + rows)
+          ] + rows + [
+              "",
+              "> The ± is criterion's deviation within a single run. Spread *between* runs",
+              "> on hosted CI is wider still, because the runners themselves vary: figures",
+              "> here have moved by tens of percent with no change to the benched code.",
+              "> Read them as orders of magnitude, not as a regression signal.",
+          ])
 
           section = f"<!-- BENCHMARK-START -->\n{table}\n<!-- BENCHMARK-END -->"
 
