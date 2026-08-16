@@ -116,19 +116,36 @@ jobs:
           # measured, carried all the way here, and discarded at the last step.
           # The group is optional: a missing deviation degrades to a bare value,
           # never to a crash.
+          # Name and measurement are matched SEPARATELY because they are not always
+          # on the same line. When criterion cannot read a previous baseline it
+          # prints to stdout, in the middle of the record:
+          #
+          #     test node_insertion/100 ... Criterion.rs ERROR: error: Failed to
+          #     bench:       7,845 ns/iter (+/- 203)
+          #
+          # A single-line pattern matches neither half. On 2026-08-16 that produced
+          # 65 such records per runner and zero parsed results on all three, and
+          # the job died on "No matching benchmark results found". The workflow had
+          # been depending on a warm target/criterion for the tool to stay quiet --
+          # a parser that breaks when its input becomes talkative depends on silence,
+          # not on structure.
+          NAME_RE = re.compile(r"^test (.+?)\s+\.\.\.")
+          BENCH_RE = re.compile(r"bench:\s+([\d,]+) ns/iter(?:\s+\(\+/-\s+([\d,]+)\))?")
+
           def parse_bench(path):
               results = {}
+              pending = None
               with open(path) as f:
                   for line in f:
-                      m = re.match(
-                          r"test (.+?)\s+\.\.\. bench:\s+([\d,]+) ns/iter"
-                          r"(?:\s+\(\+/-\s+([\d,]+)\))?",
-                          line,
-                      )
-                      if m:
-                          ns = int(m.group(2).replace(",", ""))
-                          dev = int(m.group(3).replace(",", "")) if m.group(3) else None
-                          results[m.group(1)] = (ns, dev)
+                      nm = NAME_RE.match(line)
+                      if nm:
+                          pending = nm.group(1)
+                      bm = BENCH_RE.search(line)
+                      if bm and pending is not None:
+                          ns = int(bm.group(1).replace(",", ""))
+                          dev = int(bm.group(2).replace(",", "")) if bm.group(2) else None
+                          results[pending] = (ns, dev)
+                          pending = None
               return results
 
           # Parse results per OS
