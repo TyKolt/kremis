@@ -258,17 +258,17 @@ cargo fmt --all -- --check
 <!-- BENCHMARK-START -->
 ## Benchmarks
 
-> Auto-generated on CI runners — 2026-08-16.
+> Auto-generated on CI runners — 2026-08-18.
 
 | Operation | Linux | Windows | macOS |
 |-----------|------:|------:|------:|
-| Node insertion (100K) | 20.45 ms ±0.16 | 19.50 ms ±0.85 | 23.52 ms ±4.54 |
-| Signal ingestion (10K batch) | 8.42 ms ±0.04 | 12.12 ms ±1.47 | 9.34 ms ±1.88 |
-| Graph traversal (depth 50, 1K nodes) | 2.7 µs ±0.0 | 3.4 µs ±0.2 | 2.6 µs ±0.3 |
-| Strongest path (1K nodes) | 7.4 µs ±0.0 | 8.6 µs ±0.4 | 8.0 µs ±0.5 |
-| Canonical export (1K nodes) | 68.4 µs ±0.4 | 78.8 µs ±7.1 | 65.1 µs ±8.9 |
-| Canonical import (10K nodes) | 3.10 ms ±0.01 | 3.58 ms ±0.11 | 3.67 ms ±0.51 |
-| Redb node insertion (1K) | 360.53 ms ±11.53 | 10.0 s ±0.3 | 1.0 s ±0.1 |
+| Node insertion (100K) | 22.93 ms ±0.26 | 18.86 ms ±1.10 | 17.43 ms ±1.04 |
+| Signal ingestion (10K batch) | 8.69 ms ±0.15 | 12.21 ms ±1.46 | 6.65 ms ±0.22 |
+| Graph traversal (depth 50, 1K nodes) | 2.8 µs ±0.0 | 3.4 µs ±0.2 | 2.2 µs ±0.1 |
+| Strongest path (1K nodes) | 8.1 µs ±0.0 | 8.5 µs ±0.2 | 6.5 µs ±0.4 |
+| Canonical export (1K nodes) | 72.4 µs ±0.4 | 75.6 µs ±1.4 | 55.7 µs ±2.7 |
+| Canonical import (10K nodes) | 3.20 ms ±0.07 | 3.61 ms ±0.18 | 2.83 ms ±0.16 |
+| Redb node insertion (1K) | 355.88 ms ±14.08 | 16.3 s ±0.6 | 500.28 ms ±165.97 |
 
 > The ± is criterion's deviation within a single run. Spread *between* runs
 > on hosted CI is wider still, because the runners themselves vary: figures
