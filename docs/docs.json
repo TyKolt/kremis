@@ -36,6 +36,10 @@
       {
         "label": "GitHub",
         "href": "https://github.com/TyKolt/kremis"
+      },
+      {
+        "label": "TyKolt",
+        "href": "https://tykolt.pages.dev"
       }
     ],
     "primary": {
@@ -196,7 +200,8 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/TyKolt/kremis"
+      "github": "https://github.com/TyKolt/kremis",
+      "website": "https://tykolt.pages.dev"
     }
   }
 }
