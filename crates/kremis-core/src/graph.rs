@@ -72,37 +72,7 @@ pub trait GraphStore {
 
     /// Traverse the graph from a starting node up to a depth limit.
     fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
-        let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start)? {
-            return Ok(None);
-        }
-
-        let mut visited = BTreeSet::new();
-        let mut queue = VecDeque::new();
-        let mut path = Vec::new();
-        let mut subgraph_edges = Vec::new();
-
-        queue.push_back((start, 0usize));
-        visited.insert(start);
-
-        while let Some((current, current_depth)) = queue.pop_front() {
-            path.push(current);
-
-            if current_depth >= depth {
-                continue;
-            }
-
-            for (neighbor, weight) in self.neighbors(current)? {
-                subgraph_edges.push((current, neighbor, weight));
-
-                if !visited.contains(&neighbor) {
-                    visited.insert(neighbor);
-                    queue.push_back((neighbor, current_depth.saturating_add(1)));
-                }
-            }
-        }
-
-        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
+        traverse_in(&Store(self), start, depth)
     }
 
     /// Traverse with minimum weight filter.
@@ -112,65 +82,12 @@ pub trait GraphStore {
         depth: usize,
         min_weight: EdgeWeight,
     ) -> Result<Option<Artifact>, KremisError> {
-        let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
-        if !self.contains_node(start)? {
-            return Ok(None);
-        }
-
-        let mut visited = BTreeSet::new();
-        let mut queue = VecDeque::new();
-        let mut path = Vec::new();
-        let mut subgraph_edges = Vec::new();
-
-        queue.push_back((start, 0usize));
-        visited.insert(start);
-
-        while let Some((current, current_depth)) = queue.pop_front() {
-            path.push(current);
-
-            if current_depth >= depth {
-                continue;
-            }
-
-            for (neighbor, weight) in self.neighbors(current)? {
-                if weight.value() >= min_weight.value() {
-                    subgraph_edges.push((current, neighbor, weight));
-
-                    if !visited.contains(&neighbor) {
-                        visited.insert(neighbor);
-                        queue.push_back((neighbor, current_depth.saturating_add(1)));
-                    }
-                }
-            }
-        }
-
-        Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
+        traverse_filtered_in(&Store(self), start, depth, min_weight)
     }
 
     /// Find nodes connected to ALL input nodes (intersection).
     fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
-        if nodes.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let first_neighbors: BTreeSet<_> = self
-            .neighbors(nodes[0])?
-            .into_iter()
-            .map(|(n, _)| n)
-            .collect();
-
-        if first_neighbors.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut result = first_neighbors;
-        for &node in &nodes[1..] {
-            let neighbors: BTreeSet<_> =
-                self.neighbors(node)?.into_iter().map(|(n, _)| n).collect();
-            result = result.intersection(&neighbors).copied().collect();
-        }
-
-        Ok(result.into_iter().collect())
+        intersect_in(&Store(self), nodes)
     }
 
     /// Find the simple path with maximum total weight between two nodes.
@@ -188,35 +105,7 @@ pub trait GraphStore {
         start: NodeId,
         end: NodeId,
     ) -> Result<Option<Vec<NodeId>>, KremisError> {
-        if !self.contains_node(start)? || !self.contains_node(end)? {
-            return Ok(None);
-        }
-
-        if start == end {
-            return Ok(Some(vec![start]));
-        }
-
-        let mut best_path: Option<Vec<NodeId>> = None;
-        let mut best_weight: i64 = i64::MIN;
-        let mut visited = BTreeSet::new();
-        let mut current_path = vec![start];
-        let mut visit_budget = crate::primitives::MAX_VISIT_COUNT;
-        visited.insert(start);
-
-        dfs_strongest_path_default(
-            self,
-            start,
-            end,
-            0,
-            &mut visited,
-            &mut current_path,
-            0,
-            &mut best_path,
-            &mut best_weight,
-            &mut visit_budget,
-        )?;
-
-        Ok(best_path)
+        strongest_path_in(&Store(self), start, end)
     }
 
     /// Get the total number of nodes.
@@ -251,16 +140,190 @@ pub trait GraphStore {
     fn get_properties(&self, node: NodeId) -> Result<Vec<(Attribute, Value)>, KremisError>;
 }
 
+// =============================================================================
+// DEFAULT QUERY ALGORITHMS
+// =============================================================================
+
+/// The read access the default query algorithms need.
+///
+/// Kept apart from `GraphStore` so a backend can run a whole query against
+/// one snapshot: on redb, every `GraphStore::neighbors` call opens its own
+/// read transaction, and opening it costs more than the range scan it wraps.
+pub(crate) trait Adjacency {
+    fn neighbors(&self, node: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError>;
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError>;
+}
+
+/// Adapts any `GraphStore` to `Adjacency`, for the trait's default methods.
+struct Store<'a, G: ?Sized>(&'a G);
+
+impl<G: GraphStore + ?Sized> Adjacency for Store<'_, G> {
+    fn neighbors(&self, node: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
+        self.0.neighbors(node)
+    }
+
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
+        self.0.contains_node(id)
+    }
+}
+
+/// Default `GraphStore::traverse`: BFS up to a depth limit.
+pub(crate) fn traverse_in<A: Adjacency + ?Sized>(
+    store: &A,
+    start: NodeId,
+    depth: usize,
+) -> Result<Option<Artifact>, KremisError> {
+    let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
+    if !store.contains_node(start)? {
+        return Ok(None);
+    }
+
+    let mut visited = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    let mut path = Vec::new();
+    let mut subgraph_edges = Vec::new();
+
+    queue.push_back((start, 0usize));
+    visited.insert(start);
+
+    while let Some((current, current_depth)) = queue.pop_front() {
+        path.push(current);
+
+        if current_depth >= depth {
+            continue;
+        }
+
+        for (neighbor, weight) in store.neighbors(current)? {
+            subgraph_edges.push((current, neighbor, weight));
+
+            if !visited.contains(&neighbor) {
+                visited.insert(neighbor);
+                queue.push_back((neighbor, current_depth.saturating_add(1)));
+            }
+        }
+    }
+
+    Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
+}
+
+/// Default `GraphStore::traverse_filtered`: BFS over edges with
+/// `weight >= min_weight`.
+pub(crate) fn traverse_filtered_in<A: Adjacency + ?Sized>(
+    store: &A,
+    start: NodeId,
+    depth: usize,
+    min_weight: EdgeWeight,
+) -> Result<Option<Artifact>, KremisError> {
+    let depth = depth.min(crate::primitives::MAX_TRAVERSAL_DEPTH);
+    if !store.contains_node(start)? {
+        return Ok(None);
+    }
+
+    let mut visited = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    let mut path = Vec::new();
+    let mut subgraph_edges = Vec::new();
+
+    queue.push_back((start, 0usize));
+    visited.insert(start);
+
+    while let Some((current, current_depth)) = queue.pop_front() {
+        path.push(current);
+
+        if current_depth >= depth {
+            continue;
+        }
+
+        for (neighbor, weight) in store.neighbors(current)? {
+            if weight.value() >= min_weight.value() {
+                subgraph_edges.push((current, neighbor, weight));
+
+                if !visited.contains(&neighbor) {
+                    visited.insert(neighbor);
+                    queue.push_back((neighbor, current_depth.saturating_add(1)));
+                }
+            }
+        }
+    }
+
+    Ok(Some(Artifact::with_subgraph(path, subgraph_edges)))
+}
+
+/// Default `GraphStore::intersect`: nodes adjacent to every input node.
+pub(crate) fn intersect_in<A: Adjacency + ?Sized>(
+    store: &A,
+    nodes: &[NodeId],
+) -> Result<Vec<NodeId>, KremisError> {
+    if nodes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let first_neighbors: BTreeSet<_> = store
+        .neighbors(nodes[0])?
+        .into_iter()
+        .map(|(n, _)| n)
+        .collect();
+
+    if first_neighbors.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut result = first_neighbors;
+    for &node in &nodes[1..] {
+        let neighbors: BTreeSet<_> = store.neighbors(node)?.into_iter().map(|(n, _)| n).collect();
+        result = result.intersection(&neighbors).copied().collect();
+    }
+
+    Ok(result.into_iter().collect())
+}
+
+/// Default `GraphStore::strongest_path`: see the trait method for the bounds.
+pub(crate) fn strongest_path_in<A: Adjacency + ?Sized>(
+    store: &A,
+    start: NodeId,
+    end: NodeId,
+) -> Result<Option<Vec<NodeId>>, KremisError> {
+    if !store.contains_node(start)? || !store.contains_node(end)? {
+        return Ok(None);
+    }
+
+    if start == end {
+        return Ok(Some(vec![start]));
+    }
+
+    let mut best_path: Option<Vec<NodeId>> = None;
+    let mut best_weight: i64 = i64::MIN;
+    let mut visited = BTreeSet::new();
+    let mut current_path = vec![start];
+    let mut visit_budget = crate::primitives::MAX_VISIT_COUNT;
+    visited.insert(start);
+
+    dfs_strongest_path_default(
+        store,
+        start,
+        end,
+        0,
+        &mut visited,
+        &mut current_path,
+        0,
+        &mut best_path,
+        &mut best_weight,
+        &mut visit_budget,
+    )?;
+
+    Ok(best_path)
+}
+
 /// DFS helper for the default `strongest_path` implementation.
 ///
 /// Explores simple paths from `current` to `end`, tracking the one with
-/// maximum total weight. Works with any `GraphStore` implementor.
+/// maximum total weight. Works with any `Adjacency` implementor.
 ///
 /// Exploration stops at `MAX_TRAVERSAL_DEPTH` or when `visit_budget` reaches
 /// zero, so on dense graphs the paths explored are a subset of all simple paths.
 #[allow(clippy::too_many_arguments)]
-fn dfs_strongest_path_default<G: GraphStore + ?Sized>(
-    store: &G,
+fn dfs_strongest_path_default<A: Adjacency + ?Sized>(
+    store: &A,
     current: NodeId,
     end: NodeId,
     depth: usize,
