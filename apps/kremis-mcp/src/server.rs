@@ -6,7 +6,7 @@ use crate::client::KremisClient;
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::{tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, ContentBlock as Content, ServerCapabilities, ServerInfo},
+    model::{CallToolResult, ContentBlock as Content, ServerCapabilities, ServerConfig},
     schemars, tool, tool_handler, tool_router,
 };
 use serde::Deserialize;
@@ -313,8 +313,8 @@ impl KremisMcp {
 
 #[tool_handler]
 impl ServerHandler for KremisMcp {
-    fn get_info(&self) -> ServerInfo {
-        let mut info = ServerInfo::default();
+    fn get_info(&self) -> ServerConfig {
+        let mut info = ServerConfig::default();
         info.instructions = Some(
             "Kremis knowledge graph server. Use tools to ingest entities, \
              query relationships, traverse the graph, inspect properties, \
