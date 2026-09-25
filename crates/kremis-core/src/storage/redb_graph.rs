@@ -15,9 +15,12 @@
 //! storage backend for Kremis sessions. Unlike the in-memory `Graph`,
 //! `RedbGraph` persists data to disk automatically.
 
-use crate::graph::GraphStore;
-use crate::{Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Signal, Value};
-use redb::{Database, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition};
+use crate::graph::{self, Adjacency, GraphStore};
+use crate::{Artifact, Attribute, EdgeWeight, EntityId, KremisError, Node, NodeId, Signal, Value};
+use redb::{
+    Database, ReadOnlyTable, ReadableDatabase, ReadableTable, ReadableTableMetadata,
+    TableDefinition,
+};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -455,6 +458,73 @@ impl RedbGraph {
 }
 
 // =============================================================================
+// QUERY SNAPSHOT
+// =============================================================================
+
+/// One read transaction held for the length of a query.
+///
+/// The default query algorithms call `neighbors` once per visited node — up
+/// to `MAX_VISIT_COUNT` times for `strongest_path` — and a standalone call
+/// opens a read transaction and the table each time, which costs more than
+/// the range scan it wraps. The tables keep the transaction alive, so one
+/// snapshot serves the whole query.
+struct Snapshot {
+    nodes: ReadOnlyTable<u64, &'static [u8]>,
+    edges: ReadOnlyTable<(u64, u64), i64>,
+}
+
+impl Adjacency for Snapshot {
+    fn neighbors(&self, from: NodeId) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
+        scan_neighbors(&self.edges, from)
+    }
+
+    fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
+        node_exists(&self.nodes, id)
+    }
+}
+
+impl RedbGraph {
+    fn snapshot(&self) -> Result<Snapshot, KremisError> {
+        let read_txn = self
+            .db
+            .begin_read()
+            .map_err(|e| KremisError::IoError(e.to_string()))?;
+        Ok(Snapshot {
+            nodes: read_txn
+                .open_table(NODES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?,
+            edges: read_txn
+                .open_table(EDGES)
+                .map_err(|e| KremisError::IoError(e.to_string()))?,
+        })
+    }
+}
+
+/// Outgoing edges of `from`, in key order.
+fn scan_neighbors(
+    edges: &ReadOnlyTable<(u64, u64), i64>,
+    from: NodeId,
+) -> Result<Vec<(NodeId, EdgeWeight)>, KremisError> {
+    let mut neighbors = Vec::new();
+    for entry in edges
+        .range((from.0, 0u64)..=(from.0, u64::MAX))
+        .map_err(|e| KremisError::IoError(e.to_string()))?
+    {
+        let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
+        let (_from_id, to_id) = key.value();
+        neighbors.push((NodeId(to_id), EdgeWeight::new(value.value())));
+    }
+    Ok(neighbors)
+}
+
+fn node_exists(nodes: &ReadOnlyTable<u64, &'static [u8]>, id: NodeId) -> Result<bool, KremisError> {
+    Ok(nodes
+        .get(id.0)
+        .map_err(|e| KremisError::IoError(e.to_string()))?
+        .is_some())
+}
+
+// =============================================================================
 // GRAPHSTORE TRAIT IMPLEMENTATION
 // =============================================================================
 
@@ -644,17 +714,7 @@ impl GraphStore for RedbGraph {
         let edges_table = read_txn
             .open_table(EDGES)
             .map_err(|e| KremisError::IoError(e.to_string()))?;
-
-        let mut neighbors = Vec::new();
-        for entry in edges_table
-            .range((from.0, 0u64)..=(from.0, u64::MAX))
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-        {
-            let (key, value) = entry.map_err(|e| KremisError::IoError(e.to_string()))?;
-            let (_from_id, to_id) = key.value();
-            neighbors.push((NodeId(to_id), EdgeWeight::new(value.value())));
-        }
-        Ok(neighbors)
+        scan_neighbors(&edges_table, from)
     }
 
     fn contains_node(&self, id: NodeId) -> Result<bool, KremisError> {
@@ -665,11 +725,39 @@ impl GraphStore for RedbGraph {
         let nodes_table = read_txn
             .open_table(NODES)
             .map_err(|e| KremisError::IoError(e.to_string()))?;
+        node_exists(&nodes_table, id)
+    }
 
-        Ok(nodes_table
-            .get(id.0)
-            .map_err(|e| KremisError::IoError(e.to_string()))?
-            .is_some())
+    // The query methods run the trait's default algorithms unchanged, against
+    // one snapshot instead of a read transaction per visited node.
+
+    fn traverse(&self, start: NodeId, depth: usize) -> Result<Option<Artifact>, KremisError> {
+        graph::traverse_in(&self.snapshot()?, start, depth)
+    }
+
+    fn traverse_filtered(
+        &self,
+        start: NodeId,
+        depth: usize,
+        min_weight: EdgeWeight,
+    ) -> Result<Option<Artifact>, KremisError> {
+        graph::traverse_filtered_in(&self.snapshot()?, start, depth, min_weight)
+    }
+
+    fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
+        // An empty input needs no read: keep it I/O-free, as the default was.
+        if nodes.is_empty() {
+            return Ok(Vec::new());
+        }
+        graph::intersect_in(&self.snapshot()?, nodes)
+    }
+
+    fn strongest_path(
+        &self,
+        start: NodeId,
+        end: NodeId,
+    ) -> Result<Option<Vec<NodeId>>, KremisError> {
+        graph::strongest_path_in(&self.snapshot()?, start, end)
     }
 
     fn node_count(&self) -> Result<usize, KremisError> {
@@ -1024,6 +1112,51 @@ mod tests {
 
         let path = graph.strongest_path(n3, n4).expect("path");
         assert_eq!(path, Some(vec![n3, n5, n4]));
+    }
+
+    #[test]
+    fn queries_match_in_memory_graph() {
+        // The query methods run the default algorithms against one snapshot;
+        // on the same weighted graph they must answer exactly as `Graph` does.
+        let temp = tempdir().expect("temp dir");
+        let mut disk = RedbGraph::open(temp.path().join("test.redb")).expect("open db");
+        let mut mem = crate::graph::Graph::new();
+
+        let mut nodes = Vec::new();
+        for i in 0..15u64 {
+            let node = disk.insert_node(EntityId(i)).expect("insert node");
+            assert_eq!(mem.insert_node(EntityId(i)).expect("insert node"), node);
+            nodes.push(node);
+        }
+        for (i, &from) in nodes.iter().enumerate() {
+            for step in 1..=2 {
+                if let Some(&to) = nodes.get(i + step) {
+                    let weight = EdgeWeight::new(((i * 7 + step) % 13) as i64 + 1);
+                    disk.insert_edge(from, to, weight).expect("edge");
+                    mem.insert_edge(from, to, weight).expect("edge");
+                }
+            }
+        }
+        let (first, last) = (nodes[0], nodes[nodes.len() - 1]);
+
+        assert_eq!(
+            disk.traverse(first, 4).expect("traverse"),
+            mem.traverse(first, 4).expect("traverse")
+        );
+        assert_eq!(
+            disk.traverse_filtered(first, 4, EdgeWeight::new(6))
+                .expect("traverse"),
+            mem.traverse_filtered(first, 4, EdgeWeight::new(6))
+                .expect("traverse")
+        );
+        assert_eq!(
+            disk.intersect(&[nodes[1], nodes[2]]).expect("intersect"),
+            mem.intersect(&[nodes[1], nodes[2]]).expect("intersect")
+        );
+        let path = disk.strongest_path(first, last).expect("path");
+        assert!(path.is_some());
+        assert_eq!(path, mem.strongest_path(first, last).expect("path"));
+        assert_eq!(disk.traverse(NodeId(999), 4).expect("traverse"), None);
     }
 
     #[test]
