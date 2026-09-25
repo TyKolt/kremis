@@ -7,7 +7,7 @@
 // Benchmarks legitimately use `.expect()` for setup; they are not production code.
 #![allow(clippy::expect_used)]
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{BatchSize, BenchmarkId, Criterion, criterion_group, criterion_main};
 use kremis_core::graph::{Graph, GraphStore};
 use kremis_core::{
     Attribute, EdgeWeight, EntityId, Ingestor, RedbGraph, Session, Signal, Value,
@@ -432,6 +432,32 @@ fn bench_redb_operations(c: &mut Criterion) {
                 black_box(&redb);
             });
         });
+    }
+
+    // Batch ingestion: the path `POST /signals` and `kremis ingest` take, one
+    // commit for the whole sequence. `insert_nodes` above commits once per node.
+    // Creating and deleting the database stay outside the timed routine, so the
+    // figure is the ingestion commit alone.
+    for size in sizes.iter() {
+        let signals = generate_signals(*size);
+        group.bench_with_input(
+            BenchmarkId::new("ingest_batch", size),
+            &signals,
+            |b, signals| {
+                b.iter_batched(
+                    || {
+                        let dir = tempfile::tempdir().expect("tmpdir");
+                        let redb = RedbGraph::open(dir.path().join("bench.redb")).expect("open");
+                        (dir, redb)
+                    },
+                    |(dir, mut redb)| {
+                        let ids = redb.ingest_batch(signals).expect("ingest");
+                        (dir, redb, ids)
+                    },
+                    BatchSize::PerIteration,
+                );
+            },
+        );
     }
 
     // Insert edges (linear graph pattern)
