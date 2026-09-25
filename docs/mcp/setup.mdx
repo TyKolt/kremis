@@ -19,9 +19,13 @@ cargo build -p kremis-mcp --release
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `KREMIS_URL` | `http://localhost:8080` | Kremis server URL |
+| `KREMIS_URL` | `http://127.0.0.1:8080` | Kremis server URL |
 | `KREMIS_API_KEY` | (none) | Optional Bearer token |
 | `KREMIS_LOG_FORMAT` | `text` | Log output format: `text` or `json` |
+
+<Note>
+  Prefer `127.0.0.1` over `localhost`. The server binds `127.0.0.1` by default; on Windows `localhost` resolves to `::1` first, and each new connection waits for the IPv6 attempt to fail before falling back.
+</Note>
 
 ## Claude Desktop
 
@@ -33,7 +37,7 @@ Add to your `claude_desktop_config.json`:
     "kremis": {
       "command": "/path/to/kremis-mcp",
       "env": {
-        "KREMIS_URL": "http://localhost:8080",
+        "KREMIS_URL": "http://127.0.0.1:8080",
         "KREMIS_API_KEY": "your-key-here"
       }
     }
@@ -51,7 +55,7 @@ Add to your `.mcp.json` or project settings:
     "kremis": {
       "command": "/path/to/kremis-mcp",
       "env": {
-        "KREMIS_URL": "http://localhost:8080"
+        "KREMIS_URL": "http://127.0.0.1:8080"
       }
     }
   }
@@ -65,7 +69,7 @@ Add to your `.mcp.json` or project settings:
 kremis server
 
 # In another terminal, run the MCP server
-KREMIS_URL=http://localhost:8080 ./target/release/kremis-mcp
+KREMIS_URL=http://127.0.0.1:8080 ./target/release/kremis-mcp
 ```
 
 The MCP server communicates via stdin/stdout using JSON-RPC. It will wait for MCP protocol messages.

@@ -4,7 +4,7 @@
 //!
 //! Configuration is loaded from `kremis.toml` (if present), with environment
 //! variables as overrides:
-//! - `KREMIS_URL`        — Kremis server URL (default: `http://localhost:8080`)
+//! - `KREMIS_URL`        — Kremis server URL (default: `http://127.0.0.1:8080`)
 //! - `KREMIS_API_KEY`    — Optional Bearer token for authentication
 //! - `KREMIS_LOG_FORMAT` — Log format: `"text"` (default) or `"json"`
 //!

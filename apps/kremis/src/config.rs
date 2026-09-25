@@ -101,8 +101,10 @@ pub struct McpConfig {
 }
 
 impl McpConfig {
+    // Same address the server binds by default; see the rationale in
+    // apps/kremis-mcp/src/config.rs.
     fn default_url() -> String {
-        "http://localhost:8080".to_string()
+        "http://127.0.0.1:8080".to_string()
     }
 }
 
@@ -256,7 +258,7 @@ mod tests {
         assert_eq!(cfg.api.rate_limit, 100);
         assert!(cfg.security.api_key.is_none());
         assert!(cfg.cors.origins.is_empty());
-        assert_eq!(cfg.mcp.url, "http://localhost:8080");
+        assert_eq!(cfg.mcp.url, "http://127.0.0.1:8080");
     }
 
     #[test]

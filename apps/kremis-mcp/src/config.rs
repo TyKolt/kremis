@@ -55,8 +55,11 @@ pub struct McpConfig {
 }
 
 impl McpConfig {
+    // The server binds 127.0.0.1 by default. `localhost` resolves to ::1
+    // first on Windows, where nothing listens, and every new connection
+    // then waits out the IPv6 attempt before falling back (~360 ms measured).
     fn default_url() -> String {
-        "http://localhost:8080".to_string()
+        "http://127.0.0.1:8080".to_string()
     }
 }
 

@@ -20,4 +20,4 @@ rate_limit = 100   # req/sec, 0 = disabled  (KREMIS_RATE_LIMIT)
 origins = []       # [] = localhost only; ["*"] = all; ["https://app.example.com"]  (KREMIS_CORS_ORIGINS)
 
 [mcp]
-url = "http://localhost:8080"   # Kremis server URL for the MCP bridge  (KREMIS_URL)
+url = "http://127.0.0.1:8080"   # Kremis server URL for the MCP bridge  (KREMIS_URL)

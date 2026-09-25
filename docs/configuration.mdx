@@ -32,7 +32,7 @@ rate_limit = 100   # requests per second — 0 disables rate limiting
 origins = []       # [] = localhost only | ["*"] = all | ["https://app.example.com"]
 
 [mcp]
-url = "http://localhost:8080"   # Kremis server URL used by the MCP bridge
+url = "http://127.0.0.1:8080"   # Kremis server URL used by the MCP bridge
 ```
 
 Copy the example template to get started:
@@ -55,7 +55,7 @@ way to pass secrets and override settings in containerised environments.
 | `KREMIS_RATE_LIMIT` | `[api] rate_limit` | `100` |
 | `KREMIS_API_KEY` | `[security] api_key` | _(none — auth disabled)_ |
 | `KREMIS_CORS_ORIGINS` | `[cors] origins` | _(none — localhost only)_ |
-| `KREMIS_URL` | `[mcp] url` | `http://localhost:8080` |
+| `KREMIS_URL` | `[mcp] url` | `http://127.0.0.1:8080` |
 
 Setting `KREMIS_API_KEY` to an empty string explicitly **disables** authentication,
 even if `api_key` is set in `kremis.toml`.
@@ -121,7 +121,7 @@ env:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `url` | string | `"http://localhost:8080"` | URL of the Kremis HTTP server. Used by `kremis-mcp` when proxying tool calls. |
+| `url` | string | `"http://127.0.0.1:8080"` | URL of the Kremis HTTP server. Used by `kremis-mcp` when proxying tool calls. |
 
 This section is read by **both** `kremis` (for the MCP bridge URL reference) and `kremis-mcp`
 (to know which server to proxy requests to).
