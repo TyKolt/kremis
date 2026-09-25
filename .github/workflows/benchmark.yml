@@ -73,7 +73,12 @@ jobs:
               ("strongest_path/1000", "Strongest path (1K nodes)"),
               ("export_canonical/1000", "Canonical export (1K nodes)"),
               ("import_canonical/10000", "Canonical import (10K nodes)"),
-              ("redb_operations/insert_nodes/1000", "Redb node insertion (1K)"),
+              # insert_nodes alone made redb look slow: it commits once per
+              # node, while POST /signals and `kremis ingest` commit once per
+              # batch. Both are published so the difference is visible.
+              ("redb_operations/ingest_batch/1000", "Redb signal ingestion (1K, one commit)"),
+              ("redb_operations/insert_nodes/1000", "Redb node insertion (1K, one commit each)"),
+              ("redb_operations/traverse_depth10/1000", "Redb traversal (depth 10, 1K nodes)"),
           ]
 
           OS_LABELS = {
