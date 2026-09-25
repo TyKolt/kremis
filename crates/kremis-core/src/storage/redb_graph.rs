@@ -745,6 +745,10 @@ impl GraphStore for RedbGraph {
     }
 
     fn intersect(&self, nodes: &[NodeId]) -> Result<Vec<NodeId>, KremisError> {
+        // An empty input needs no read: keep it I/O-free, as the default was.
+        if nodes.is_empty() {
+            return Ok(Vec::new());
+        }
         graph::intersect_in(&self.snapshot()?, nodes)
     }
 
