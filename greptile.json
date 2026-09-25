@@ -24,7 +24,7 @@
     "rules": [
       {
         "scope": ["crates/kremis-core/**"],
-        "rule": "kremis-core must remain PURE (Separation Law): no async, no network, no I/O. Reject any import of tokio, reqwest, std::net, or other async/network crates. Flag any use of: unwrap(), expect(), panic!() (clippy::deny in this project); f32/f64 arithmetic (float_arithmetic is deny); Randomness, timestamps, or non-deterministic logic (Determinism Law); Silent error conversion to None/default without caller visibility (Precision Law). For edge mutations (insert_edge, increment_edge): verify that node-existence checks are consistent across Graph (in-memory) and RedbGraph (persistent) backends. increment_edge must not create edges for non-existent nodes. For property storage (store_property): verify that repeated ingestion of the same signal does not silently accumulate duplicate (attribute, value) pairs."
+        "rule": "kremis-core must remain PURE (Separation Law): no async, no network, no I/O. Reject any import of tokio, reqwest, std::net, or other async/network crates. Flag any use of: unwrap(), expect(), panic!() in non-test code (clippy::deny in this project; clippy.toml exempts tests and #[cfg(test)] code on purpose); f32/f64 arithmetic (float_arithmetic is deny); Randomness, timestamps, or non-deterministic logic (Determinism Law); Silent error conversion to None/default without caller visibility (Precision Law). For edge mutations (insert_edge, increment_edge): verify that node-existence checks are consistent across Graph (in-memory) and RedbGraph (persistent) backends. increment_edge must not create edges for non-existent nodes. For property storage (store_property): verify that repeated ingestion of the same signal does not silently accumulate duplicate (attribute, value) pairs."
       },
       {
         "scope": ["apps/kremis-mcp/src/**"],
@@ -57,7 +57,7 @@
     "other": [
       {
         "scope": ["**/*.rs"],
-        "content": "Kremis is a deterministic knowledge graph engine written in Rust. The project follows 4 Fundamental Laws: Determinism (no randomness, no timestamps in core), Precision (no silent error swallowing), Security (no unwrap/expect/panic), and Separation (core crate is pure sync with no I/O). The workspace has three crates: kremis-core (pure logic), kremis (HTTP API server), kremis-mcp (MCP bridge to the API)."
+        "content": "Kremis is a deterministic knowledge graph engine written in Rust. The project follows 4 Fundamental Laws: Determinism (no randomness, no timestamps in core), Precision (no silent error swallowing), Security (no unwrap/expect/panic outside test code), and Separation (core crate is pure sync with no I/O). The workspace has three crates: kremis-core (pure logic), kremis (HTTP API server), kremis-mcp (MCP bridge to the API)."
       }
     ]
   }
