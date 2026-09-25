@@ -2,6 +2,36 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.5] - 2026-09-25
+
+### Bug Fixes
+
+- *(mcp)* The bridge dialled localhost while the server listened on 127.0.0.1 ([`96ea70e`](https://github.com/TyKolt/kremis/commit/96ea70eca67b6f451d01793d323af2597270dc80))
+
+### Performance
+
+- *(core)* A redb query opened a read transaction for every node it visited ([#82](https://github.com/TyKolt/kremis/issues/82)) ([`3af0525`](https://github.com/TyKolt/kremis/commit/3af0525bfac80a81142fa352d0143f8d38e5c486))
+
+### Documentation
+
+- *(site)* The hub had no way in from the documentation ([`ae6d568`](https://github.com/TyKolt/kremis/commit/ae6d56850484d32bcc68ca401fbe47a43bcf76b7))
+- *(mcp)* The overview page still called the bridge Beta ([`0fdca16`](https://github.com/TyKolt/kremis/commit/0fdca16147da989d56d58ff0aff58e8799278670))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 4 updates ([#74](https://github.com/TyKolt/kremis/issues/74)) ([`40a3040`](https://github.com/TyKolt/kremis/commit/40a3040bb1eadc263741c594ae0648975777fa0a))
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#77](https://github.com/TyKolt/kremis/issues/77)) ([`28dc734`](https://github.com/TyKolt/kremis/commit/28dc7347cf9109ab030e0aa43488156a74ec0ae3))
+- *(deps)* Bump the rust-all-updates group with 4 updates ([#78](https://github.com/TyKolt/kremis/issues/78)) ([`60a6bbd`](https://github.com/TyKolt/kremis/commit/60a6bbdca211e7a6b1793caeaec8936d789e66fe))
+- *(deps)* Bump the rust-all-updates group with 3 updates ([#79](https://github.com/TyKolt/kremis/issues/79)) ([`5dd00cf`](https://github.com/TyKolt/kremis/commit/5dd00cfff3e66e28300039161f669865b719ab05))
+- *(deps)* Bump the rust-all-updates group with 3 updates ([#80](https://github.com/TyKolt/kremis/issues/80)) ([`9146949`](https://github.com/TyKolt/kremis/commit/914694966c6d9d3c9743fdad97b46d48dc7b37eb))
+- *(deps)* Fix RUSTSEC-2026-0285 by bumping rustls to 0.23.45 ([`424b916`](https://github.com/TyKolt/kremis/commit/424b9162b2da7a37f6d721134c04a4b2f096c705))
+- *(deps)* Bump the rust-all-updates group with 3 updates ([#81](https://github.com/TyKolt/kremis/issues/81)) ([`14c3279`](https://github.com/TyKolt/kremis/commit/14c3279df28bbcdb91f0562a741402b087593168))
+
+### Miscellaneous
+
+- *(claude)* The team-facing settings.json was the one file never published ([`e07dfcc`](https://github.com/TyKolt/kremis/commit/e07dfcc12303ed41e8a983e6efcde806d073f843))
+- *(greptile)* The unwrap/expect/panic rule reached into test code ([`acf9bb3`](https://github.com/TyKolt/kremis/commit/acf9bb38a16dce44674882495de63e6750a06bda))
+
 ## [0.21.4] - 2026-08-05
 
 ### Bug Fixes
