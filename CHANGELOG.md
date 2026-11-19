@@ -2,6 +2,26 @@
 
 All notable changes to Kremis are documented in this file.
 
+## [0.21.6] - 2026-11-19
+
+### Bug Fixes
+
+- *(deps)* Ship the dependency advisories closed since v0.21.5 ([`f3a6b2f`](https://github.com/TyKolt/kremis/commit/f3a6b2fb625854d4f6dd02fea703834597fed3b7))
+
+### Dependencies
+
+- *(deps)* Bump the rust-all-updates group with 2 updates ([#84](https://github.com/TyKolt/kremis/issues/84)) ([`0caf484`](https://github.com/TyKolt/kremis/commit/0caf4848c0e541bccebf8ddd39b5bf7761aeecba))
+- *(deps)* Bump quinn-proto 0.11.15 -> 0.11.19 (RUSTSEC-2026-0338..0342) ([#91](https://github.com/TyKolt/kremis/issues/91)) ([`d51ad7a`](https://github.com/TyKolt/kremis/commit/d51ad7a01041d864c04a734b7d64945064b9b702))
+- *(deps)* Bump the rust-all-updates group across 1 directory with 3 updates ([#85](https://github.com/TyKolt/kremis/issues/85)) ([`6c84611`](https://github.com/TyKolt/kremis/commit/6c84611336b27b6f713753cee54a59f2536e52de))
+- *(deps)* Bump rustls 0.23.45 -> 0.23.46 (RUSTSEC-2026-0346..0349) ([#96](https://github.com/TyKolt/kremis/issues/96)) ([`1c7ce3a`](https://github.com/TyKolt/kremis/commit/1c7ce3a3e3fb6e737a116e66e8ecf3280cae2862))
+- *(deps)* Bump rustls-webpki 0.103.15 -> 0.103.16, webpki-root-certs 1.0.7 -> 1.0.10 (RUSTSEC-2026-0382, -0383) ([#98](https://github.com/TyKolt/kremis/issues/98)) ([`64c6aba`](https://github.com/TyKolt/kremis/commit/64c6aba5912f533b4bd8ec5ee9db23f43dae4778))
+- *(deps)* Bump the rust-all-updates group across 1 directory with 5 updates ([#97](https://github.com/TyKolt/kremis/issues/97)) ([`aee0fb5`](https://github.com/TyKolt/kremis/commit/aee0fb54bcea6d3808202d61098cc0417abe9d5e))
+- *(deps)* Bump rmcp 3.5.1 -> 3.9.0 (RUSTSEC-2026-0457, -0461, -0462) ([#104](https://github.com/TyKolt/kremis/issues/104)) ([`27fb435`](https://github.com/TyKolt/kremis/commit/27fb435760126aaedfce1ad10105137a4c66c458))
+- *(deps)* Restore the windows-sys edges #104 rewrote ([#106](https://github.com/TyKolt/kremis/issues/106)) ([`ef3b447`](https://github.com/TyKolt/kremis/commit/ef3b447b6ac15538e6f9101c992abb03b7cb948c))
+- *(deps)* Bump the rust-all-updates group across 1 directory with 3 updates ([#105](https://github.com/TyKolt/kremis/issues/105)) ([`98014a7`](https://github.com/TyKolt/kremis/commit/98014a7a484326939e6839a1660f7c2b673307cb))
+- *(core)* Drop postcard's heapless default, bump quinn-udp and rustix ([#120](https://github.com/TyKolt/kremis/issues/120)) ([`59e3b1e`](https://github.com/TyKolt/kremis/commit/59e3b1e5b2112cc3a55a9bd9bf5496a006b04043))
+- *(deps)* Bump the rust-all-updates group across 1 directory with 3 updates ([#121](https://github.com/TyKolt/kremis/issues/121)) ([`e73dbbd`](https://github.com/TyKolt/kremis/commit/e73dbbda9704c84e2c0e85cab775d01ce9abcd93))
+
 ## [0.21.5] - 2026-09-25
 
 ### Bug Fixes
